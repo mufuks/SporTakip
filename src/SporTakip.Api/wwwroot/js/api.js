@@ -1,0 +1,282 @@
+const API_BASE = '/api';
+
+export const Api = {
+  // Token Management
+  getToken() {
+    return localStorage.getItem('sportakip_token');
+  },
+
+  setToken(token) {
+    if (token) {
+      localStorage.setItem('sportakip_token', token);
+    } else {
+      localStorage.removeItem('sportakip_token');
+    }
+  },
+
+  getRefreshToken() {
+    return localStorage.getItem('sportakip_refresh_token');
+  },
+
+  setRefreshToken(refreshToken) {
+    if (refreshToken) {
+      localStorage.setItem('sportakip_refresh_token', refreshToken);
+    } else {
+      localStorage.removeItem('sportakip_refresh_token');
+    }
+  },
+
+  getUser() {
+    try {
+      const u = localStorage.getItem('sportakip_user');
+      return u ? JSON.parse(u) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  setUser(user) {
+    if (user) {
+      localStorage.setItem('sportakip_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('sportakip_user');
+    }
+  },
+
+  clearAuth() {
+    localStorage.removeItem('sportakip_token');
+    localStorage.removeItem('sportakip_refresh_token');
+    localStorage.removeItem('sportakip_user');
+  },
+
+  getHeaders(customHeaders = {}) {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...customHeaders
+    };
+    const token = this.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  },
+
+  async get(endpoint) {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      headers: this.getHeaders()
+    });
+    if (!res.ok) {
+      let message = 'İşlem başarısız oldu.';
+      try {
+        const data = await res.json();
+        message = data.message || data.title || JSON.stringify(data);
+      } catch {
+        const text = await res.text();
+        if (text) message = text;
+      }
+      throw new Error(message);
+    }
+    return res.json();
+  },
+
+  async post(endpoint, data) {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      let message = 'İşlem başarısız oldu.';
+      try {
+        const errData = await res.json();
+        message = errData.message || errData.title || JSON.stringify(errData);
+      } catch {
+        const text = await res.text();
+        if (text) message = text;
+      }
+      throw new Error(message);
+    }
+    return res.json();
+  },
+
+  async put(endpoint, data) {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      let message = 'İşlem başarısız oldu.';
+      try {
+        const errData = await res.json();
+        message = errData.message || errData.title || JSON.stringify(errData);
+      } catch {
+        const text = await res.text();
+        if (text) message = text;
+      }
+      throw new Error(message);
+    }
+    return res.json();
+  },
+
+  // Auth (Faz 2)
+  sendOtp(phone) {
+    return this.post('/auth/send-otp', { phone });
+  },
+
+  verifyOtp(phone, code) {
+    return this.post('/auth/verify-otp', { phone, code });
+  },
+
+  refreshAuthToken(token, refreshToken) {
+    return this.post('/auth/refresh-token', { token, refreshToken });
+  },
+
+  getMe() {
+    return this.get('/auth/me');
+  },
+
+  // Sessions & Capacity (Faz 3)
+  getSessions(startDate, endDate, trainerId) {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (trainerId) params.append('trainerId', trainerId.toString());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.get(`/sessions${query}`);
+  },
+
+  getSessionById(id) {
+    return this.get(`/sessions/${id}`);
+  },
+
+  createSession(data) {
+    return this.post('/sessions', data);
+  },
+
+  // Reservations & Waitlist (Faz 3)
+  bookReservation(slotId) {
+    return this.post('/reservations/book', { slotId });
+  },
+
+  cancelReservation(reservationId, reason = null) {
+    return this.post('/reservations/cancel', { reservationId, reason });
+  },
+
+  checkInReservation(reservationId) {
+    return this.post('/reservations/check-in', { reservationId });
+  },
+
+  getMyReservations(includePast = false) {
+    return this.get(`/reservations/my?includePast=${includePast}`);
+  },
+
+  // Dashboard (V1)
+  getStats() {
+    return this.get('/dashboard/stats');
+  },
+
+  getPayroll(year, month) {
+    return this.get(`/dashboard/payroll?year=${year}&month=${month}`);
+  },
+
+  // Subscriptions & Yoklama (V1)
+  getActiveSubscriptions() {
+    return this.get('/subscriptions/active');
+  },
+
+  getPackages() {
+    return this.get('/subscriptions/packages');
+  },
+
+  createSubscription(data) {
+    return this.post('/subscriptions', data);
+  },
+
+  markAttendance(data) {
+    return this.post('/attendance/mark', data);
+  },
+
+  getCapacity(date) {
+    const q = date ? `?date=${encodeURIComponent(date)}` : '';
+    return this.get(`/attendance/capacity${q}`);
+  },
+
+  scheduleSession(data) {
+    return this.post('/attendance/schedule', data);
+  },
+
+  getTrainers() {
+    return this.get('/trainers');
+  },
+
+  createTrainer(data) {
+    return this.post('/trainers', data);
+  },
+
+  getMonthCalendar(year, month) {
+    return this.get(`/attendance/calendar-month?year=${year}&month=${month}`);
+  },
+
+  // Members (V1)
+  getMembers(search = '') {
+    return this.get(`/members${search ? `?search=${encodeURIComponent(search)}` : ''}`);
+  },
+
+  getMember(id) {
+    return this.get(`/members/${id}`);
+  },
+
+  createMember(data) {
+    return this.post('/members', data);
+  },
+
+  updateMemberMetrics(id, data) {
+    return this.put(`/members/${id}/metrics`, data);
+  },
+
+  // Payments (V1)
+  addPayment(data) {
+    return this.post('/payments', data);
+  },
+
+  // Workout Engine (Faz 4 - Hevy / Nike Training)
+  getExercises(muscleGroup = null) {
+    const q = muscleGroup ? `?muscleGroup=${encodeURIComponent(muscleGroup)}` : '';
+    return this.get(`/exercises${q}`);
+  },
+
+  getWorkoutTemplates(onlyPublished = true) {
+    return this.get(`/workouts/templates?onlyPublished=${onlyPublished}`);
+  },
+
+  getWorkoutTemplateById(id) {
+    return this.get(`/workouts/templates/${id}`);
+  },
+
+  startWorkout(workoutTemplateId = null, notes = null) {
+    return this.post('/workouts/start', { workoutTemplateId, notes });
+  },
+
+  updateWorkoutSet(setLogId, data) {
+    return this.put(`/workouts/sets/${setLogId}`, data);
+  },
+
+  finishWorkout(workoutLogId, rating = 5, notes = null) {
+    return this.post(`/workouts/${workoutLogId}/finish`, { rating, notes });
+  },
+
+  getWorkoutLog(workoutLogId) {
+    return this.get(`/workouts/${workoutLogId}`);
+  },
+
+  getMyWorkoutHistory(take = 20) {
+    return this.get(`/workouts/history?take=${take}`);
+  },
+
+  getExerciseProgress(exerciseId) {
+    return this.get(`/workouts/progress/exercises/${exerciseId}`);
+  }
+};
+
+

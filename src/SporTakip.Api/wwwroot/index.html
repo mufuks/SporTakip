@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SporTakip | Compound Athletic</title>
+  
+  <!-- PWA & Mobile Web App Meta -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#ccff00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SporTakip">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+
+  <!-- ==================== UNIFIED APPLICATION SHELL ==================== -->
+  <div id="app-root" class="v0-athlete-shell unified-app-shell">
+    
+    <!-- Top Unified App Header -->
+    <header class="v0-app-header">
+      <!-- Desktop Brand Logo & Mobile Greeting -->
+      <div style="display:flex; align-items:center; gap:20px;">
+        <div class="v0-desktop-brand" onclick="navigateTo('home')" style="cursor:pointer;" title="Ana Sayfaya Dön">
+          <div class="brand-logo-box">⚡</div>
+          <div>
+            <div class="v0-desktop-brand-title">SPOR<span>TAKİP</span></div>
+            <div class="v0-desktop-brand-sub">Compound Athletic</div>
+          </div>
+        </div>
+
+        <div class="v0-user-greeting">
+          <p class="v0-greeting-sub" id="athlete-greeting-sub">Hoş Geldiniz,</p>
+          <div class="v0-greeting-name">
+            <span id="athlete-greeting-name">Misafir Sporcu</span>
+            <span aria-hidden="true">👋</span>
+          </div>
+          <span class="v0-badge-athlete" id="athlete-role-badge">
+            <span class="v0-badge-dot" id="athlete-badge-dot"></span>
+            <span id="athlete-status-label">Giriş Yapılmadı</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Desktop Center Navigation (Role Based) -->
+      <nav class="v0-desktop-nav" id="app-desktop-nav">
+        <!-- Standart Sporcu Sekmeleri -->
+        <button type="button" class="v0-desk-nav-btn active" data-tab="home" onclick="navigateTo('home')">
+          <span>🏠</span> Ana Sayfa
+        </button>
+        <button type="button" class="v0-desk-nav-btn" data-tab="sessions" onclick="navigateTo('sessions')">
+          <span>📅</span> Seanslar
+        </button>
+        <button type="button" class="v0-desk-nav-btn" data-tab="workout" id="nav-btn-workout" onclick="navigateTo('workout')">
+          <span>📈</span> Antrenmanım
+        </button>
+        <button type="button" class="v0-desk-nav-btn" data-tab="profile" id="nav-btn-profile" onclick="navigateTo('profile')">
+          <span>👤</span> Profilim
+        </button>
+
+        <!-- Antrenör & Yönetici Sekmeleri (Yalnızca yetkili personele görünür) -->
+        <button type="button" class="v0-desk-nav-btn staff-tab" data-tab="yoklama" id="nav-btn-yoklama" style="display:none;" onclick="navigateTo('yoklama')">
+          <span>⚡</span> Hızlı Yoklama
+        </button>
+        <button type="button" class="v0-desk-nav-btn staff-tab" data-tab="uyeler" id="nav-btn-uyeler" style="display:none;" onclick="navigateTo('uyeler')">
+          <span>👥</span> Üyeler & Paketler
+        </button>
+        <button type="button" class="v0-desk-nav-btn staff-tab" data-tab="dashboard" id="nav-btn-dashboard" style="display:none;" onclick="navigateTo('dashboard')">
+          <span>📊</span> Yönetim Paneli
+        </button>
+        <button type="button" class="v0-desk-nav-btn staff-tab" data-tab="kasa" id="nav-btn-kasa" style="display:none;" onclick="navigateTo('kasa')">
+          <span>💰</span> Kasa & Hakediş
+        </button>
+      </nav>
+
+      <!-- Right Header Actions -->
+      <div class="v0-header-actions">
+        <button type="button" class="v0-desk-login-btn" id="v0-login-header-btn" onclick="openOtpDrawer()" title="SMS ile Giriş Yap">
+          <span>⚡</span> Giriş Yap
+        </button>
+
+        <button type="button" aria-label="Tema Değiştir" id="theme-toggle-header" class="v0-bell-btn" onclick="toggleTheme()" title="Açık / Koyu Tema Değiştir">
+          <span id="theme-icon-desktop" style="font-size:16px;">🌙</span>
+        </button>
+
+        <button type="button" aria-label="Bildirimler" class="v0-bell-btn" onclick="handleNotificationClick()">
+          <span>🔔</span>
+          <span class="v0-bell-dot"></span>
+        </button>
+
+        <div class="v0-avatar-ring" onclick="handleAvatarClick()" title="Profil / Giriş">
+          <img src="/images/default-avatar.png" alt="Profil Fotoğrafı" class="v0-avatar-img" id="athlete-avatar-img">
+        </div>
+      </div>
+    </header>
+
+    <!-- 1. ATHLETE HOME VIEW (RESPONSIVE DUAL-LAYOUT) -->
+    <section id="v0-view-home" class="animate-fade-in">
+      <div class="v0-home-grid">
+        <!-- Left Sidebar (Desktop) / Top Flow (Mobile) -->
+        <div class="v0-home-sidebar">
+          <!-- GUEST WELCOME CARD (Shown when NOT logged in) -->
+          <div class="v0-package-card" id="athlete-guest-welcome" style="text-align:center; padding:28px 20px;">
+            <div class="v0-package-glow"></div>
+            <div style="font-size:38px; margin-bottom:10px;">⚡</div>
+            <h3 style="font-size:18px; font-weight:800; color:#FFFFFF; margin:0 0 8px 0;">Compound Athletic</h3>
+            <p style="font-size:13px; color:rgba(255,255,255,0.6); margin:0 0 20px 0; line-height:1.5;">
+              Ders haklarınızı, aktif paketinizi ve antrenman takviminizi görüntülemek için telefon numaranızla giriş yapın.
+            </p>
+            <button type="button" class="v0-btn-submit" onclick="openOtpDrawer()" style="margin:0 auto; max-width:240px; padding:12px; font-size:13px;">
+              <span>📱</span> SMS ile Giriş Yap
+            </button>
+          </div>
+
+          <!-- LOGGED-IN WRAPPER (Shown ONLY when logged in) -->
+          <div id="athlete-member-sidebar" style="display:none;">
+            <!-- Active Package Card with Segmented Progress -->
+            <div class="v0-package-card" id="athlete-package-card">
+              <div class="v0-package-glow"></div>
+              <div class="v0-package-top">
+                <div>
+                  <p class="v0-package-label">Aktif Paket</p>
+                  <h2 class="v0-package-title">
+                    <span class="v0-package-icon-box">🏋️</span>
+                    <span id="pkg-card-title">Yükleniyor...</span>
+                  </h2>
+                </div>
+                <span class="v0-status-pill-active" id="pkg-card-status">Aktif</span>
+              </div>
+
+              <!-- Segmented Bar -->
+              <div class="v0-segmented-bar" id="pkg-segmented-bar" aria-label="Ders Tamamlama İlerlemesi">
+                <!-- Dynamically populated -->
+              </div>
+
+              <!-- 3 Metrics -->
+              <div class="v0-metrics-grid">
+                <div class="v0-metric-item">
+                  <span class="v0-metric-label"><span>🏋️</span> Kalan</span>
+                  <span class="v0-metric-value volt" id="pkg-metric-remaining">--</span>
+                </div>
+                <div class="v0-metric-item">
+                  <span class="v0-metric-label"><span>📅</span> Geçerlilik</span>
+                  <span class="v0-metric-value" id="pkg-metric-days">--</span>
+                </div>
+                <div class="v0-metric-item">
+                  <span class="v0-metric-label"><span>💳</span> Bakiye</span>
+                  <span class="v0-metric-value emerald" id="pkg-metric-balance">--</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Workout Teaser Card -->
+            <div class="v0-section v0-sidebar-teaser-wrap" id="athlete-workout-teaser-wrap" style="margin-top:16px;">
+              <div class="v0-workout-teaser" onclick="switchAthleteTab('workout')">
+                <div class="v0-workout-emoji-box">🦵</div>
+                <div class="v0-workout-content">
+                  <div class="v0-workout-top">
+                    <span class="v0-workout-tag" id="teaser-workout-tag">Son Antrenmanım</span>
+                    <span class="v0-workout-date" id="teaser-workout-date">· --</span>
+                  </div>
+                  <p class="v0-workout-name" id="teaser-workout-name">Antrenman Programları</p>
+                  <div class="v0-workout-meta" id="teaser-workout-meta">
+                    <span>Programları İncele</span>
+                  </div>
+                </div>
+                <span style="color:rgba(255,255,255,0.3); font-size:18px;">›</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Main Column: Günün Seansları -->
+        <div class="v0-home-main">
+          <div class="v0-section">
+            <div class="v0-section-header">
+              <h2 class="v0-section-title">Günün Seansları</h2>
+              <span class="v0-section-date" id="v0-sessions-date-label">Bugün</span>
+            </div>
+
+            <div class="v0-sessions-list" id="v0-sessions-container">
+              <!-- Dynamically rendered from /api/sessions -->
+              <div style="text-align:center; padding:24px; color:rgba(255,255,255,0.4); font-size:13px;">
+                Seanslar yükleniyor...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ATHLETE SESSIONS VIEW -->
+    <section id="v0-view-sessions" class="v0-section animate-fade-in" style="display:none;">
+      <div class="v0-section-header">
+        <h2 class="v0-section-title">Tüm Seanslar & Rezervasyon</h2>
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px;" id="v0-day-filter-chips">
+        <!-- Date filter chips injected by JS -->
+      </div>
+      <div class="v0-sessions-list" id="v0-all-sessions-container">
+        <!-- Injected -->
+      </div>
+    </section>
+
+    <!-- 3. ATHLETE WORKOUT VIEW (FAZ 4: HEVY / NIKE TRAINING ENGINE) -->
+    <section id="v0-view-workout" class="v0-section animate-fade-in" style="display:none;">
+      <div class="v0-section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <h2 class="v0-section-title">Antrenman & Egzersiz</h2>
+        <div class="v0-workout-subnav" style="display:flex; gap:6px;">
+          <button type="button" class="v0-subtab-btn active" id="btn-wsub-templates" onclick="switchWorkoutSubTab('templates')">Programlar</button>
+          <button type="button" class="v0-subtab-btn" id="btn-wsub-live" onclick="switchWorkoutSubTab('live')">Canlı İdman <span id="v0-live-pulse-dot" style="display:none; width:8px; height:8px; background:#CCFF00; border-radius:50%; display:inline-block; margin-left:4px;"></span></button>
+          <button type="button" class="v0-subtab-btn" id="btn-wsub-progress" onclick="switchWorkoutSubTab('progress')">Rekorlarım (PR)</button>
+        </div>
+      </div>
+
+      <!-- Sub-view 1: Program Şablonları & Serbest İdman -->
+      <div id="v0-workout-subview-templates" class="v0-workout-subview">
+        <div class="v0-workout-quick-start" style="background:linear-gradient(135deg, rgba(204,255,0,0.12), rgba(20,20,24,0.6)); border:1px solid rgba(204,255,0,0.25); border-radius:18px; padding:20px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+          <div>
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#CCFF00; text-transform:uppercase;">Hızlı Başlat</span>
+            <h3 style="font-size:17px; font-weight:800; color:#FFFFFF; margin:4px 0 2px 0;">Serbest Antrenman</h3>
+            <p style="font-size:12px; color:rgba(255,255,255,0.6); margin:0;">Belirli bir şablon olmadan kendi egzersizlerini serbestçe logla.</p>
+          </div>
+          <button type="button" class="v0-btn-primary" onclick="startNewWorkout(null)" style="padding:10px 20px; font-size:13px; font-weight:800; border-radius:9999px; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+            <span>⚡</span> Serbest Başlat
+          </button>
+        </div>
+
+        <h3 style="font-size:15px; font-weight:800; color:#FFFFFF; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+          <span>📋</span> Antrenör Programları
+        </h3>
+        <div id="v0-workout-templates-list" class="v0-templates-grid">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Sub-view 2: Canlı İdman (Hevy / Nike Training Canlı Set Kaydı) -->
+      <div id="v0-workout-subview-live" class="v0-workout-subview" style="display:none;">
+        <div id="v0-live-workout-container">
+          <!-- Injected dynamically: Timer, Exercises, Set Inputs, Finish Button -->
+        </div>
+      </div>
+
+      <!-- Sub-view 3: Gelişim & 1RM Rekorları -->
+      <div id="v0-workout-subview-progress" class="v0-workout-subview" style="display:none;">
+        <div id="v0-progress-container">
+          <!-- Injected dynamically: PR Cards & History -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Modal: Antrenmanı Bitir -->
+    <div id="v0-modal-finish-workout" class="modal-backdrop">
+      <div class="v0-finish-modal-box">
+        <div style="text-align:center; margin-bottom:14px;">
+          <span style="font-size:36px; display:inline-block; margin-bottom:6px;">🏆</span>
+          <h3 style="font-size:17px; font-weight:800; color:#FFFFFF; margin:0;">Tebrikler, İdmanı Bitirdin!</h3>
+          <span class="v0-finish-duration-pill" id="v0-finish-modal-duration">⏱ Toplam Süre: -- dk</span>
+        </div>
+
+        <div style="margin-bottom:14px; text-align:center; background:#0D0D10; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px 10px;">
+          <label style="display:block; font-size:11.5px; font-weight:700; color:rgba(255,255,255,0.6); margin-bottom:6px;">Antrenman Değerlendirmen</label>
+          <div style="display:flex; justify-content:center; gap:8px; font-size:24px;" id="v0-star-rating">
+            <span class="v0-star" data-rating="1" onclick="setWorkoutRating(1)" style="cursor:pointer;">⭐</span>
+            <span class="v0-star" data-rating="2" onclick="setWorkoutRating(2)" style="cursor:pointer;">⭐</span>
+            <span class="v0-star" data-rating="3" onclick="setWorkoutRating(3)" style="cursor:pointer;">⭐</span>
+            <span class="v0-star" data-rating="4" onclick="setWorkoutRating(4)" style="cursor:pointer;">⭐</span>
+            <span class="v0-star" data-rating="5" onclick="setWorkoutRating(5)" style="cursor:pointer;">⭐</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom:18px;">
+          <label style="display:block; font-size:11.5px; font-weight:700; color:rgba(255,255,255,0.6); margin-bottom:6px;">Antrenman Notu (İsteğe Bağlı)</label>
+          <input type="text" id="v0-finish-notes" class="v0-phone-input" placeholder="Örn: Squat formum çok akıcıydı 💪" style="width:100%; box-sizing:border-box; font-size:12.5px; padding:10px 12px; border-radius:10px;">
+        </div>
+
+        <div style="display:flex; gap:10px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('v0-modal-finish-workout')" style="flex:1; padding:10px; font-size:12.5px; font-weight:700; border-radius:9999px;">Vazgeç</button>
+          <button type="button" class="v0-btn-submit" onclick="submitFinishWorkout()" style="flex:1.8; margin:0; padding:10px; font-size:12.5px; font-weight:800;">Tamamla & Kaydet</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. ATHLETE PROFILE VIEW -->
+    <section id="v0-view-profile" class="v0-section animate-fade-in" style="display:none;">
+      <div class="v0-section-header">
+        <h2 class="v0-section-title">Profilim & Rezervasyonlarım</h2>
+      </div>
+      <div id="v0-profile-content">
+        <!-- Injected by JS -->
+      </div>
+    </section>
+
+    <!-- ==================== 5. STAFF: HIZLI YOKLAMA (FLAGSHIP FLOOR SCREEN) ==================== -->
+    <section id="view-yoklama" class="v0-section animate-fade-in" style="display:none;">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">HIZLI <span class="text-volt">YOKLAMA</span></h2>
+          <p class="page-subtitle">Salonda antrenman esnasında tek dokunuşla katılım düşün.</p>
+        </div>
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" placeholder="Üye adı veya paket ara..." oninput="filterAttendance(this.value)">
+        </div>
+      </div>
+
+      <!-- Quick Filter Chips -->
+      <div class="filter-chips">
+        <button class="filter-chip active" data-filter="all" onclick="setAttendanceFilter('all')">Tüm Aktif Paketler</button>
+        <button class="filter-chip" data-filter="expiring" onclick="setAttendanceFilter('expiring')">⚡ Son 1-2 Dersi Kalanlar</button>
+        <button class="filter-chip" data-filter="unpaid" onclick="setAttendanceFilter('unpaid')">💳 Borçlu Üyeler</button>
+      </div>
+
+      <!-- Saatlik Stüdyo Doluluk & Kapasite Paneli (BR-03) -->
+      <div class="glass-card capacity-panel" style="margin-bottom:24px; padding:18px 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:20px;">🏢</span>
+              <h3 style="font-size:16px; font-weight:800; letter-spacing:-0.01em;">CANLI STÜDYO DOLULUK & SAATLİK KAPASİTE</h3>
+              <span class="lesson-badge badge-green" style="font-size:11px; padding:3px 8px;">Maks: 6 Kişi/Saat</span>
+            </div>
+            <p style="font-size:12px; color:var(--text-secondary); margin-top:3px;">
+              Aşırı yoğunluğu önleyin: <span style="color:var(--volt-lime); font-weight:700;">● Rahat (0-3)</span> | <span style="color:var(--flame-orange); font-weight:700;">● Doluyor (4-5)</span> | <span style="color:var(--pulse-rose); font-weight:700;">● Kritik Dolu (6+)</span>
+            </p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="date" id="capacity-date-picker" class="form-control" style="padding:6px 10px; font-size:13px; width:auto;" onchange="handleCapacityDateChange(this.value)">
+            <button class="btn-primary" style="padding:8px 14px; font-size:12px;" onclick="openScheduleSessionModal()">+ Seans Planla</button>
+          </div>
+        </div>
+
+        <!-- Scrollable Hourly Slots Strip -->
+        <div class="capacity-slots-container" id="capacity-slots-list">
+          <!-- Dynamically populated slots -->
+        </div>
+
+        <!-- Selected Slot Details (Active filter indicator) -->
+        <div id="slot-details-box" style="display:none; margin-top:10px; padding:10px 14px; background:var(--bg-surface-elevated); border-radius:var(--radius-xs); border:1px solid var(--border-subtle); font-size:12.5px; display:flex; justify-content:space-between; align-items:center;">
+          <span id="slot-details-text">Saat 19:00 için kayıtlı sporcular filtrelendi.</span>
+          <button class="action-btn-sm" onclick="clearSlotFilter()" style="font-size:11px; padding:4px 8px;">Filtreyi Kaldır ✕</button>
+        </div>
+      </div>
+
+      <!-- Cards Grid -->
+      <div class="attendance-grid" id="attendance-list">
+        <!-- Javascript dynamically fills this -->
+      </div>
+    </section>
+
+    <!-- ==================== 2. SEANS TAKVİMİ (GENİŞ AYLIK TAKVİM) ==================== -->
+    <section id="view-takvim" class="v0-section animate-fade-in" style="display:none;">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">SEANS <span class="text-volt">TAKVİMİ</span></h2>
+          <p class="page-subtitle">Aylık stüdyo seans çizelgesi. Günlere tıklayarak antrenman ve sporcu detaylarını inceleyin.</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div class="cal-nav-bar">
+            <button class="cal-nav-btn" onclick="changeCalendarMonth(-1)" title="Önceki Ay">◀</button>
+            <span class="cal-month-title" id="cal-month-heading">Yükleniyor...</span>
+            <button class="cal-nav-btn" onclick="changeCalendarMonth(1)" title="Sonraki Ay">▶</button>
+            <button class="btn-secondary" style="padding:7px 14px; font-size:12px;" onclick="goToTodayCalendar()">Bugün</button>
+          </div>
+          <button class="btn-primary" onclick="openScheduleModal()">
+            + Seans Planla
+          </button>
+        </div>
+      </div>
+
+      <!-- Capacity Legend & Summary Bar -->
+      <div class="cal-summary-strip">
+        <div class="cal-legend-group">
+          <span class="legend-item"><span class="status-dot dot-green"></span> Rahat (0-3)</span>
+          <span class="legend-item"><span class="status-dot dot-orange"></span> Doluyor (4-5)</span>
+          <span class="legend-item"><span class="status-dot dot-red"></span> Kritik Dolu (6+)</span>
+        </div>
+        <div id="cal-month-stats" class="cal-stats-summary">
+          <!-- Ay geneli özet -->
+        </div>
+      </div>
+
+      <!-- Month Calendar Outer Card -->
+      <div class="glass-card calendar-card-wrapper">
+        <!-- Weekdays Header (Pzt - Paz) -->
+        <div class="calendar-weekdays-grid">
+          <div class="cal-weekday-hdr">Pzt</div>
+          <div class="cal-weekday-hdr">Sal</div>
+          <div class="cal-weekday-hdr">Çar</div>
+          <div class="cal-weekday-hdr">Per</div>
+          <div class="cal-weekday-hdr">Cum</div>
+          <div class="cal-weekday-hdr">Cmt</div>
+          <div class="cal-weekday-hdr">Paz</div>
+        </div>
+
+        <!-- 7-Column Days Grid -->
+        <div class="calendar-grid" id="calendar-days-grid">
+          <!-- Dynamically populated day cells -->
+        </div>
+      </div>
+
+      <!-- Selected Day Details Panel -->
+      <div class="glass-card" id="calendar-day-details" style="display:none; margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 id="cal-selected-day-title" style="font-size:18px;">Seans Detayı</h3>
+            <span id="cal-selected-day-subtitle" style="font-size:13px; color:var(--text-secondary);">Detaylar yükleniyor...</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-primary" style="padding:8px 16px; font-size:12px;" onclick="openScheduleModalForSelectedDate()">
+              + Bu Güne Seans Ekle
+            </button>
+            <button class="btn-secondary" style="padding:8px 12px; font-size:12px;" onclick="closeCalendarDayDetails()">✕ Kapat</button>
+          </div>
+        </div>
+        <div id="cal-selected-day-slots" class="attendance-grid">
+          <!-- Hourly cards for selected day -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3. DASHBOARD ==================== -->
+    <section id="view-dashboard" class="v0-section animate-fade-in" style="display:none;">
+
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">YÖNETİM & <span class="text-volt">KASA</span></h2>
+          <p class="page-subtitle">Aylık finansal durum, salon payı, hoca hakedişleri ve kritik uyarılar.</p>
+        </div>
+        <div>
+          <button class="btn-primary" onclick="openNewMemberModal()">+ Yeni Üye Kaydı</button>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Aktif Sporcular</div>
+          <div class="stat-value text-volt" id="stat-active-members">0</div>
+          <div class="stat-meta">Salondaki toplam üye</div>
+        </div>
+        <div class="stat-card cyan">
+          <div class="stat-label">Bu Ayki Ciro</div>
+          <div class="stat-value text-cyan" id="stat-revenue-month">₺0</div>
+          <div class="stat-meta">Satılan paket toplamı</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">Tahsil Edilen Kasa</div>
+          <div class="stat-value text-orange" id="stat-collected-month">₺0</div>
+          <div class="stat-meta">Nakit / Havale alınan</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-label">Açık Hesap (Alacak)</div>
+          <div class="stat-value" id="stat-pending-month">₺0</div>
+          <div class="stat-meta">Kalan üye bakiyesi</div>
+        </div>
+      </div>
+
+      <!-- Salon Sahibi & Hoca Dağılım Kartı -->
+      <div class="glass-card" style="margin-bottom:28px;">
+        <h3 style="margin-bottom:18px; font-size:18px; letter-spacing:-0.02em;">🏢 Salon (Sahibi) & 🏋️ Hoca Gelir Dağılımı (Bu Ay)</h3>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
+          <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:20px;">
+            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Salon Sahibi (Sinan) Payı</div>
+            <div style="font-size:26px; font-weight:800; color:var(--cyber-cyan); margin:8px 0 4px 0;" id="share-salon-month">₺0</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Salona kalan işletme payı</div>
+          </div>
+          <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:20px;">
+            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Hoca (Gülçin vb.) Hakedişleri</div>
+            <div style="font-size:26px; font-weight:800; color:var(--volt-lime); margin:8px 0 4px 0;" id="share-trainer-month">₺0</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Eğitmen paket & ders payı</div>
+          </div>
+          <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:20px;">
+            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Yapılan Dersler</div>
+            <div style="font-size:26px; font-weight:800; color:var(--text-primary); margin:8px 0 4px 0;" id="stat-lessons-count">0 DERS</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Yoklaması alınan antrenmanlar</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Items Grid -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:20px;">
+        <!-- Expiring Packages -->
+        <div class="glass-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="font-size:17px;">⚡ Paketi Bitmek Üzere Olanlar</h3>
+            <span class="lesson-badge badge-amber">Son 1-2 Ders</span>
+          </div>
+          <div id="dashboard-expiring-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Unpaid Subscriptions -->
+        <div class="glass-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="font-size:17px;">💳 Ödemesi Eksik Kalanlar</h3>
+            <span class="lesson-badge badge-red">Borç Takibi</span>
+          </div>
+          <div id="dashboard-unpaid-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Eğitmen Kadrosu Yönetimi (Hoca Tanımlama) -->
+      <div class="glass-card" style="margin-top:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 style="font-size:18px;">🏋️ Eğitmen & Antrenör Kadrosu</h3>
+            <span style="font-size:12px; color:var(--text-secondary);">Salonda ders veren hocalar, rolleri ve prim oranları.</span>
+          </div>
+          <button class="btn-primary" id="btn-open-new-trainer" onclick="openNewTrainerModal()">
+            + Yeni Hoca Tanımla
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Hoca Adı</th>
+                <th>Rolü</th>
+                <th>Telefon</th>
+                <th>Varsayılan Prim</th>
+                <th>Durum</th>
+              </tr>
+            </thead>
+            <tbody id="trainers-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 4. ÜYELER ==================== -->
+    <section id="view-uyeler" class="v0-section animate-fade-in" style="display:none;">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">SPORCULAR & <span class="text-volt">PAKETLER</span></h2>
+          <p class="page-subtitle">Kayıtlı tüm üyeler, geçmiş paketler ve yeni satış işlemleri.</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" placeholder="İsim veya telefon ara..." oninput="handleMemberSearch(this.value)">
+          </div>
+          <button class="btn-primary" onclick="openNewMemberModal()">+ Yeni Üye</button>
+        </div>
+      </div>
+
+      <div class="glass-card table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Ad Soyad</th>
+              <th>Telefon</th>
+              <th>Aktif Paket Durumu</th>
+              <th>Toplam Dönem</th>
+              <th>İşlemler</th>
+            </tr>
+          </thead>
+          <tbody id="members-table-body">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ==================== 5. KASA & HAKEDİŞ ==================== -->
+    <section id="view-kasa" class="v0-section animate-fade-in" style="display:none;">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">HAKEDİŞ & <span class="text-volt">KASA</span></h2>
+          <p class="page-subtitle">Hocaların girdiği ders başına primleri, ikame payları ve salon geliri.</p>
+        </div>
+      </div>
+
+      <div class="glass-card table-responsive" style="margin-bottom:24px;">
+        <h3 style="margin-bottom:16px; font-size:18px;">📋 Aylık Eğitmen Hakediş Bordrosu ve Salon Geliri</h3>
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Hoca / Yetkili</th>
+              <th>Rol</th>
+              <th>Girdiği Ders</th>
+              <th>Ders Başı Prim</th>
+              <th>Paket / Salon Payı</th>
+              <th>Toplam Hak Edilen</th>
+            </tr>
+          </thead>
+          <tbody id="payroll-table-body">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Unified Glassmorphic Bottom Navigation -->
+    <nav class="v0-bottom-nav">
+      <div class="v0-bottom-nav-inner" id="v0-bottom-nav-inner">
+        <button type="button" class="v0-nav-btn active" data-tab="home" onclick="navigateTo('home')">
+          <span class="v0-nav-icon">🏠</span>
+          <span class="v0-nav-label">Ana Sayfa</span>
+          <span class="v0-nav-active-dot"></span>
+        </button>
+        <button type="button" class="v0-nav-btn" data-tab="sessions" onclick="navigateTo('sessions')">
+          <span class="v0-nav-icon">📅</span>
+          <span class="v0-nav-label">Seanslar</span>
+        </button>
+        <button type="button" class="v0-nav-btn" data-tab="workout" id="mob-btn-workout" onclick="navigateTo('workout')">
+          <span class="v0-nav-icon">📈</span>
+          <span class="v0-nav-label">Antrenman</span>
+        </button>
+        <button type="button" class="v0-nav-btn" data-tab="profile" id="mob-btn-profile" onclick="navigateTo('profile')">
+          <span class="v0-nav-icon">👤</span>
+          <span class="v0-nav-label">Profilim</span>
+        </button>
+
+        <!-- Staff / Antrenör Hızlı Sekmeleri (Sadece Coach/Admin'de görünür) -->
+        <button type="button" class="v0-nav-btn staff-tab" data-tab="yoklama" id="mob-btn-yoklama" style="display:none;" onclick="navigateTo('yoklama')">
+          <span class="v0-nav-icon">⚡</span>
+          <span class="v0-nav-label">Yoklama</span>
+        </button>
+        <button type="button" class="v0-nav-btn staff-tab" data-tab="uyeler" id="mob-btn-uyeler" style="display:none;" onclick="navigateTo('uyeler')">
+          <span class="v0-nav-icon">👥</span>
+          <span class="v0-nav-label">Üyeler</span>
+        </button>
+      </div>
+    </nav>
+
+  </div> <!-- /#app-root -->
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Modal: Yeni Hoca / Eğitmen Ekle -->
+  <div class="modal-backdrop" id="modal-new-trainer">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Yeni Eğitmen / Hoca Tanımla</h3>
+        <button class="modal-close" onclick="closeModal('modal-new-trainer')">✕</button>
+      </div>
+      <form id="new-trainer-form" onsubmit="handleCreateTrainer(event)">
+        <div class="form-group">
+          <label>Hoca Ad Soyad *</label>
+          <input type="text" id="t-name" class="form-control" placeholder="Örn: Kerem Demir" required>
+        </div>
+        <div class="form-group">
+          <label>Rolü *</label>
+          <select id="t-role" class="form-control" required>
+            <option value="Eğitmen">Eğitmen (Grup & Bireysel)</option>
+            <option value="PT">PT (Özel Ders Antrenörü)</option>
+            <option value="Salon Sahibi">Salon Sahibi / İşletmeci</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Telefon Numarası</label>
+          <input type="tel" id="t-phone" class="form-control" placeholder="05XXXXXXXXX">
+        </div>
+        <div class="form-group">
+          <label>Varsayılan Prim / Hakediş Oranı (%) *</label>
+          <input type="number" id="t-share-rate" class="form-control" value="40" min="0" max="100" step="1" required>
+          <small style="color:var(--text-muted); font-size:11px; margin-top:4px; display:block;">Örn: %40 (İkame hoca veya ders başı hakediş oranı)</small>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-new-trainer')">İptal</button>
+          <button type="submit" class="btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Yeni Üye Ekle -->
+  <div class="modal-backdrop" id="modal-new-member">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Yeni Sporcu Kaydı</h3>
+        <button class="modal-close" onclick="closeModal('modal-new-member')">✕</button>
+      </div>
+      <form id="new-member-form" onsubmit="handleCreateMember(event)">
+        <div class="form-group">
+          <label>Ad Soyad *</label>
+          <input type="text" id="m-name" class="form-control" placeholder="Örn: Ayşe Yılmaz" required>
+        </div>
+        <div class="form-group">
+          <label>Telefon Numarası</label>
+          <input type="tel" id="m-phone" class="form-control" placeholder="05XXXXXXXXX">
+        </div>
+        <div class="form-group">
+          <label>Sağlık / Antrenman Notu (Bel fıtığı, sakatlık vb.)</label>
+          <input type="text" id="m-notes" class="form-control" placeholder="Örn: Menisküs hassasiyeti var">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-new-member')">İptal</button>
+          <button type="submit" class="btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Paket Satışı Yap -->
+  <div class="modal-backdrop" id="modal-new-sub">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h3>Paket Tanımla</h3>
+          <span class="text-volt" style="font-weight:700; font-size:14px;" id="sub-member-title">Üye Adı</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-new-sub')">✕</button>
+      </div>
+      <form id="new-sub-form" onsubmit="handleCreateSubscription(event)">
+        <input type="hidden" id="sub-member-id">
+        <div class="form-group">
+          <label>Paket Seçiniz *</label>
+          <select id="sub-package-select" class="form-control" onchange="updatePackagePriceField()">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Sorumlu Eğitmen</label>
+          <select id="sub-trainer-select" class="form-control">
+            <option value="">Varsayılan Eğitmen</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Paket Ücreti (TL) *</label>
+          <input type="number" id="sub-price" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Salon İşletme Payı (Kesinti) *</label>
+          <select id="sub-salon-rate" class="form-control">
+            <option value="0.10">%10 Salon / %90 Hoca</option>
+            <option value="0.30">%30 Salon / %70 Hoca</option>
+            <option value="0.40">%40 Salon / %60 Hoca</option>
+            <option value="0.00">%0 Salon / %100 Hoca</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tahsil Edilen Tutar (Peşinat / Tam)</label>
+          <input type="number" id="sub-payment" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Ödeme Şekli</label>
+          <select id="sub-pay-method" class="form-control">
+            <option value="Nakit">Nakit</option>
+            <option value="Havale/EFT">Havale / EFT</option>
+            <option value="Kredi Kartı">Kredi Kartı</option>
+          </select>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-new-sub')">Vazgeç</button>
+          <button type="submit" class="btn-primary">Paketi Başlat</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Ödeme Al -->
+  <div class="modal-backdrop" id="modal-payment">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h3>Tahsilat Ekle</h3>
+          <span class="text-volt" style="font-weight:700; font-size:14px;" id="pay-member-name">Üye Adı</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-payment')">✕</button>
+      </div>
+      <form id="payment-form" onsubmit="handleAddPayment(event)">
+        <input type="hidden" id="pay-sub-id">
+        <div class="form-group">
+          <label>Tahsil Edilen Tutar (TL) *</label>
+          <input type="number" id="pay-amount" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Ödeme Yöntemi</label>
+          <select id="pay-method" class="form-control">
+            <option value="Nakit">Nakit</option>
+            <option value="Havale/EFT">Havale / EFT</option>
+            <option value="Kredi Kartı">Kredi Kartı</option>
+          </select>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-payment')">İptal</button>
+          <button type="submit" class="btn-primary">Tahsil Et</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Seans Planla (Kapasite Rezerve Et) -->
+  <div class="modal-backdrop" id="modal-schedule-session">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h3>Seans Planla</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;">Butik Salon Saatlik Rezervasyon</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-schedule-session')">✕</button>
+      </div>
+      <form id="schedule-form" onsubmit="handleScheduleSession(event)">
+        <div class="form-group">
+          <label>Sporcu (Aktif Abonelik) *</label>
+          <select id="schedule-sub-select" class="form-control" required>
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Dersi Verecek Hoca *</label>
+          <select id="schedule-trainer-select" class="form-control" required>
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Tarih *</label>
+            <input type="date" id="schedule-date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Saat Dilimi *</label>
+            <select id="schedule-hour" class="form-control" required>
+              <option value="9">09:00 - 10:00</option>
+              <option value="10">10:00 - 11:00</option>
+              <option value="11">11:00 - 12:00</option>
+              <option value="12">12:00 - 13:00</option>
+              <option value="16">16:00 - 17:00</option>
+              <option value="17">17:00 - 18:00</option>
+              <option value="18">18:00 - 19:00</option>
+              <option value="19" selected>19:00 - 20:00</option>
+              <option value="20">20:00 - 21:00</option>
+              <option value="21">21:00 - 22:00</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Not / Hedef Seans</label>
+          <input type="text" id="schedule-notes" class="form-control" placeholder="Örn: Bacak & Core, Kuvvet Seansı">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-schedule-session')">İptal</button>
+          <button type="submit" class="btn-primary">Seansı Planla</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: WhatsApp Akıllı Şablonlar (PRD Madde 4) -->
+  <div class="modal-backdrop" id="modal-whatsapp-templates">
+    <div class="modal-content" style="max-width:520px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="display:flex; align-items:center; gap:8px;"><span>💬</span> WhatsApp Hatırlatma Şablonları</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;" id="wa-modal-member-name">Üye Adı</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-whatsapp-templates')">✕</button>
+      </div>
+
+      <div style="margin:16px 0;">
+        <!-- Şablon 1: Ders & 3 Saat Kuralı -->
+        <div class="wa-template-card">
+          <div class="wa-template-title">
+            <span>🕒</span> Şablon 1: Seans & 3 Saat Kuralı Hatırlatması
+          </div>
+          <div class="wa-template-body" id="wa-template-text-1">
+            Yükleniyor...
+          </div>
+          <button class="btn-primary" style="width:100%; font-size:12px; padding:8px;" onclick="sendWhatsAppTemplate(1)">
+            WhatsApp'ta Gönder 💬
+          </button>
+        </div>
+
+        <!-- Şablon 2: Paket Bitiş & Yenileme -->
+        <div class="wa-template-card">
+          <div class="wa-template-title">
+            <span>⚡</span> Şablon 2: Paket Yenileme Uyarısı (Son Dersler)
+          </div>
+          <div class="wa-template-body" id="wa-template-text-2">
+            Yükleniyor...
+          </div>
+          <button class="btn-primary" style="width:100%; font-size:12px; padding:8px;" onclick="sendWhatsAppTemplate(2)">
+            WhatsApp'ta Gönder 💬
+          </button>
+        </div>
+
+        <!-- Şablon 3: Bakiye / Borç Hatırlatma -->
+        <div class="wa-template-card">
+          <div class="wa-template-title">
+            <span>💳</span> Şablon 3: Kalan Bakiye & Ödeme Hatırlatması
+          </div>
+          <div class="wa-template-body" id="wa-template-text-3">
+            Yükleniyor...
+          </div>
+          <button class="btn-primary" style="width:100%; font-size:12px; padding:8px;" onclick="sendWhatsAppTemplate(3)">
+            WhatsApp'ta Gönder 💬
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end;">
+        <button type="button" class="btn-secondary" onclick="closeModal('modal-whatsapp-templates')">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== OTP SLIDE-UP SHEET ==================== -->
+  <div class="v0-otp-backdrop" id="v0-otp-drawer" onclick="handleOtpBackdropClick(event)">
+    <div class="v0-otp-sheet">
+      <div class="v0-sheet-handle"></div>
+      <button type="button" class="v0-sheet-close" onclick="closeOtpDrawer()" aria-label="Kapat">✕</button>
+
+      <div class="v0-sheet-header">
+        <div class="v0-sheet-shield">📱</div>
+        <div>
+          <h2 class="v0-sheet-title">SMS ile Hızlı Giriş</h2>
+          <p class="v0-sheet-subtitle" id="v0-otp-step-subtitle">Telefon numaranızı girerek hemen giriş yapın</p>
+        </div>
+      </div>
+
+      <!-- Step 1: Phone Entry -->
+      <div id="v0-otp-step-phone" class="animate-rise-in">
+        <label for="v0-input-phone" style="display:block; font-size:12px; font-weight:600; color:rgba(255,255,255,0.5); margin-bottom:8px;">
+          Telefon Numarası
+        </label>
+        <div class="v0-phone-wrapper">
+          <span class="v0-phone-prefix">+90</span>
+          <input type="tel" id="v0-input-phone" class="v0-phone-input" placeholder="5XX XXX XX XX" maxlength="14" oninput="handlePhoneInput(this)">
+        </div>
+        <button type="button" id="v0-btn-send-otp" class="v0-btn-submit" disabled onclick="submitSendOtp()">
+          <span>Kod Gönder</span>
+          <span style="font-size:16px;">→</span>
+        </button>
+      </div>
+
+      <!-- Step 2: 6-Digit Code Entry -->
+      <div id="v0-otp-step-code" class="animate-rise-in" style="display:none;">
+        <div class="v0-otp-boxes">
+          <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="0">
+          <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="1">
+          <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="2">
+          <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="3">
+          <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="4">
+          <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="5">
+        </div>
+
+        <div class="v0-otp-timer-row">
+          <span>Kalan Süre: <span class="v0-otp-timer-val" id="v0-otp-timer">03:00</span></span>
+          <button type="button" class="v0-otp-resend-btn" onclick="resendOtp()">Tekrar Gönder</button>
+        </div>
+
+        <button type="button" id="v0-btn-verify-otp" class="v0-btn-submit" disabled onclick="submitVerifyOtp()">
+          Kodu Onayla
+        </button>
+
+        <button type="button" class="v0-btn-back-phone" onclick="goToPhoneStep()">
+          Numarayı değiştir
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Javascript -->
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
