@@ -47,7 +47,9 @@ public class SessionsController(ISessionService sessionService) : ControllerBase
         CancellationToken ct)
     {
         var start = startDate ?? DateTime.UtcNow.Date;
-        var end = endDate ?? start.AddDays(7);
+        var end = endDate.HasValue
+            ? (endDate.Value.TimeOfDay == TimeSpan.Zero ? endDate.Value.Date.AddDays(1).AddTicks(-1) : endDate.Value)
+            : start.AddDays(7);
 
         var slots = await sessionService.GetSlotsAsync(start, end, trainerId, ct);
         return Ok(slots);
@@ -64,6 +66,36 @@ public class SessionsController(ISessionService sessionService) : ControllerBase
         var slot = await sessionService.GetSlotByIdAsync(id, ct);
         if (slot == null) return NotFound(new { message = "Seans bulunamadı." });
         return Ok(slot);
+    }
+
+    /// <summary>
+    /// Var olan seansın saatini, antrenörünü, kapasitesini veya başlığını günceller (Yalnızca Antrenör ve Salon Sahibi).
+    /// </summary>
+    [Authorize(Roles = "Coach, Admin")]
+    [HttpPut("{id}")]
+    [ProducesResponseType(typeof(SessionSlotDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateSlot(int id, [FromBody] UpdateSessionSlotRequest request, CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        try
+        {
+            var slot = await sessionService.UpdateSlotAsync(userId, id, request, ct);
+            return Ok(slot);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>

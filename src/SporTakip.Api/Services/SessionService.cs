@@ -84,6 +84,90 @@ public class SessionService(
         return MapToDto(slot, slot.Trainer.FullName);
     }
 
+    public async Task<SessionSlotDto> UpdateSlotAsync(int trainerOrAdminUserId, int slotId, UpdateSessionSlotRequest request, CancellationToken ct = default)
+    {
+        var slot = await db.SessionSlots
+            .Include(s => s.Trainer)
+            .Include(s => s.Reservations)
+                .ThenInclude(r => r.Member)
+            .FirstOrDefaultAsync(s => s.Id == slotId, ct)
+            ?? throw new KeyNotFoundException("Seans bulunamadı.");
+
+        if (request.StartTime.HasValue && request.EndTime.HasValue)
+        {
+            if (request.EndTime.Value <= request.StartTime.Value)
+            {
+                throw new ArgumentException("Bitiş saati başlangıç saatinden sonra olmalıdır.");
+            }
+            slot.StartTime = request.StartTime.Value;
+            slot.EndTime = request.EndTime.Value;
+        }
+        else if (request.StartTime.HasValue)
+        {
+            if (slot.EndTime <= request.StartTime.Value)
+            {
+                slot.EndTime = request.StartTime.Value.AddHours(1);
+            }
+            slot.StartTime = request.StartTime.Value;
+        }
+        else if (request.EndTime.HasValue)
+        {
+            if (request.EndTime.Value <= slot.StartTime)
+            {
+                throw new ArgumentException("Bitiş saati başlangıç saatinden sonra olmalıdır.");
+            }
+            slot.EndTime = request.EndTime.Value;
+        }
+
+        if (request.TrainerId.HasValue && request.TrainerId.Value != slot.TrainerId)
+        {
+            var trainer = await db.Trainers.FindAsync([request.TrainerId.Value], ct)
+                ?? throw new ArgumentException("Seçilen antrenör bulunamadı.");
+            slot.TrainerId = trainer.Id;
+            slot.Trainer = trainer;
+        }
+
+        if (request.Capacity.HasValue && request.Capacity.Value > 0)
+        {
+            slot.Capacity = request.Capacity.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.SessionType))
+        {
+            slot.SessionType = request.SessionType;
+        }
+
+        if (request.Title != null)
+        {
+            slot.Title = request.Title;
+        }
+
+        if (request.Notes != null)
+        {
+            slot.Notes = request.Notes;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Status))
+        {
+            slot.Status = request.Status;
+            if (request.Status == "Cancelled")
+            {
+                foreach (var res in slot.Reservations.Where(r => r.Status == "Confirmed" || r.Status == "Waitlisted"))
+                {
+                    res.Status = "CancelledByCoach";
+                    res.CancellationReason = "Seans antrenör tarafından iptal edildi.";
+                    res.CancelledAt = DateTime.UtcNow;
+                }
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("✏️ [SESSION UPDATED] Slot #{SlotId}: {TrainerName} | {StartTime:yyyy-MM-dd HH:mm} - {EndTime:HH:mm} (Kapasite: {Capacity}, Durum: {Status})",
+            slot.Id, slot.Trainer.FullName, slot.StartTime, slot.EndTime, slot.Capacity, slot.Status);
+
+        return MapToDto(slot, slot.Trainer.FullName);
+    }
+
     public async Task<bool> CancelSlotAsync(int trainerOrAdminUserId, int slotId, CancellationToken ct = default)
     {
         var slot = await db.SessionSlots

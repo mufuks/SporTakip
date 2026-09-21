@@ -10,6 +10,17 @@ public record CreateSessionSlotRequest(
     int? TrainerId = null
 );
 
+public record UpdateSessionSlotRequest(
+    DateTime? StartTime = null,
+    DateTime? EndTime = null,
+    int? Capacity = null,
+    string? SessionType = null,
+    string? Title = null,
+    string? Notes = null,
+    int? TrainerId = null,
+    string? Status = null
+);
+
 public record SessionSlotDto(
     int Id,
     int TrainerId,

@@ -127,6 +127,11 @@ window.navigateTo = function(tabName) {
     }
   });
 
+  // Synchronize header and navigation auth state
+  if (typeof updateNavForUserRole === 'function') {
+    updateNavForUserRole();
+  }
+
   // Trigger relevant view loader
   if (tabName === 'home') loadAthleteHome();
   else if (tabName === 'sessions') loadAthleteSessionsView();
@@ -247,24 +252,34 @@ function renderCapacitySlots(slots) {
   if (!container || !slots) return;
 
   container.innerHTML = slots.map(slot => {
+    const hasMembers = slot.totalMembers > 0;
     const statusClass = (slot.statusLevel || 'comfortable').toLowerCase();
     const pct = Math.min(100, Math.round((slot.totalMembers / slot.capacityLimit) * 100));
     const isActive = selectedSlotHour === slot.hour;
 
     let trainerSummary = 'Boş Saat';
     if (slot.trainers && slot.trainers.length > 0) {
-      trainerSummary = slot.trainers.map(t => `${t.trainerName}: ${t.memberCount}`).join(', ');
+      trainerSummary = slot.trainers.map(t => `${t.trainerName} (${t.memberCount})`).join(', ');
     }
 
     return `
-      <div class="capacity-slot-card ${statusClass} ${isActive ? 'active-slot' : ''}" onclick="selectSlotHour(${slot.hour})">
-        <div class="slot-time">${slot.timeSlot}</div>
-        <span class="slot-count-badge">${slot.totalMembers} / ${slot.capacityLimit} Kişi</span>
+      <div class="capacity-slot-card ${hasMembers ? 'has-session ' + statusClass : 'empty-slot'} ${isActive ? 'active-slot' : ''}"
+           onclick="selectSlotHour(${slot.hour})"
+           title="${slot.timeSlot} - ${hasMembers ? slot.totalMembers + '/' + slot.capacityLimit + ' Kişi (' + trainerSummary + ')' : 'Boş Saat (Kayıt yok)'}">
+        <div class="slot-card-top">
+          <span class="slot-time">${slot.timeSlot}</span>
+          ${hasMembers ? `<span class="slot-live-dot ${statusClass}" title="${slot.totalMembers} kişi aktif"></span>` : ''}
+        </div>
+        <div class="slot-badge-wrap">
+          <span class="slot-count-badge ${hasMembers ? statusClass : 'muted'}">
+            ${hasMembers ? `${slot.totalMembers}/${slot.capacityLimit}` : 'Boş'}
+          </span>
+        </div>
         <div class="slot-bar-track">
-          <div class="slot-bar-fill" style="width:${pct}%;"></div>
+          <div class="slot-bar-fill ${hasMembers ? statusClass : ''}" style="width:${hasMembers ? pct : 0}%;"></div>
         </div>
         <div class="slot-trainers-line" title="${escapeHtml(trainerSummary)}">
-          ${escapeHtml(trainerSummary)}
+          ${hasMembers ? escapeHtml(trainerSummary) : '—'}
         </div>
       </div>
     `;
@@ -1122,6 +1137,128 @@ window.handleScheduleSession = async function(e) {
   }
 };
 
+// ==================== VAR OLAN SEANSI DÜZENLEME ====================
+window.openEditSessionModal = async function(slotId) {
+  try {
+    const slot = await Api.getSessionById(slotId);
+    if (!slot) {
+      showToast('Seans bulunamadı.', 'error');
+      return;
+    }
+
+    if (!allTrainers || allTrainers.length === 0) {
+      allTrainers = await Api.getTrainers().catch(() => []);
+    }
+    const trainerSelect = document.getElementById('edit-session-trainer');
+    if (trainerSelect) {
+      trainerSelect.innerHTML = allTrainers.map(t =>
+        `<option value="${t.id}" ${t.id === slot.trainerId ? 'selected' : ''}>${escapeHtml(t.fullName)} (${escapeHtml(t.role)})</option>`
+      ).join('');
+    }
+
+    document.getElementById('edit-session-id').value = slot.id;
+    document.getElementById('edit-session-title').value = slot.title || '';
+    document.getElementById('edit-session-capacity').value = slot.capacity || 6;
+    document.getElementById('edit-session-type').value = slot.sessionType || 'GRUP';
+    document.getElementById('edit-session-status').value = slot.status || 'Scheduled';
+    document.getElementById('edit-session-notes').value = slot.notes || '';
+
+    // Dates and Times (Local Time)
+    const startDate = new Date(slot.startTime);
+    const endDate = new Date(slot.endTime);
+
+    const year = startDate.getFullYear();
+    const month = String(startDate.getMonth() + 1).padStart(2, '0');
+    const day = String(startDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    const startH = String(startDate.getHours()).padStart(2, '0');
+    const startM = String(startDate.getMinutes()).padStart(2, '0');
+    const endH = String(endDate.getHours()).padStart(2, '0');
+    const endM = String(endDate.getMinutes()).padStart(2, '0');
+
+    document.getElementById('edit-session-date').value = dateStr;
+    document.getElementById('edit-session-start-time').value = `${startH}:${startM}`;
+    document.getElementById('edit-session-end-time').value = `${endH}:${endM}`;
+
+    const subtitle = document.getElementById('edit-session-subtitle');
+    if (subtitle) {
+      subtitle.innerText = `${slot.trainerName} — ${slot.title || 'Seans'} (#${slot.id})`;
+    }
+
+    openModal('modal-edit-session');
+  } catch (err) {
+    showToast(`Seans yüklenemedi: ${err.message}`, 'error');
+  }
+};
+
+window.handleSaveEditSession = async function(e) {
+  e.preventDefault();
+  const slotId = parseInt(document.getElementById('edit-session-id').value);
+  const title = document.getElementById('edit-session-title').value.trim();
+  const trainerId = parseInt(document.getElementById('edit-session-trainer').value);
+  const dateStr = document.getElementById('edit-session-date').value;
+  const startTimeStr = document.getElementById('edit-session-start-time').value;
+  const endTimeStr = document.getElementById('edit-session-end-time').value;
+  const capacity = parseInt(document.getElementById('edit-session-capacity').value);
+  const sessionType = document.getElementById('edit-session-type').value;
+  const status = document.getElementById('edit-session-status').value;
+  const notes = document.getElementById('edit-session-notes').value.trim();
+
+  const startTime = new Date(`${dateStr}T${startTimeStr}:00`);
+  const endTime = new Date(`${dateStr}T${endTimeStr}:00`);
+
+  if (endTime <= startTime) {
+    showToast('Bitiş saati başlangıç saatinden sonra olmalıdır.', 'error');
+    return;
+  }
+
+  try {
+    await Api.updateSession(slotId, {
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      trainerId: trainerId,
+      capacity: capacity,
+      sessionType: sessionType,
+      title: title,
+      notes: notes,
+      status: status
+    });
+
+    showToast('✓ Seans saati ve bilgileri başarıyla güncellendi!', 'success');
+    closeModal('modal-edit-session');
+
+    await loadAthleteHome();
+    if (currentAthleteTab === 'sessions') await loadAthleteSessionsView();
+    if (typeof loadCapacitySlots === 'function') await loadCapacitySlots();
+    if (typeof loadAttendanceView === 'function') await loadAttendanceView();
+  } catch (err) {
+    showToast(`Güncelleme Hatası: ${err.message}`, 'error');
+  }
+};
+
+window.handleDeleteSessionClick = async function() {
+  const slotId = parseInt(document.getElementById('edit-session-id').value);
+  if (!slotId) return;
+
+  if (!confirm('Bu seansı tamamen iptal etmek/silmek istediğinize emin misiniz?\nKayıtlı tüm sporcuların rezervasyonları iptal edilecektir.')) {
+    return;
+  }
+
+  try {
+    await Api.deleteSession(slotId);
+    showToast('✓ Seans başarıyla iptal edildi / kaldırıldı.', 'success');
+    closeModal('modal-edit-session');
+
+    await loadAthleteHome();
+    if (currentAthleteTab === 'sessions') await loadAthleteSessionsView();
+    if (typeof loadCapacitySlots === 'function') await loadCapacitySlots();
+    if (typeof loadAttendanceView === 'function') await loadAttendanceView();
+  } catch (err) {
+    showToast(`İptal Hatası: ${err.message}`, 'error');
+  }
+};
+
 function formatMoney(num) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(num || 0);
 }
@@ -1204,6 +1341,8 @@ async function loadAthleteHome() {
         if (member && member.subscriptions && member.subscriptions.length > 0) {
           const activeSub = member.subscriptions.find(s => s.status === 'Active') || member.subscriptions[0];
           if (activeSub) {
+            const pkgCard = document.getElementById('athlete-package-card');
+            if (pkgCard) pkgCard.classList.remove('empty-state');
             if (pkgTitleEl) pkgTitleEl.innerText = activeSub.packageName || 'Aktif Paket';
             if (pkgStatusEl) {
               pkgStatusEl.innerText = activeSub.status === 'Active' ? 'Aktif' : 'Pasif';
@@ -1220,9 +1359,11 @@ async function loadAthleteHome() {
             if (balanceEl) balanceEl.innerText = balance <= 0 ? '₺0 · Ödendi' : formatMoney(balance);
           }
         } else {
+          const pkgCard = document.getElementById('athlete-package-card');
+          if (pkgCard) pkgCard.classList.add('empty-state');
           if (pkgTitleEl) pkgTitleEl.innerText = 'Aktif Paket Yok';
           if (pkgStatusEl) { pkgStatusEl.innerText = 'Paketsiz'; pkgStatusEl.className = 'v0-status-pill-waitlist'; }
-          if (pkgBar) pkgBar.innerHTML = '<div style="font-size:12px; color:rgba(255,255,255,0.5); padding:4px 0;">Tanımlı aktif paketiniz bulunmuyor.</div>';
+          if (pkgBar) pkgBar.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:4px 0;">Tanımlı aktif paketiniz bulunmuyor.</div>';
           if (remainingEl) remainingEl.innerText = '0 Ders';
           if (daysEl) daysEl.innerText = '--';
           if (balanceEl) balanceEl.innerText = '₺0';
@@ -1356,10 +1497,18 @@ async function renderSessionsList(containerId, dateStr) {
       const isReservedByMe = myReservationSlotIds.has(slot.id);
 
       const isLoggedIn = !!(Api.getUser() && Api.getToken());
+      const userRoles = user && user.roles ? user.roles : (user && user.role ? [user.role] : []);
+      const isCoach = userRoles.includes('Coach') || userRoles.includes('Admin');
+      const editButtonHtml = isCoach ? `
+        <button type="button" class="v0-btn-edit-slot" onclick="openEditSessionModal(${slot.id})" title="Seans saatini ve detaylarını düzenle">
+          <span>✏️</span> Düzenle
+        </button>
+      ` : '';
+
       let actionButtonHtml = '';
       if (!isLoggedIn) {
         actionButtonHtml = `
-          <button type="button" class="v0-book-btn available" onclick="openOtpDrawer()" style="background:rgba(204,255,0,0.1); border:1px solid rgba(204,255,0,0.3); color:#CCFF00;">
+          <button type="button" class="v0-book-btn available" onclick="openOtpDrawer()" style="background:var(--volt-lime-muted); border:1px solid var(--border-subtle); color:var(--volt-lime);">
             <span>📱</span> Giriş Yap & Rezerve Et
           </button>
         `;
@@ -1386,8 +1535,11 @@ async function renderSessionsList(containerId, dateStr) {
       return `
         <article class="v0-session-card">
           <div class="v0-session-top">
-            <div style="min-width:0;">
-              <span class="v0-time-pill">${timeStr}</span>
+            <div style="min-width:0; flex:1;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+                <span class="v0-time-pill">${timeStr}</span>
+                ${editButtonHtml}
+              </div>
               <h3 class="v0-session-card-title">${escapeHtml(slot.title || 'Grup Seansı')}</h3>
               <span class="v0-trainer-pill">
                 <span>🏋️</span>
@@ -1410,7 +1562,7 @@ async function renderSessionsList(containerId, dateStr) {
           <div class="v0-cancel-notice ${isPastDeadline ? 'passed' : ''}">
             <span class="v0-cancel-icon">⚡</span>
             <div>
-              <strong style="color:#FFFFFF;">Son İptal: ${cancelTimeStr}</strong>
+              <strong style="color:var(--text-primary);">Son İptal: ${cancelTimeStr}</strong>
               — ${isPastDeadline ? 'Son iptal vakti geçti (İptal edilirse ders hakkınız düşer).' : 'Ders hakkınız yanmadan iptal edilebilir.'}
             </div>
           </div>
@@ -1441,18 +1593,11 @@ async function loadAthleteSessionsView() {
 
     const chip = document.createElement('button');
     chip.type = 'button';
-    chip.className = `btn-secondary ${i === 0 ? 'active' : ''}`;
-    chip.style.cssText = `padding:8px 14px; font-size:12px; font-weight:700; border-radius:999px; white-space:nowrap; ${i === 0 ? 'background:#CCFF00; color:#0A0A0C; border:none;' : 'background:#141418; color:rgba(255,255,255,0.7); border:1px solid #222228;'}`;
+    chip.className = `v0-day-chip ${i === 0 ? 'active' : ''}`;
     chip.innerText = label;
     chip.onclick = () => {
-      chipsContainer.querySelectorAll('button').forEach(b => {
-        b.style.background = '#141418';
-        b.style.color = 'rgba(255,255,255,0.7)';
-        b.style.border = '1px solid #222228';
-      });
-      chip.style.background = '#CCFF00';
-      chip.style.color = '#0A0A0C';
-      chip.style.border = 'none';
+      chipsContainer.querySelectorAll('.v0-day-chip').forEach(b => b.classList.remove('active'));
+      chip.classList.add('active');
       renderSessionsList('v0-all-sessions-container', dateIso);
     };
     chipsContainer.appendChild(chip);
@@ -1481,6 +1626,11 @@ window.handleBookSession = async function(slotId) {
     if (currentAthleteTab === 'sessions') await loadAthleteSessionsView();
   } catch (err) {
     showToast(`Rezervasyon Hatası: ${err.message}`, 'error');
+    if (err.message && err.message.includes('Oturum')) {
+      Api.clearAuth();
+      updateNavForUserRole();
+      openOtpDrawer();
+    }
   }
 };
 
@@ -1513,10 +1663,10 @@ window.renderAthleteProfile = async function() {
   const user = Api.getUser();
   if (!user || !Api.getToken()) {
     container.innerHTML = `
-      <div style="background:#141418; border:1px solid #222228; border-radius:18px; padding:28px 20px; text-align:center;">
+      <div class="v0-card" style="text-align:center;">
         <span style="font-size:40px; display:block; margin-bottom:10px;">👤</span>
-        <h3 style="font-size:18px; font-weight:800; color:#FFFFFF;">Henüz Giriş Yapmadınız</h3>
-        <p style="font-size:13px; color:rgba(255,255,255,0.5); margin:8px 0 20px 0; line-height:1.5;">
+        <h3 style="font-size:18px; font-weight:800; color:var(--text-primary);">Henüz Giriş Yapmadınız</h3>
+        <p style="font-size:13px; color:var(--text-secondary); margin:8px 0 20px 0; line-height:1.5;">
           Aktif ders haklarınızı, geçerlilik sürenizi ve rezervasyon geçmişinizi takip etmek için telefon numaranızla giriş yapın.
         </p>
         <button class="v0-book-btn available" style="max-width:240px; margin:0 auto;" onclick="openOtpDrawer()">
@@ -1527,7 +1677,7 @@ window.renderAthleteProfile = async function() {
     return;
   }
 
-  let reservationsHtml = '<p style="font-size:12px; color:rgba(255,255,255,0.4);">Kayıtlı rezervasyon bulunmuyor.</p>';
+  let reservationsHtml = '<p style="font-size:12px; color:var(--text-muted);">Kayıtlı rezervasyon bulunmuyor.</p>';
   let memberDetails = null;
   try {
     const [myRes, memberData] = await Promise.all([
@@ -1537,18 +1687,18 @@ window.renderAthleteProfile = async function() {
     memberDetails = memberData;
     if (myRes && myRes.length > 0) {
       reservationsHtml = myRes.map(r => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-radius:12px; background:#0A0A0C; border:1px solid #222228; margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-radius:12px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); margin-top:8px;">
           <div>
-            <div style="font-size:13.5px; font-weight:800; color:#FFFFFF;">
+            <div style="font-size:13.5px; font-weight:800; color:var(--text-primary);">
               ${new Date(r.startTime).toLocaleDateString('tr-TR')} · ${new Date(r.startTime).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}
             </div>
-            <div style="font-size:12px; color:rgba(255,255,255,0.5);">${escapeHtml(r.trainerName || 'Eğitmen')}</div>
+            <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(r.trainerName || 'Eğitmen')}</div>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; ${r.status === 'Confirmed' ? 'background:rgba(16,185,129,0.15); color:#10B981;' : r.status === 'Waitlisted' ? 'background:rgba(245,158,11,0.15); color:#F59E0B;' : 'background:rgba(239,68,68,0.15); color:#EF4444;'}">
               ${r.status === 'Confirmed' ? 'Onaylı' : r.status === 'Waitlisted' ? `Yedek #${r.waitlistPosition}` : r.status === 'CancelledByAthlete' ? 'İptal Edildi' : r.status === 'CheckedIn' ? 'Katıldı' : r.status}
             </span>
-            ${(r.status === 'Confirmed' || r.status === 'Waitlisted') ? `<button style="background:transparent; border:none; color:rgba(255,255,255,0.4); font-size:11px; text-decoration:underline; cursor:pointer;" onclick="handleCancelReservation(${r.id})">İptal</button>` : ''}
+            ${(r.status === 'Confirmed' || r.status === 'Waitlisted') ? `<button style="background:transparent; border:none; color:var(--text-muted); font-size:11px; text-decoration:underline; cursor:pointer;" onclick="handleCancelReservation(${r.id})">İptal</button>` : ''}
           </div>
         </div>
       `).join('');
@@ -1569,26 +1719,26 @@ window.renderAthleteProfile = async function() {
 
   container.innerHTML = `
     <!-- 1. Üye Kimlik Kartı & Avatar -->
-    <div style="background:#141418; border:1px solid #222228; border-radius:20px; padding:24px 20px; margin-bottom:16px;">
+    <div class="v0-card">
       <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-        <div style="position:relative; width:68px; height:68px; border-radius:50%; border:2px solid #CCFF00; padding:2px; box-shadow:0 0 16px rgba(204,255,0,0.35);">
+        <div style="position:relative; width:68px; height:68px; border-radius:50%; border:2px solid var(--volt-lime-accent); padding:2px; box-shadow:0 0 16px var(--volt-lime-glow);">
           <img src="${customAvatar}" alt="Profil Fotoğrafı" id="profile-avatar-img" class="v0-avatar-img" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
-          <button type="button" onclick="document.getElementById('v0-avatar-file-input').click()" title="Fotoğraf Yükle" style="position:absolute; bottom:-4px; right:-4px; width:26px; height:26px; border-radius:50%; background:#CCFF00; border:2px solid #141418; display:grid; place-items:center; cursor:pointer; font-size:12px; box-shadow:0 2px 6px rgba(0,0,0,0.6);">
+          <button type="button" onclick="document.getElementById('v0-avatar-file-input').click()" title="Fotoğraf Yükle" style="position:absolute; bottom:-4px; right:-4px; width:26px; height:26px; border-radius:50%; background:var(--volt-lime-accent); border:2px solid var(--bg-surface); display:grid; place-items:center; cursor:pointer; font-size:12px; box-shadow:0 2px 6px rgba(0,0,0,0.3);">
             📸
           </button>
         </div>
         <div style="flex:1; min-width:160px;">
-          <h3 style="font-size:18px; font-weight:800; color:#FFFFFF; margin:0 0 2px 0;">${escapeHtml(user.fullName || 'Sporcu')}</h3>
-          <p style="font-size:13px; font-family:monospace; color:rgba(255,255,255,0.5); margin:0 0 6px 0;">${escapeHtml(user.phoneNumber)}</p>
+          <h3 style="font-size:18px; font-weight:800; color:var(--text-primary); margin:0 0 2px 0;">${escapeHtml(user.fullName || 'Sporcu')}</h3>
+          <p style="font-size:13px; font-family:monospace; color:var(--text-muted); margin:0 0 6px 0;">${escapeHtml(user.phoneNumber)}</p>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <span style="font-size:11px; font-weight:700; color:#CCFF00; background:rgba(204,255,0,0.1); padding:2px 8px; border-radius:999px; border:1px solid rgba(204,255,0,0.25);">
+            <span style="font-size:11px; font-weight:700; color:var(--volt-lime); background:var(--volt-lime-muted); padding:2px 8px; border-radius:999px; border:1px solid var(--border-subtle);">
               ${user.role === 'Admin' ? 'Salon Yöneticisi' : user.role === 'Coach' ? 'Antrenör' : 'Aktif Üye'}
             </span>
-            <button type="button" onclick="document.getElementById('v0-avatar-file-input').click()" style="background:transparent; border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; cursor:pointer;">
+            <button type="button" onclick="document.getElementById('v0-avatar-file-input').click()" style="background:transparent; border:1px solid var(--border-medium); color:var(--text-secondary); font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; cursor:pointer;">
               Fotoğraf Değiştir
             </button>
             ${hasCustomAvatar ? `
-              <button type="button" onclick="resetAvatarToDefault()" style="background:transparent; border:none; color:#CCFF00; font-size:11px; font-weight:700; cursor:pointer; text-decoration:underline;">
+              <button type="button" onclick="resetAvatarToDefault()" style="background:transparent; border:none; color:var(--volt-lime); font-size:11px; font-weight:700; cursor:pointer; text-decoration:underline;">
                 3D Avatar'a Dön
               </button>` : ''}
           </div>
@@ -1600,32 +1750,32 @@ window.renderAthleteProfile = async function() {
     </div>
 
     <!-- 2. Fiziksel Metrikler & Vücut Profili (Boy / Kilo / Yaş / Cinsiyet) -->
-    <div style="background:#141418; border:1px solid #222228; border-radius:20px; padding:24px 20px; margin-bottom:16px;">
+    <div class="v0-card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
-        <h4 style="font-size:14px; font-weight:800; color:#FFFFFF; margin:0; display:flex; align-items:center; gap:8px;">
+        <h4 style="font-size:14px; font-weight:800; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:8px;">
           <span>📏</span> Fiziksel Profil & Metrikler
         </h4>
-        <span id="profile-bmi-badge" style="${curBmi ? 'display:inline-flex;' : 'display:none;'} align-items:center; gap:6px; font-size:11.5px; font-weight:800; padding:3px 10px; border-radius:999px; background:rgba(204,255,0,0.12); color:#CCFF00; border:1px solid rgba(204,255,0,0.3);">
+        <span id="profile-bmi-badge" style="${curBmi ? 'display:inline-flex;' : 'display:none;'} align-items:center; gap:6px; font-size:11.5px; font-weight:800; padding:3px 10px; border-radius:999px; background:var(--volt-lime-muted); color:var(--volt-lime); border:1px solid var(--border-subtle);">
           <span id="profile-bmi-text">VKİ: ${curBmi} · ${curBmiCategory}</span>
         </span>
       </div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
         <div>
-          <label style="display:block; font-size:11.5px; font-weight:700; color:rgba(255,255,255,0.6); margin-bottom:6px;">Boy (cm)</label>
-          <input type="number" id="athlete-input-height" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px;" value="${curHeight}" placeholder="180" oninput="recalcProfileBmi()">
+          <label style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:6px;">Boy (cm)</label>
+          <input type="number" id="athlete-input-height" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);" value="${curHeight}" placeholder="180" oninput="recalcProfileBmi()">
         </div>
         <div>
-          <label style="display:block; font-size:11.5px; font-weight:700; color:rgba(255,255,255,0.6); margin-bottom:6px;">Kilo (kg)</label>
-          <input type="number" step="0.1" id="athlete-input-weight" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px;" value="${curWeight}" placeholder="78.5" oninput="recalcProfileBmi()">
+          <label style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:6px;">Kilo (kg)</label>
+          <input type="number" step="0.1" id="athlete-input-weight" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);" value="${curWeight}" placeholder="78.5" oninput="recalcProfileBmi()">
         </div>
         <div>
-          <label style="display:block; font-size:11.5px; font-weight:700; color:rgba(255,255,255,0.6); margin-bottom:6px;">Yaş</label>
-          <input type="number" id="athlete-input-age" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px;" value="${curAge}" placeholder="28">
+          <label style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:6px;">Yaş</label>
+          <input type="number" id="athlete-input-age" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);" value="${curAge}" placeholder="28">
         </div>
         <div>
-          <label style="display:block; font-size:11.5px; font-weight:700; color:rgba(255,255,255,0.6); margin-bottom:6px;">Cinsiyet</label>
-          <select id="athlete-input-gender" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px; background:#0D0D10; color:#FFFFFF;">
+          <label style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:6px;">Cinsiyet</label>
+          <select id="athlete-input-gender" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
             <option value="" ${!curGender ? 'selected' : ''}>Seçiniz</option>
             <option value="Erkek" ${curGender === 'Erkek' ? 'selected' : ''}>Erkek</option>
             <option value="Kadın" ${curGender === 'Kadın' ? 'selected' : ''}>Kadın</option>
@@ -1640,12 +1790,12 @@ window.renderAthleteProfile = async function() {
     </div>
 
     <!-- 3. Rezervasyonlarım -->
-    <div style="background:#141418; border:1px solid #222228; border-radius:20px; padding:24px 20px; margin-bottom:16px;">
-      <h4 style="font-size:13px; font-weight:700; color:rgba(255,255,255,0.6); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.05em;">Rezervasyonlarım</h4>
+    <div class="v0-card">
+      <h4 style="font-size:13px; font-weight:700; color:var(--text-secondary); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.05em;">Rezervasyonlarım</h4>
       ${reservationsHtml}
     </div>
 
-    <button style="width:100%; border:1px solid rgba(239,68,68,0.4); background:rgba(239,68,68,0.08); color:#EF4444; border-radius:12px; padding:12px; font-weight:700; font-size:13px; cursor:pointer;" onclick="handleLogout()">
+    <button style="width:100%; border:1px solid rgba(239,68,68,0.4); background:rgba(239,68,68,0.08); color:var(--pulse-rose); border-radius:12px; padding:12px; font-weight:700; font-size:13px; cursor:pointer; margin-top:8px;" onclick="handleLogout()">
       Çıkış Yap
     </button>
   `;
@@ -2343,32 +2493,32 @@ async function loadWorkoutProgress() {
 
     let html = `
       <div style="margin-bottom:20px;">
-        <h3 style="font-size:15px; font-weight:800; color:#FFFFFF; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+        <h3 style="font-size:15px; font-weight:800; color:var(--text-primary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
           <span>🥇</span> Kişisel Rekorlar (Personal Records)
         </h3>
         <div class="v0-pr-grid">
           <div class="v0-pr-card">
-            <span style="font-size:11px; font-weight:800; color:#CCFF00; text-transform:uppercase;">BARBELL SQUAT</span>
+            <span style="font-size:11px; font-weight:800; color:var(--volt-lime); text-transform:uppercase;">BARBELL SQUAT</span>
             <div class="v0-pr-weight">${squatProgress && squatProgress.personalRecordWeightKg ? squatProgress.personalRecordWeightKg + ' kg' : '-- kg'}</div>
-            <div style="font-size:12px; color:rgba(255,255,255,0.6);">
+            <div style="font-size:12px; color:var(--text-secondary);">
               ${squatProgress && squatProgress.bestRepsAtPr ? squatProgress.bestRepsAtPr + ' Tekrar' : 'Henüz kayıt yok'} 
-              ${squatProgress && squatProgress.bestEstimatedOneRepMax ? `• ⚡ 1RM: <strong style="color:#CCFF00;">${squatProgress.bestEstimatedOneRepMax} kg</strong>` : ''}
+              ${squatProgress && squatProgress.bestEstimatedOneRepMax ? `• ⚡ 1RM: <strong style="color:var(--volt-lime);">${squatProgress.bestEstimatedOneRepMax} kg</strong>` : ''}
             </div>
           </div>
 
           <div class="v0-pr-card">
-            <span style="font-size:11px; font-weight:800; color:#CCFF00; text-transform:uppercase;">BARBELL BENCH PRESS</span>
+            <span style="font-size:11px; font-weight:800; color:var(--volt-lime); text-transform:uppercase;">BARBELL BENCH PRESS</span>
             <div class="v0-pr-weight">${benchProgress && benchProgress.personalRecordWeightKg ? benchProgress.personalRecordWeightKg + ' kg' : '-- kg'}</div>
-            <div style="font-size:12px; color:rgba(255,255,255,0.6);">
+            <div style="font-size:12px; color:var(--text-secondary);">
               ${benchProgress && benchProgress.bestRepsAtPr ? benchProgress.bestRepsAtPr + ' Tekrar' : 'Henüz kayıt yok'} 
-              ${benchProgress && benchProgress.bestEstimatedOneRepMax ? `• ⚡ 1RM: <strong style="color:#CCFF00;">${benchProgress.bestEstimatedOneRepMax} kg</strong>` : ''}
+              ${benchProgress && benchProgress.bestEstimatedOneRepMax ? `• ⚡ 1RM: <strong style="color:var(--volt-lime);">${benchProgress.bestEstimatedOneRepMax} kg</strong>` : ''}
             </div>
           </div>
         </div>
       </div>
 
       <div>
-        <h3 style="font-size:15px; font-weight:800; color:#FFFFFF; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+        <h3 style="font-size:15px; font-weight:800; color:var(--text-primary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
           <span>📈</span> Geçmiş Antrenmanlarım
         </h3>
         ${history && history.length > 0 ? `
@@ -2377,13 +2527,13 @@ async function loadWorkoutProgress() {
               const d = new Date(h.startedAt);
               const dateStr = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
               return `
-                <div style="background:#141418; border:1px solid #222228; border-radius:14px; padding:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; box-shadow:var(--shadow-card);">
                   <div>
-                    <div style="font-size:14px; font-weight:800; color:#FFFFFF;">${h.templateName || 'Serbest Antrenman'}</div>
-                    <div style="font-size:12px; color:rgba(255,255,255,0.5); margin-top:2px;">
+                    <div style="font-size:14px; font-weight:800; color:var(--text-primary);">${h.templateName || 'Serbest Antrenman'}</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
                       ${dateStr} • ${h.durationMinutes || 45} dk • ${h.exerciseLogs ? h.exerciseLogs.length : 0} egzersiz
                     </div>
-                    ${h.notes ? `<div style="font-size:11.5px; color:#CCFF00; margin-top:4px; font-style:italic;">"${h.notes}"</div>` : ''}
+                    ${h.notes ? `<div style="font-size:11.5px; color:var(--volt-lime); margin-top:4px; font-style:italic;">"${h.notes}"</div>` : ''}
                   </div>
                   <div style="text-align:right;">
                     <div style="font-size:14px;">${'⭐'.repeat(h.rating || 5)}</div>
@@ -2393,7 +2543,7 @@ async function loadWorkoutProgress() {
             }).join('')}
           </div>
         ` : `
-          <div style="background:#141418; border:1px solid #222228; border-radius:14px; padding:24px; text-align:center; color:rgba(255,255,255,0.4); font-size:13px;">
+          <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">
             Henüz tamamlanmış antrenman oturumunuz bulunmuyor.
           </div>
         `}

@@ -123,4 +123,15 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - `Sürtünmesiz OTP Çekmecesi (OtpSheet)`: 10 haneli formatlı telefon girişi, 6 haneli kutucuklar arası otomatik ilerleme, 3 dakikalık canlı geri sayım ve `/api/auth` JWT bağlantısı.
     - `Glassmorphic BottomNav`: Ana Sayfa, Seanslar, Antrenman ve Profil sekmeleriyle yüzen alt navigasyon.
     - `Hibrit Mod Anahtarı`: Sporcu PWA ve Salon Yönetim/Antrenör Paneli (Hızlı Yoklama, Kasa, vb.) arasında tek dokunuşla kesintisiz geçiş.
-
+- **2026-09-21 (v2.1 - UI/UX Denetimi & Kapsamlı İyileştirme Paketi):**
+  - **Bottom Navbar & İçerik Kırpılma Giderimi:** `.v0-athlete-shell` alt boşluğu `padding-bottom: 120px`'e yükseltildi; `#v0-view-profile` (`padding-bottom: 80px`) ve `#v0-view-sessions` (`padding-bottom: 60px`) konteynerlerine ek koruma verilerek rezervasyon ve çıkış butonlarının floating navbar altında kalması engellendi.
+  - **Çift Tema (Light / Dark) %100 Değişken Uyumu:** `v0-*` sporcu bileşenleri, kartlar, seans listeleri, gün çipleri ve profil modülleri hardcoded renklerden çıkarılarak `--bg-core`, `--bg-surface`, `--text-primary`, `--border-subtle` CSS değişkenlerine bağlandı; açık temada tam porselen/volt uyumu sağlandı.
+  - **Masaüstü & Mobil Düzen İyileştirmeleri:** Masaüstünde `max-width: 1400px` ve radial gradient zenginleştirildi; mobilde (<=540px) header öğeleri responsive esneklikle hizalandı.
+  - **Giriş/Çıkış Buton Senkronizasyonu:** `updateNavForUserRole()` fonksiyonu `navigateTo()` içine bağlanarak sayfa geçişlerinde header auth durumu dinamik senkronize edildi.
+  - **Görsel Hiyerarşi & Touch Targets:** Seans rezervasyon (volt neon) vs. yedek liste bekleme (amber/outline) buton hiyerarşisi ayrıştırıldı; gün seçim çipleri (`.v0-day-chip`) mobilde 42px minimum dokunma alanına çıkarıldı.
+  - **Boş Durum (Empty State) & Antrenman Stilleri:** Paketi olmayan sporcular için kesikli kenarlıklı (`empty-state`) kart stili ve antrenman/PR kartlarında dinamik tema desteği eklendi.
+- **2026-09-21 (v2.2 - Seans Düzenleme / Saat Değiştirme & Canlı Kapasite Izgarası Overhaul):**
+  - **Var Olan Seansı Düzenleme (Saat, Eğitmen, Kapasite, Tür):** `ISessionService` ve `SessionsController`'a `PUT /api/sessions/{id}` ve `DELETE /api/sessions/{id}` uç noktaları eklendi; antrenör ve salon sahipleri için seans kartlarında `✏️ Düzenle` butonu ve `modal-edit-session` form modalı hayata geçirildi. Seans saati, bitiş zamanı, sorumlu hoca, kontenjan ve seans tipi anında güncellenebilmektedir.
+  - **Canlı Stüdyo Doluluk Izgarası (No-Scroll Responsive Fit):** Yatay scrollbar çubuğu yerine masaüstünde tek satırda 10 slotu sığdıran (`grid-template-columns: repeat(auto-fit, minmax(82px, 1fr))`), mobilde ise 2 satır x 5 slot (`repeat(5, 1fr)`) şeklinde ekrana %100 sığan duyarlı ızgara yapısına geçildi.
+  - **Canlı Seans vs. Boş Saat Görsel Kontrastı:** Boş saatler (`0 kişi`) sakin ve dikkat dağıtmayan kesikli (`dashed`) transparan kartlara dönüştürülürken; seans olan saatler parlak neon çerçeve, canlı yanıp sönen durum noktası (`.slot-live-dot`) ve yüksek kontrastlı renkli rozetlerle göz alıcı biçimde öne çıkarıldı.
+  - **Sağlam Response Stream Yönetimi:** `api.js` içinde `_handleResponse` merkezi yapısına geçilerek 401/403 veya boş gövdeli yanıtlarda oluşan `body stream already read` tarayıcı hatası kalıcı olarak giderildi.

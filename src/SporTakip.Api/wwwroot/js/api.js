@@ -61,22 +61,39 @@ export const Api = {
     return headers;
   },
 
+  async _handleResponse(res) {
+    const text = await res.text();
+    let data = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        // text is not JSON
+      }
+    }
+
+    if (!res.ok) {
+      let message = 'İşlem başarısız oldu.';
+      if (res.status === 401) {
+        message = 'Oturum süreniz dolmuş veya yetkiniz yok. Lütfen tekrar giriş yapın.';
+      } else if (res.status === 403) {
+        message = 'Bu işlem için yetkiniz bulunmamaktadır.';
+      } else if (data && (data.message || data.title || data.error)) {
+        message = data.message || data.title || data.error;
+      } else if (text) {
+        message = text;
+      }
+      throw new Error(message);
+    }
+
+    return data;
+  },
+
   async get(endpoint) {
     const res = await fetch(`${API_BASE}${endpoint}`, {
       headers: this.getHeaders()
     });
-    if (!res.ok) {
-      let message = 'İşlem başarısız oldu.';
-      try {
-        const data = await res.json();
-        message = data.message || data.title || JSON.stringify(data);
-      } catch {
-        const text = await res.text();
-        if (text) message = text;
-      }
-      throw new Error(message);
-    }
-    return res.json();
+    return this._handleResponse(res);
   },
 
   async post(endpoint, data) {
@@ -85,18 +102,7 @@ export const Api = {
       headers: this.getHeaders(),
       body: JSON.stringify(data)
     });
-    if (!res.ok) {
-      let message = 'İşlem başarısız oldu.';
-      try {
-        const errData = await res.json();
-        message = errData.message || errData.title || JSON.stringify(errData);
-      } catch {
-        const text = await res.text();
-        if (text) message = text;
-      }
-      throw new Error(message);
-    }
-    return res.json();
+    return this._handleResponse(res);
   },
 
   async put(endpoint, data) {
@@ -105,18 +111,7 @@ export const Api = {
       headers: this.getHeaders(),
       body: JSON.stringify(data)
     });
-    if (!res.ok) {
-      let message = 'İşlem başarısız oldu.';
-      try {
-        const errData = await res.json();
-        message = errData.message || errData.title || JSON.stringify(errData);
-      } catch {
-        const text = await res.text();
-        if (text) message = text;
-      }
-      throw new Error(message);
-    }
-    return res.json();
+    return this._handleResponse(res);
   },
 
   // Auth (Faz 2)
@@ -152,6 +147,18 @@ export const Api = {
 
   createSession(data) {
     return this.post('/sessions', data);
+  },
+
+  updateSession(id, data) {
+    return this.put(`/sessions/${id}`, data);
+  },
+
+  async deleteSession(id) {
+    const res = await fetch(`${API_BASE}/sessions/${id}`, {
+      method: 'DELETE',
+      headers: this.getHeaders()
+    });
+    return this._handleResponse(res);
   },
 
   // Reservations & Waitlist (Faz 3)
