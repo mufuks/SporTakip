@@ -47,6 +47,46 @@ public static class DbSeeder
         var trainerSinan = await db.Trainers.FirstOrDefaultAsync(t => t.FullName.Contains("Sinan"));
         var trainerGulcin = await db.Trainers.FirstOrDefaultAsync(t => t.FullName.Contains("Gülçin"));
 
+        // Sinan & Gülçin Kullanıcı & Rol Senkronizasyonu (Her açılışta garantiye al)
+        var sinanUserSync = await db.Users.FirstOrDefaultAsync(u => u.PhoneNumber == "+905321112233");
+        if (sinanUserSync == null)
+        {
+            sinanUserSync = new AppUser { PhoneNumber = "+905321112233", FullName = "Sinan", Roles = UserRole.Coach | UserRole.Admin, PhoneVerified = true };
+            db.Users.Add(sinanUserSync);
+            await db.SaveChangesAsync();
+        }
+        else if (sinanUserSync.Roles != (UserRole.Coach | UserRole.Admin))
+        {
+            sinanUserSync.Roles = UserRole.Coach | UserRole.Admin;
+            await db.SaveChangesAsync();
+        }
+
+        var gulcinUserSync = await db.Users.FirstOrDefaultAsync(u => u.PhoneNumber == "+905324445566");
+        if (gulcinUserSync == null)
+        {
+            gulcinUserSync = new AppUser { PhoneNumber = "+905324445566", FullName = "Gülçin", Roles = UserRole.Coach, PhoneVerified = true };
+            db.Users.Add(gulcinUserSync);
+            await db.SaveChangesAsync();
+        }
+        else if (!gulcinUserSync.Roles.HasFlag(UserRole.Coach))
+        {
+            gulcinUserSync.Roles = UserRole.Coach;
+            await db.SaveChangesAsync();
+        }
+
+        if (trainerSinan != null && trainerSinan.UserId != sinanUserSync.Id)
+        {
+            trainerSinan.UserId = sinanUserSync.Id;
+            await db.SaveChangesAsync();
+        }
+
+        if (trainerGulcin != null && trainerGulcin.UserId != gulcinUserSync.Id)
+        {
+            trainerGulcin.UserId = gulcinUserSync.Id;
+            await db.SaveChangesAsync();
+        }
+
+
         // 2. Paketler
         if (!await db.Packages.AnyAsync())
         {
@@ -222,6 +262,7 @@ public static class DbSeeder
                 Phone = "+905559876543",
                 Email = "can@example.com",
                 UserId = canUser.Id,
+                Notes = "⚠️ Sağ omuz sıkışması: Overhead press dikkat.",
                 IsActive = true
             };
             db.Members.AddRange(meltemMember, canMember);
@@ -294,6 +335,7 @@ public static class DbSeeder
                 Phone = "+905317741606",
                 Email = "ufuk@example.com",
                 UserId = ufukUser.Id,
+                Notes = "⚠️ Bel fıtığı (L4-L5): Ağır deadlift kısıtı, Trap Bar önerilir.",
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 HeightCm = 176,
@@ -312,8 +354,13 @@ public static class DbSeeder
             ufukMember.WeightKg ??= 83m;
             ufukMember.Age ??= 38;
             ufukMember.Gender ??= "Erkek";
+            if (string.IsNullOrWhiteSpace(ufukMember.Notes))
+            {
+                ufukMember.Notes = "⚠️ Bel fıtığı (L4-L5): Ağır deadlift kısıtı, Trap Bar önerilir.";
+            }
             await db.SaveChangesAsync();
         }
+
 
         if (pkg8 != null && !await db.Subscriptions.AnyAsync(s => s.MemberId == ufukMember.Id))
         {
@@ -345,6 +392,62 @@ public static class DbSeeder
             });
             await db.SaveChangesAsync();
         }
+
+        // 4.2. Örnek Yoklama & Hakediş Kayıtları (Bu Ay)
+        if (!await db.AttendanceRecords.AnyAsync() && trainerGulcin != null && trainerSinan != null)
+        {
+            var meltemSub = await db.Subscriptions.FirstOrDefaultAsync(s => s.Member.FullName.Contains("Meltem"));
+            if (meltemSub != null)
+            {
+                db.AttendanceRecords.AddRange(
+                    new AttendanceRecord
+                    {
+                        SubscriptionId = meltemSub.Id,
+                        LessonNumber = 1,
+                        LessonDate = DateTime.UtcNow.Date.AddDays(-3).AddHours(19),
+                        TrainerId = trainerGulcin.Id,
+                        Status = "Attended",
+                        UnitLessonPrice = 375m,
+                        TrainerShareAmount = 150m,
+                        IsSubstitute = false,
+                        Notes = "Squat ve Core çalışması tamamlandı"
+                    },
+                    new AttendanceRecord
+                    {
+                        SubscriptionId = meltemSub.Id,
+                        LessonNumber = 2,
+                        LessonDate = DateTime.UtcNow.Date.AddDays(-1).AddHours(19),
+                        TrainerId = trainerGulcin.Id,
+                        Status = "Attended",
+                        UnitLessonPrice = 375m,
+                        TrainerShareAmount = 150m,
+                        IsSubstitute = false,
+                        Notes = "Bench press ve üst vücut tamamlandı"
+                    }
+                );
+            }
+
+            var ufukSubRecord = await db.Subscriptions.FirstOrDefaultAsync(s => s.Member.FullName.Contains("Ufuk"));
+            if (ufukSubRecord != null)
+            {
+                db.AttendanceRecords.Add(new AttendanceRecord
+                {
+                    SubscriptionId = ufukSubRecord.Id,
+                    LessonNumber = 1,
+                    LessonDate = DateTime.UtcNow.Date.AddDays(-2).AddHours(20),
+                    TrainerId = trainerGulcin.Id,
+                    Status = "Attended",
+                    UnitLessonPrice = 375m,
+                    TrainerShareAmount = 150m,
+                    IsSubstitute = true,
+                    SubstituteShareAmount = 150m,
+                    Notes = "İkame ders: Sinan Hoca yerine girildi (%40 prim)"
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
 
         // 5. Günün Seansları (Session Slots)
         if (!await db.SessionSlots.AnyAsync() && trainerGulcin != null && trainerSinan != null)

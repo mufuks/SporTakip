@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SporTakip.Api.Models;
 using SporTakip.Api.Services;
@@ -40,4 +41,17 @@ public class MembersController(GymService gymService) : ControllerBase
         if (result == null) return NotFound("Sporcu bulunamadı.");
         return Ok(result);
     }
+
+    /// <summary>
+    /// Antrenör ve Salon Sahibi için sporcu sağlık kısıtı / sakatlık notunu günceller.
+    /// </summary>
+    [Authorize(Roles = "Coach, Admin")]
+    [HttpPut("{id}/notes")]
+    public async Task<ActionResult<MemberDto>> UpdateNotes(int id, [FromBody] UpdateMemberNotesDto dto, CancellationToken ct)
+    {
+        var result = await gymService.UpdateMemberNotesAsync(id, dto.Notes, ct);
+        if (result == null) return NotFound("Sporcu bulunamadı.");
+        return Ok(result);
+    }
 }
+

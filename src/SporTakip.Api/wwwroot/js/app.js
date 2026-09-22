@@ -1,4 +1,4 @@
-import { Api } from './api.js';
+import { Api } from './api.js?v=2.4.1';
 
 // State
 let currentTab = 'home';
@@ -45,7 +45,8 @@ const views = {
   takvim: document.getElementById('view-takvim'),
   dashboard: document.getElementById('view-dashboard'),
   uyeler: document.getElementById('view-uyeler'),
-  kasa: document.getElementById('view-kasa')
+  kasa: document.getElementById('view-kasa'),
+  hakedisim: document.getElementById('view-hakedisim')
 };
 
 // Toast notification helper
@@ -78,6 +79,9 @@ function closeModal(id) {
 window.closeModal = closeModal;
 
 
+// Workspace / App Mode State
+let currentAppMode = localStorage.getItem('sportakip_app_mode') || 'athlete';
+
 // Universal Navigation & Role-Based Access Control (RBAC)
 window.navigateTo = function(tabName) {
   const user = Api.getUser();
@@ -87,16 +91,23 @@ window.navigateTo = function(tabName) {
   const isAdmin = roles.includes('Admin');
 
   // RBAC validation: Staff-only tabs
-  const staffTabs = ['yoklama', 'takvim', 'dashboard', 'uyeler', 'kasa'];
+  const staffTabs = ['yoklama', 'takvim', 'dashboard', 'uyeler', 'kasa', 'hakedisim'];
   if (staffTabs.includes(tabName)) {
     if (!token || !user || !isCoach) {
       showToast('Bu sayfaya erişmek için antrenör veya yönetici yetkisi gereklidir.', 'error');
       tabName = 'home';
-    } else if (tabName === 'kasa' && !isAdmin) {
-      showToast('Kasa ve finans sayfası yalnızca salon yöneticilerine açıktır.', 'error');
-      tabName = 'yoklama';
+      currentAppMode = 'athlete';
+    } else if ((tabName === 'kasa' || tabName === 'dashboard') && !isAdmin) {
+      showToast('Yönetim ve kasa sayfası yalnızca salon yöneticilerine açıktır.', 'error');
+      tabName = 'hakedisim';
+      currentAppMode = 'staff';
+    } else {
+      currentAppMode = 'staff';
     }
+  } else if (['home', 'sessions', 'workout', 'profile'].includes(tabName)) {
+    currentAppMode = 'athlete';
   }
+  localStorage.setItem('sportakip_app_mode', currentAppMode);
 
   currentTab = tabName;
   currentAthleteTab = tabName;
@@ -118,7 +129,8 @@ window.navigateTo = function(tabName) {
     takvim: document.getElementById('view-takvim'),
     dashboard: document.getElementById('view-dashboard'),
     uyeler: document.getElementById('view-uyeler'),
-    kasa: document.getElementById('view-kasa')
+    kasa: document.getElementById('view-kasa'),
+    hakedisim: document.getElementById('view-hakedisim')
   };
 
   Object.keys(allViews).forEach(key => {
@@ -142,18 +154,43 @@ window.navigateTo = function(tabName) {
   else if (tabName === 'dashboard') { loadDashboardView(); loadTrainers(); }
   else if (tabName === 'uyeler') loadMembersView();
   else if (tabName === 'kasa') loadKasaView();
+  else if (tabName === 'hakedisim') loadMyEarningsView();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 window.switchTab = window.navigateTo;
 window.switchAthleteTab = window.navigateTo;
+
+// Workspace / Mode Switcher Action
 window.setAppMode = function(mode) {
-  if (mode === 'admin') window.navigateTo('yoklama');
-  else window.navigateTo('home');
+  const user = Api.getUser();
+  const token = Api.getToken();
+  const roles = user && user.roles ? user.roles : (user && user.role ? [user.role] : []);
+  const isCoach = roles.includes('Coach') || roles.includes('Admin');
+
+  if (mode === 'staff' && (!token || !user || !isCoach)) {
+    showToast('Salon masasına erişmek için antrenör veya yönetici yetkisi gereklidir.', 'error');
+    mode = 'athlete';
+  }
+
+  currentAppMode = mode;
+  localStorage.setItem('sportakip_app_mode', mode);
+
+  // Apply nav filtering
+  updateNavForUserRole();
+
+  // Navigate to appropriate view
+  const staffTabs = ['yoklama', 'takvim', 'dashboard', 'uyeler', 'kasa', 'hakedisim'];
+  if (mode === 'athlete' && staffTabs.includes(currentTab)) {
+    window.navigateTo('home');
+  } else if (mode === 'staff' && !staffTabs.includes(currentTab)) {
+    window.navigateTo('yoklama');
+  }
 };
+
 window.toggleAppMode = function() {
-  // Deprecated
+  window.setAppMode(currentAppMode === 'athlete' ? 'staff' : 'athlete');
 };
 
 // Dynamic Role-Based UI Adjuster
@@ -164,35 +201,64 @@ window.updateNavForUserRole = function() {
   const isCoach = roles.includes('Coach') || roles.includes('Admin');
   const isAdmin = roles.includes('Admin');
 
-  // Staff buttons in desktop nav & mobile bottom nav
-  document.querySelectorAll('.staff-tab').forEach(el => {
+  if (!isCoach) {
+    currentAppMode = 'athlete';
+  }
+
+  // 1. Mode Switcher visibility and state
+  const modeSwitcher = document.getElementById('app-mode-switcher');
+  const athleteBtn = document.getElementById('mode-btn-athlete');
+  const staffBtn = document.getElementById('mode-btn-staff');
+  if (modeSwitcher) {
+    modeSwitcher.style.display = isCoach ? 'inline-flex' : 'none';
+    if (athleteBtn) athleteBtn.classList.toggle('active', currentAppMode === 'athlete');
+    if (staffBtn) staffBtn.classList.toggle('active', currentAppMode === 'staff');
+  }
+
+  // 2. Navigation buttons visibility (Desktop & Mobile Bottom Nav)
+  // Athlete Items
+  document.querySelectorAll('.nav-athlete-item').forEach(el => {
+    const isBottomNav = el.classList.contains('v0-nav-btn');
+    el.style.display = currentAppMode === 'athlete' ? (isBottomNav ? 'flex' : 'inline-flex') : 'none';
+  });
+
+  // Staff Items
+  document.querySelectorAll('.nav-staff-item, .staff-tab').forEach(el => {
+    if (currentAppMode !== 'staff') {
+      el.style.display = 'none';
+      return;
+    }
     const tab = el.dataset.tab;
-    if (tab === 'kasa') {
-      el.style.display = isAdmin ? 'inline-flex' : 'none';
+    const isBottomNav = el.classList.contains('v0-nav-btn');
+    const displayStyle = isBottomNav ? 'flex' : 'inline-flex';
+    if (tab === 'kasa' || tab === 'dashboard') {
+      el.style.display = isAdmin ? displayStyle : 'none';
+    } else if (tab === 'hakedisim') {
+      el.style.display = isCoach ? displayStyle : 'none';
     } else {
-      el.style.display = isCoach ? 'inline-flex' : 'none';
+      el.style.display = isCoach ? displayStyle : 'none';
     }
   });
 
-  // Header status & role badges
+  // 3. Header user pill & actions
+  const loginHeaderBtn = document.getElementById('v0-login-header-btn');
+  const headerUserPill = document.getElementById('header-user-pill');
   const roleEl = document.getElementById('athlete-status-label');
   const badgeDot = document.getElementById('athlete-badge-dot');
   const greetingName = document.getElementById('athlete-greeting-name');
-  const greetingSub = document.getElementById('athlete-greeting-sub');
-  const loginHeaderBtn = document.getElementById('v0-login-header-btn');
 
   if (user && token) {
     if (loginHeaderBtn) loginHeaderBtn.style.display = 'none';
-    if (greetingSub) greetingSub.innerText = 'Merhaba,';
+    if (headerUserPill) headerUserPill.style.display = 'inline-flex';
     if (greetingName) greetingName.innerText = user.fullName || user.phoneNumber || 'Sporcu';
     if (badgeDot) badgeDot.style.background = '#CCFF00';
     if (roleEl) {
-      roleEl.innerText = isAdmin ? 'Salon Yöneticisi' : isCoach ? 'Antrenör' : 'Aktif Sporcu';
+      roleEl.innerText = isAdmin ? 'Yönetici' : isCoach ? 'Antrenör' : 'Sporcu';
     }
   } else {
     if (loginHeaderBtn) loginHeaderBtn.style.display = 'inline-flex';
-    if (greetingSub) greetingSub.innerText = 'Hoş Geldiniz,';
-    if (greetingName) greetingName.innerText = 'Misafir Sporcu';
+    if (headerUserPill) headerUserPill.style.display = 'none';
+    if (greetingName) greetingName.innerText = 'Misafir';
     if (badgeDot) badgeDot.style.background = 'rgba(255, 255, 255, 0.3)';
     if (roleEl) roleEl.innerText = 'Giriş Yapılmadı';
   }
@@ -396,7 +462,15 @@ function renderAttendanceList(subs) {
           </div>
         </div>
 
-        ${sub.memberNotes ? `<div style="font-size:12px; color:var(--flame-orange); background:rgba(255,85,0,0.1); border:1px solid rgba(255,85,0,0.25); padding:6px 10px; border-radius:var(--radius-xs);">⚠️ ${escapeHtml(sub.memberNotes)}</div>` : ''}
+        <div class="v0-injury-badge-wrap ${sub.memberNotes ? '' : 'no-notes'}">
+          <div class="v0-injury-badge-content" title="${escapeHtml(sub.memberNotes || 'Sağlık / Sakatlık notu yok')}">
+            <span>${sub.memberNotes ? '⚠️' : '🩺'}</span>
+            <span>${escapeHtml(sub.memberNotes || 'Sağlık / Sakatlık notu yok')}</span>
+          </div>
+          <button type="button" class="v0-injury-edit-btn" onclick="openEditMemberNotesModal(${sub.memberId}, '${escapeHtml(sub.memberName)}', '${escapeJsString(sub.memberNotes || '')}')" title="Sporcunun sakatlık/sağlık kısıtını düzenle">
+            <span>✏️</span> ${sub.memberNotes ? 'Düzenle' : 'Not Ekle'}
+          </button>
+        </div>
 
         <!-- Hoca Seçici & İkame Kuralı (%40) -->
         <div class="coach-picker-box">
@@ -644,6 +718,98 @@ async function loadKasaView() {
     container.innerHTML = `<tr><td colspan="6" style="color:var(--pulse-rose);">Hata: ${err.message}</td></tr>`;
   }
 }
+
+// ==================== 4.1 KOÇ KİŞİSEL HAKEDİŞİM ====================
+let currentHakedisYear = new Date().getFullYear();
+let currentHakedisMonth = new Date().getMonth() + 1;
+
+window.handleHakedisMonthChange = function(val) {
+  if (!val) return;
+  const parts = val.split('-');
+  currentHakedisYear = parseInt(parts[0]);
+  currentHakedisMonth = parseInt(parts[1]);
+  loadMyEarningsView(currentHakedisYear, currentHakedisMonth);
+};
+
+async function loadMyEarningsView(year = null, month = null) {
+  const y = year || currentHakedisYear;
+  const m = month || currentHakedisMonth;
+
+  // Populate month select dropdown if empty
+  const select = document.getElementById('hakedis-month-select');
+  if (select && select.options.length === 0) {
+    const months = [
+      { y: 2026, m: 10, label: 'Ekim 2026' },
+      { y: 2026, m: 9, label: 'Eylül 2026 (Bu Ay)' },
+      { y: 2026, m: 8, label: 'Ağustos 2026' },
+      { y: 2026, m: 7, label: 'Temmuz 2026' }
+    ];
+    select.innerHTML = months.map(opt => `<option value="${opt.y}-${opt.m}" ${opt.y === y && opt.m === m ? 'selected' : ''}>${opt.label}</option>`).join('');
+  }
+
+  const tbody = document.getElementById('hakedis-table-body');
+  const countEl = document.getElementById('hakedis-table-count');
+  const totalLessonsEl = document.getElementById('hakedis-total-lessons');
+  const lessonsMetaEl = document.getElementById('hakedis-lessons-meta');
+  const subLessonsEl = document.getElementById('hakedis-sub-lessons');
+  const totalAmountEl = document.getElementById('hakedis-total-amount');
+  const amountMetaEl = document.getElementById('hakedis-amount-meta');
+
+  if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">Hakediş bilgileri yükleniyor...</td></tr>';
+
+  try {
+    const data = await Api.getMyEarnings(y, m);
+
+    if (totalLessonsEl) totalLessonsEl.innerText = data.totalLessonsGiven;
+    if (lessonsMetaEl) lessonsMetaEl.innerText = `${data.ownStudentLessons} Asıl · ${data.substituteLessons} İkame Ders`;
+    if (subLessonsEl) subLessonsEl.innerText = `${data.substituteLessons} Seans`;
+    if (totalAmountEl) totalAmountEl.innerText = formatMoney(data.totalEarnings);
+    if (amountMetaEl) amountMetaEl.innerText = `${formatMoney(data.totalLessonEarnings)} prim + ${formatMoney(data.totalPackageShare)} paket payı`;
+    if (countEl) countEl.innerText = `${data.lessonHistory ? data.lessonHistory.length : 0} seans listelendi`;
+
+    if (!data.lessonHistory || data.lessonHistory.length === 0) {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">Bu ay için henüz verilmiş seans kaydı bulunmuyor.</td></tr>';
+      return;
+    }
+
+    if (tbody) {
+      tbody.innerHTML = data.lessonHistory.map(item => {
+        const d = new Date(item.lessonDate);
+        const dateStr = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+        const timeStr = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+        const typeBadge = item.isSubstitute 
+          ? `<span class="hakedis-badge-substitute" title="İkame hoca olarak girildi (%40 prim)">⚡ %40 İkame</span>`
+          : `<span class="hakedis-badge-primary">Asıl Hoca</span>`;
+
+        const statusBadge = item.status === 'Attended'
+          ? `<span class="lesson-badge badge-green" style="font-size:11px;">Geldi ✓</span>`
+          : `<span class="lesson-badge badge-red" style="font-size:11px;">Yandı / Gelmedi</span>`;
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:700; color:var(--text-primary);">${dateStr}</div>
+              <div style="font-size:11.5px; color:var(--text-muted);">${timeStr}</div>
+            </td>
+            <td><strong style="color:var(--text-primary); font-size:14px;">${escapeHtml(item.memberName)}</strong></td>
+            <td><span style="font-size:12px; color:var(--text-secondary);">${escapeHtml(item.packageName)}</span></td>
+            <td><span class="lesson-badge badge-cyan" style="font-size:10.5px;">${item.lessonNumber}. Ders</span></td>
+            <td>${typeBadge}</td>
+            <td>${statusBadge}</td>
+            <td style="text-align:right;">
+              <strong style="color:var(--volt-lime); font-size:15px;">+${formatMoney(item.earnedAmount)}</strong>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  } catch (err) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="color:var(--pulse-rose); padding:24px; text-align:center;">Hata: ${err.message}</td></tr>`;
+  }
+}
+window.loadMyEarningsView = loadMyEarningsView;
+
 
 // ==================== 5. EĞİTMEN YÖNETİMİ ====================
 async function loadTrainers() {
@@ -948,6 +1114,39 @@ window.handleCreateMember = async function(e) {
     showToast(err.message, 'error');
   }
 };
+
+window.openEditMemberNotesModal = function(memberId, memberName, notes) {
+  const idInput = document.getElementById('edit-member-notes-id');
+  const nameEl = document.getElementById('edit-member-notes-name');
+  const textarea = document.getElementById('edit-member-notes-textarea');
+
+  if (idInput) idInput.value = memberId;
+  if (nameEl) nameEl.innerText = memberName;
+  if (textarea) textarea.value = notes || '';
+
+  openModal('modal-edit-member-notes');
+  if (textarea) setTimeout(() => textarea.focus(), 150);
+};
+
+window.handleSaveMemberNotes = async function(e) {
+  e.preventDefault();
+  const memberId = parseInt(document.getElementById('edit-member-notes-id').value);
+  const notes = document.getElementById('edit-member-notes-textarea').value.trim();
+
+  try {
+    await Api.updateMemberNotes(memberId, notes);
+    showToast('⚡ Sporcu sağlık kısıtı / sakatlık notu güncellendi!');
+    closeModal('modal-edit-member-notes');
+    if (currentTab === 'yoklama') {
+      await loadAttendanceView();
+    } else if (currentTab === 'uyeler') {
+      await loadMembersView();
+    }
+  } catch (err) {
+    showToast(`Not kaydedilemedi: ${err.message}`, 'error');
+  }
+};
+
 
 window.openNewSubModalForMember = async function(memberId, memberName) {
   document.getElementById('sub-member-id').value = memberId;
@@ -1273,6 +1472,26 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+function escapeJsString(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '&quot;')
+    .replace(/\n/g, ' ')
+    .replace(/\r/g, '');
+}
+window.escapeJsString = escapeJsString;
+
+function getAthleteInitials(name) {
+  if (!name) return 'SP';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+window.getAthleteInitials = getAthleteInitials;
+
+
 /* ==========================================================================
    v0 ATHLETE PWA CONTROLLER & B2B2C RESERVATION ENGINE
    ========================================================================== */
@@ -1532,6 +1751,39 @@ async function renderSessionsList(containerId, dateStr) {
         `;
       }
 
+      // Katılımcılar & "Derse Kimler Geliyor?" Rozeti (Social Proof)
+      const confirmedAthletes = (slot.reservations || []).filter(r => r.status === 'Confirmed');
+      const waitlistedAthletes = (slot.reservations || []).filter(r => r.status === 'Waitlisted');
+
+      let avatarBubblesHtml = '';
+      if (confirmedAthletes.length === 0) {
+        avatarBubblesHtml = `<span class="v0-attendee-avatar-bubble empty" title="İlk katılan sen ol!">⚡</span>`;
+      } else {
+        const maxBubbles = 4;
+        const visibleAthletes = confirmedAthletes.slice(0, maxBubbles);
+        avatarBubblesHtml = visibleAthletes.map((a, idx) => {
+          const initials = getAthleteInitials(a.memberName);
+          const hue = (idx * 65 + 195) % 360;
+          return `<span class="v0-attendee-avatar-bubble" title="${escapeHtml(a.memberName)}" style="--avatar-hue:${hue};">${initials}</span>`;
+        }).join('');
+      }
+
+      let attendeesTextHtml = '';
+      if (confirmedAthletes.length === 0) {
+        attendeesTextHtml = `<span class="v0-attendees-label empty">Henüz katılımcı yok — <em>ilk sen katıl! ⚡</em></span>`;
+      } else if (confirmedAthletes.length === 1) {
+        attendeesTextHtml = `<span class="v0-attendees-label"><strong>${escapeHtml(confirmedAthletes[0].memberName)}</strong> katılıyor</span>`;
+      } else if (confirmedAthletes.length === 2) {
+        attendeesTextHtml = `<span class="v0-attendees-label"><strong>${escapeHtml(confirmedAthletes[0].memberName)}</strong> ve <strong>${escapeHtml(confirmedAthletes[1].memberName)}</strong> katılıyor</span>`;
+      } else {
+        const others = confirmedAthletes.length - 2;
+        attendeesTextHtml = `<span class="v0-attendees-label"><strong>${escapeHtml(confirmedAthletes[0].memberName)}</strong>, <strong>${escapeHtml(confirmedAthletes[1].memberName)}</strong> ve +${others} kişi katılıyor</span>`;
+      }
+
+      if (waitlistedAthletes.length > 0) {
+        attendeesTextHtml += `<span class="v0-waitlist-inline-tag">· ${waitlistedAthletes.length} yedek</span>`;
+      }
+
       return `
         <article class="v0-session-card">
           <div class="v0-session-top">
@@ -1556,6 +1808,15 @@ async function renderSessionsList(containerId, dateStr) {
                 <span>👥</span>
                 ${filled} / ${capacity} ${isFull ? 'Dolu' : 'Sporcu'}
               </span>
+            </div>
+          </div>
+
+          <div class="v0-attendees-row">
+            <div class="v0-attendees-avatars">
+              ${avatarBubblesHtml}
+            </div>
+            <div class="v0-attendees-text">
+              ${attendeesTextHtml}
             </div>
           </div>
 

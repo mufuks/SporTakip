@@ -32,9 +32,9 @@ Butik fonksiyonel antrenman, stüdyo ve PT salonlarının gerçek operasyonel di
 
 > *"Haftada 3-4 gün salona gelen, hedefleri olan, zamanı kısıtlı ve motivasyon arayan bir sporcuyum."*
 
-1. **"Derse Kimler Geliyor?" (Sosyal Motivasyon & Topluluk Ruhu):**
-   - *Mevcut Durum:* Yalnızca "4/6 Dolu" yazıyor.
-   - *İhtiyaç:* Seans kartında derse katılan diğer arkadaşlarımın avatar halkaları veya isimleri (örn: *"Meltem, Can ve 2 kişi daha"*). Spor salonları topluluk (community) ile yaşar; arkadaşlarının geldiğini gören sporcu idmanı asla asmaz.
+1. **"Derse Kimler Geliyor?" (Sosyal Motivasyon & Topluluk Ruhu) [Resolved - v2.4]:**
+   - *Mevcut Durum:* Seans kartlarında derse katılan sporcuların üst üste binen renkli avatar baloncukları ve isim özetleri ("Can D. katılıyor", "Can D., Meltem Y. ve +1 kişi katılıyor") gösterilmektedir.
+   - *İhtiyaç:* Spor salonları topluluk (community) ile yaşar; arkadaşlarının geldiğini gören sporcu idmanı asla asmaz.
 2. **Kişisel Takvim Senkronizasyonu (Google Calendar / Apple iCal):**
    - *Mevcut Durum:* Rezervasyon uygulama içinde kalıyor.
    - *İhtiyaç:* Rezervasyon onaylandığında *"Takvime Ekle (.ics)"* butonu veya otomatik cihaz takvimine seans saatini ekleme; seansa 1 saat kala telefonun yerel hatırlatıcı göndermesi.
@@ -54,18 +54,18 @@ Butik fonksiyonel antrenman, stüdyo ve PT salonlarının gerçek operasyonel di
 
 > *"Salonda gün boyu ayakta, ellerinde tebeşir olan, antrenmanı yönetirken sporcunun sakatlığını ve tekniğini gözeten bir antrenörüm."*
 
-1. **Sporcu Sakatlık & Sağlık Kısıt Bayrakları (Injury / Health Flags):**
-   - *Mevcut Durum:* Yoklama listesinde sadece sporcunun adı ve paketi görünüyor.
-   - *İhtiyaç:* Yoklama listesinde Ufuk'un yanında kırmızı/sarı bir uyarı ikonu: *"⚠️ Bel fıtığı - Deadlift yerine Trap Bar", "Sağ omuz sıkışması"*. Koçun onlarca üye arasında kimin neresi ağrıyor anında görmesi sakatlıkları önler ve salona profesyonellik katar.
+1. **Sporcu Sakatlık & Sağlık Kısıt Bayrakları (Injury / Health Flags) [Resolved - v2.4]:**
+   - *Mevcut Durum:* Yoklama listesinde sporcunun yanında dikkat çekici amber uyarı rozeti (örn: `⚠️ Bel fıtığı (L4-L5): Ağır deadlift kısıtı...`) ve koçun salondayken tek dokunuşla notu güncelleyebileceği `✏️ Düzenle` modalı (`PUT /api/members/{id}/notes`) eklendi.
+   - *İhtiyaç:* Koçun onlarca üye arasında kimin neresi ağrıyor anında görmesi sakatlıkları önler ve salona profesyonellik katar.
 2. **Toplu Yoklama ("Tümünü Geldi Say" - 1-Click Check-in):**
    - *Mevcut Durum:* Seansa gelen 6 kişi için 6 kere tek tek butona basılıyor.
    - *İhtiyaç:* Seans başladığında listenin üstünde *"Tümünü Katıldı Say"* butonu. Sadece gelmeyen 1 kişi varsa ona "Gelmedi" basarak yoklamayı 2 saniyede bitirme.
 3. **Günün Antrenman Programını (WOD) Seansa Bağlama:**
    - *Mevcut Durum:* Egzersiz şablonları Antrenman sekmesinde bağımsız duruyor.
    - *İhtiyaç:* Koç sabah sisteme *"Günün WOD'u: 5 Tur - 15 Wallball, 12 Burpee, 9 Pull-up"* girdiğinde, o günkü tüm seanslara rezerve olan sporcuların ana sayfasında otomatik olarak bu antrenmanın gözükmesi.
-4. **Koçun Kendi Prim & Bordro Özeti (Personal Coach Earnings Tab):**
-   - *Mevcut Durum:* Kasa menüsü salonun toplam cirosunu içerdiği için koçlara tamamen kapalı.
-   - *İhtiyaç:* Koçun yönetim kasasını görmeden, **yalnızca kendi girdiği seansları, ikame ders primlerini ve o ay hak ettiği net hakediş tutarını** şeffafça görebileceği bir *"Bordrom"* sekmesi.
+4. **Koçun Kendi Prim & Bordro Özeti (Personal Coach Earnings Tab) [Resolved - v2.4]:**
+   - *Mevcut Durum:* Koçlar için özel `GET /api/dashboard/my-earnings` uç noktası ve `💵 Hakedişim` sekmesi devreye alındı. Koç salonun toplam cirosunu ve diğer antrenörlerin gelirini görmez; yalnızca kendi derslerini, %40 ikame primlerini ve aylık tahmini hakediş dökümünü şeffafça takip eder. Salon yönetimi ve genel bordro (`/api/dashboard/payroll`) yalnızca `Admin` rolüne kısıtlandı.
+   - *İhtiyaç:* Koçun yönetim kasasını görmeden, yalnızca kendi girdiği seansları, ikame ders primlerini ve o ay hak ettiği net hakediş tutarını şeffafça görebileceği bir bordro sekmesi.
 5. **Yedek Listeden Hızlı Çağrı (Waitlist Call-up Automation):**
    - *Mevcut Durum:* Biri iptal edince sıradaki otomatik Confirmed oluyor.
    - *İhtiyaç:* Son dakikada bir sporcu koça WhatsApp'tan "Hocam gelemiyorum" dediğinde, koçun listeden yedek 1. sıradaki kişiye tek tıkla *"Kontenjan açıldı, geliyor musun?"* WhatsApp butonu ile bildirim tetikleyebilmesi.
@@ -101,10 +101,10 @@ graph TD
     A["Faz 1: Hızlı Kazanımlar (Quick Wins)"] --> B["Faz 2: Topluluk & Koç Güçlendirme"]
     B --> C["Faz 3: Finans & Tam Otomasyon"]
 
-    subgraph "Faz 1 (Hemen Yapılabilir)"
-        A1["Seans kartında 'Kimler Geliyor' avatar listesi"]
-        A2["Yoklama listesinde sporcu sakatlık/kısıt rozeti"]
-        A3["Koç için yalnızca kendi primini gösteren 'Bordrom' kartı"]
+    subgraph "Faz 1 (Tamamlandı - v2.4)"
+        A1["Seans kartında 'Kimler Geliyor' avatar listesi ✅"]
+        A2["Yoklama listesinde sporcu sakatlık/kısıt rozeti ✅"]
+        A3["Koç için kişisel 'Hakedişim' bordro sekmesi ✅"]
     end
 
     subgraph "Faz 2 (Kullanıcı Bağlılığı)"

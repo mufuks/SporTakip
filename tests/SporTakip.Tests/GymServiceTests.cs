@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using SporTakip.Api.Data;
 using SporTakip.Api.Models;
+using SporTakip.Api.Models.Identity;
 using SporTakip.Api.Services;
 
 namespace SporTakip.Tests;
@@ -393,5 +394,91 @@ public class GymServiceTests : IDisposable
         Assert.Equal(trainer.Id, result.Id);
         Assert.Equal("Barış Öz", result.FullName);
     }
+
+    [Fact]
+    public async Task UpdateMemberNotes_UpdatesNotesSuccessfully()
+    {
+        // Arrange
+        var member = new Member { FullName = "Caner Test", Notes = null };
+        _db.Members.Add(member);
+        await _db.SaveChangesAsync();
+
+        // Act
+        var updated = await _service.UpdateMemberNotesAsync(member.Id, "⚠️ Menisküs yırtığı - Squat yerine Leg Extension");
+
+        // Assert
+        Assert.NotNull(updated);
+        Assert.Equal("⚠️ Menisküs yırtığı - Squat yerine Leg Extension", updated.Notes);
+
+        var refreshed = await _db.Members.FindAsync(member.Id);
+        Assert.Equal("⚠️ Menisküs yırtığı - Squat yerine Leg Extension", refreshed?.Notes);
+    }
+
+    [Fact]
+    public async Task GetTrainerPersonalEarnings_ReturnsPersonalBreakdownWithoutLeakingSalonRevenue()
+    {
+        // Arrange
+        var coachUser = new AppUser { FullName = "Gülçin Koç", PhoneNumber = "+905329998877", Roles = UserRole.Coach, PhoneVerified = true };
+        _db.Users.Add(coachUser);
+        await _db.SaveChangesAsync();
+
+        var trainer = new Trainer { FullName = "Gülçin Koç", Role = "Eğitmen", UserId = coachUser.Id, DefaultShareRate = 0.40m, IsActive = true };
+        var member = new Member { FullName = "Mert Sporcu" };
+        var pkg = new Package { Name = "Grup 8", LessonCount = 8, DefaultPrice = 3200m };
+        _db.Trainers.Add(trainer);
+        _db.Members.Add(member);
+        _db.Packages.Add(pkg);
+        await _db.SaveChangesAsync();
+
+        var sub = new Subscription
+        {
+            MemberId = member.Id,
+            PackageId = pkg.Id,
+            PrimaryTrainerId = trainer.Id,
+            Price = 3200m,
+            TotalLessons = 8,
+            CompletedLessons = 2,
+            StartDate = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc),
+            Status = "Active",
+            SalonShareRate = 0.30m,
+            SalonShareAmount = 960m,
+            TrainerShareAmount = 2240m
+        };
+        _db.Subscriptions.Add(sub);
+        await _db.SaveChangesAsync();
+
+        // 1 normal ders (400 TL birim fiyat, %40 = 160 TL)
+        _db.AttendanceRecords.Add(new AttendanceRecord
+        {
+            SubscriptionId = sub.Id,
+            LessonNumber = 1,
+            LessonDate = new DateTime(2026, 9, 10, 10, 0, 0, DateTimeKind.Utc),
+            TrainerId = trainer.Id,
+            Status = "Attended",
+            UnitLessonPrice = 400m,
+            TrainerShareAmount = 160m,
+            IsSubstitute = false
+        });
+
+        await _db.SaveChangesAsync();
+
+        // Act
+        var earnings = await _service.GetTrainerPersonalEarningsAsync(trainer.UserId.Value, 2026, 9);
+
+        // Assert
+        Assert.NotNull(earnings);
+        Assert.Equal(trainer.Id, earnings.TrainerId);
+        Assert.Equal("Gülçin Koç", earnings.TrainerName);
+        Assert.Equal(1, earnings.TotalLessonsGiven);
+        Assert.Equal(1, earnings.OwnStudentLessons);
+        Assert.Equal(0, earnings.SubstituteLessons);
+        Assert.Equal(160m, earnings.TotalLessonEarnings);
+        Assert.Equal(2240m, earnings.TotalPackageShare);
+        Assert.Equal(2400m, earnings.TotalEarnings);
+        Assert.Single(earnings.LessonHistory);
+        Assert.Equal("Mert Sporcu", earnings.LessonHistory[0].MemberName);
+    }
 }
+
 

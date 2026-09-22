@@ -249,4 +249,34 @@ public record MonthCalendarDto(
     List<MonthCalendarDayDto> Days
 );
 
+public record UpdateMemberNotesDto(string? Notes);
+
+public record TrainerPersonalEarningsDto(
+    int TrainerId,
+    string TrainerName,
+    string Role,
+    int Year,
+    int Month,
+    int TotalLessonsGiven,
+    int OwnStudentLessons,
+    int SubstituteLessons,
+    decimal TotalLessonEarnings,
+    decimal TotalPackageShare,
+    decimal TotalEarnings,
+    List<TrainerLessonHistoryItemDto> LessonHistory
+);
+
+public record TrainerLessonHistoryItemDto(
+    int AttendanceId,
+    DateTime LessonDate,
+    string MemberName,
+    string PackageName,
+    int LessonNumber,
+    bool IsSubstitute,
+    decimal EarnedAmount,
+    string Status,
+    string? Notes
+);
+
+
 

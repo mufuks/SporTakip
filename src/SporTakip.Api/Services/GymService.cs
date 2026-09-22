@@ -144,6 +144,42 @@ public class GymService(AppDbContext db)
         );
     }
 
+    public async Task<MemberDto?> UpdateMemberNotesAsync(int memberId, string? notes, CancellationToken cancellationToken = default)
+    {
+        var member = await db.Members
+            .Include(m => m.Subscriptions)
+                .ThenInclude(s => s.Package)
+            .Include(m => m.Subscriptions)
+                .ThenInclude(s => s.Payments)
+            .FirstOrDefaultAsync(m => m.Id == memberId, cancellationToken);
+
+        if (member == null) return null;
+
+        member.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        await db.SaveChangesAsync(cancellationToken);
+
+        var activeSub = member.Subscriptions.FirstOrDefault(s => s.Status == "Active");
+        var (bmi, bmiCategory) = CalculateBmi(member.HeightCm, member.WeightKg);
+        return new MemberDto(
+            member.Id,
+            member.FullName,
+            member.Phone,
+            member.Email,
+            member.Notes,
+            member.IsActive,
+            member.CreatedAt,
+            activeSub != null ? MapToSubscriptionSummary(activeSub) : null,
+            member.Subscriptions.Count,
+            member.HeightCm,
+            member.WeightKg,
+            member.Age,
+            member.Gender,
+            bmi,
+            bmiCategory
+        );
+    }
+
+
     public async Task<MemberDto?> GetMemberByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         var m = await db.Members
@@ -475,6 +511,88 @@ public class GymService(AppDbContext db)
 
         return list;
     }
+
+    public async Task<TrainerPersonalEarningsDto?> GetTrainerPersonalEarningsAsync(int userId, int year, int month, CancellationToken cancellationToken = default)
+    {
+        var trainer = await db.Trainers.FirstOrDefaultAsync(t => t.UserId == userId && t.IsActive, cancellationToken);
+        if (trainer == null)
+        {
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+            if (user != null)
+            {
+                var cleanPhone = user.PhoneNumber?.Replace("+90", "").Trim();
+                trainer = await db.Trainers.FirstOrDefaultAsync(t => 
+                    t.IsActive && (
+                        (t.Phone != null && cleanPhone != null && t.Phone.Contains(cleanPhone)) ||
+                        t.FullName.ToLower() == user.FullName.ToLower()
+                    ), cancellationToken);
+            }
+        }
+
+        if (trainer == null) return null;
+
+        var startOfMonth = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var endOfMonth = startOfMonth.AddMonths(1).AddTicks(-1);
+
+        var attendances = await db.AttendanceRecords
+            .Include(a => a.Subscription)
+                .ThenInclude(s => s.Member)
+            .Include(a => a.Subscription)
+                .ThenInclude(s => s.Package)
+            .Where(a => a.TrainerId == trainer.Id && a.LessonDate >= startOfMonth && a.LessonDate <= endOfMonth && (a.Status == "Attended" || a.Status == "Missed"))
+            .OrderByDescending(a => a.LessonDate)
+            .ToListAsync(cancellationToken);
+
+        int totalLessons = attendances.Count;
+        int ownStudentLessons = attendances.Count(a => a.Subscription.PrimaryTrainerId == trainer.Id && !a.IsSubstitute);
+        int substituteLessons = attendances.Count(a => a.Subscription.PrimaryTrainerId != trainer.Id || a.IsSubstitute);
+
+        decimal lessonEarnings = attendances.Sum(a => a.TrainerShareAmount);
+
+        decimal packageShare = 0m;
+        if (trainer.Role == "Salon Sahibi")
+        {
+            var subsThisMonth = await db.Subscriptions
+                .Where(s => s.StartDate >= startOfMonth && s.StartDate <= endOfMonth)
+                .ToListAsync(cancellationToken);
+            packageShare = subsThisMonth.Sum(s => s.SalonShareAmount);
+        }
+        else
+        {
+            var myPrimarySubs = await db.Subscriptions
+                .Where(s => s.PrimaryTrainerId == trainer.Id && s.StartDate >= startOfMonth && s.StartDate <= endOfMonth)
+                .ToListAsync(cancellationToken);
+            packageShare = myPrimarySubs.Sum(s => s.TrainerShareAmount);
+        }
+
+        var lessonHistory = attendances.Select(a => new TrainerLessonHistoryItemDto(
+            AttendanceId: a.Id,
+            LessonDate: a.LessonDate,
+            MemberName: a.Subscription?.Member?.FullName ?? "Bilinmiyor",
+            PackageName: a.Subscription?.Package?.Name ?? "Standart",
+            LessonNumber: a.LessonNumber,
+            IsSubstitute: a.Subscription?.PrimaryTrainerId != trainer.Id || a.IsSubstitute,
+            EarnedAmount: a.TrainerShareAmount,
+            Status: a.Status,
+            Notes: a.Notes
+        )).ToList();
+
+        return new TrainerPersonalEarningsDto(
+            TrainerId: trainer.Id,
+            TrainerName: trainer.FullName,
+            Role: trainer.Role,
+            Year: year,
+            Month: month,
+            TotalLessonsGiven: totalLessons,
+            OwnStudentLessons: ownStudentLessons,
+            SubstituteLessons: substituteLessons,
+            TotalLessonEarnings: lessonEarnings,
+            TotalPackageShare: packageShare,
+            TotalEarnings: lessonEarnings + packageShare,
+            LessonHistory: lessonHistory
+        );
+    }
+
 
     public async Task<List<TrainerDto>> GetTrainersAsync(CancellationToken cancellationToken = default)
     {

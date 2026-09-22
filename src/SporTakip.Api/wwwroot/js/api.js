@@ -242,6 +242,19 @@ export const Api = {
     return this.put(`/members/${id}/metrics`, data);
   },
 
+  updateMemberNotes(id, notes) {
+    return this.put(`/members/${id}/notes`, { notes });
+  },
+
+  getMyEarnings(year = null, month = null) {
+    const params = new URLSearchParams();
+    if (year) params.append('year', year);
+    if (month) params.append('month', month);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return this.get(`/dashboard/my-earnings${qs}`);
+  },
+
+
   // Payments (V1)
   addPayment(data) {
     return this.post('/payments', data);

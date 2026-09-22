@@ -1385,6 +1385,48 @@ table.custom-table tr:hover td {
   line-height: 1.2;
 }
 
+/* Slot Filter Active Bar & Compact Clear Button */
+.slot-details-box {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--bg-surface-elevated);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-subtle);
+  font-size: 12.5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-clear-slot-icon {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.btn-clear-slot-icon:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+  transform: scale(1.08);
+}
+
+
 /* WhatsApp Template Card */
 .wa-template-card {
   background: var(--bg-surface-elevated);
@@ -1821,16 +1863,24 @@ table.custom-table tr:hover td {
 }
 
 .v0-desktop-brand .brand-logo-box {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
-  background: rgba(204, 255, 0, 0.15);
-  border: 1px solid rgba(204, 255, 0, 0.35);
-  color: #CCFF00;
-  display: grid;
-  place-items: center;
-  font-size: 18px;
-  font-weight: 900;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 0 12px rgba(204, 255, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.v0-desktop-brand .brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .v0-desktop-brand-title {
@@ -1869,16 +1919,17 @@ table.custom-table tr:hover td {
   background: transparent;
   border: none;
   border-radius: 9999px;
-  padding: 7px 18px;
-  font-size: 13px;
+  padding: 6px 14px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-family: var(--font-heading);
+  white-space: nowrap;
 }
 
 .v0-desk-nav-btn:hover {
@@ -2034,6 +2085,111 @@ table.custom-table tr:hover td {
   transition: background 0.25s ease, border-color 0.25s ease;
 }
 
+.v0-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Mode / Workspace Switcher (Segmented Pill) */
+.v0-mode-switcher {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+  padding: 3px;
+  gap: 3px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.v0-mode-btn {
+  background: transparent;
+  border: none;
+  border-radius: 9999px;
+  padding: 5px 13px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-heading);
+  white-space: nowrap;
+}
+
+.v0-mode-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.v0-mode-btn.active {
+  background: var(--volt-lime-accent);
+  color: #000000;
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(204, 255, 0, 0.45);
+}
+
+/* Minimal User Profile Pill (Right Header) */
+.v0-header-user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 10px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  max-width: 170px;
+}
+
+.v0-header-user-pill:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-surface-active);
+}
+
+.v0-user-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #CCFF00;
+  box-shadow: 0 0 6px rgba(204, 255, 0, 0.6);
+  flex-shrink: 0;
+}
+
+.v0-user-pill-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  overflow: hidden;
+  text-align: left;
+}
+
+.v0-user-pill-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-heading);
+}
+
+.v0-user-pill-role {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--volt-lime);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .v0-user-greeting {
   min-width: 0;
 }
@@ -2133,6 +2289,29 @@ table.custom-table tr:hover td {
   background: var(--bg-surface-elevated);
 }
 
+@media (max-width: 640px) {
+  .v0-header-left {
+    gap: 8px;
+  }
+  .v0-desktop-brand-title {
+    font-size: 15px;
+  }
+  .v0-desktop-brand-sub {
+    display: none;
+  }
+  .v0-mode-switcher {
+    padding: 2px;
+  }
+  .v0-mode-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    gap: 3px;
+  }
+  .v0-header-user-pill {
+    display: none !important;
+  }
+}
+
 @media (max-width: 540px) {
   .v0-app-header {
     padding: 12px 14px 10px 14px;
@@ -2185,6 +2364,35 @@ table.custom-table tr:hover td {
   background: var(--bg-surface-elevated);
 }
 
+/* Atmospheric Compound Athletic Tiger Watermark */
+.v0-package-card::after {
+  content: '';
+  position: absolute;
+  right: -20px;
+  bottom: -20px;
+  width: 220px;
+  height: 200px;
+  background: url('/images/compound-watermark.png') no-repeat center right / contain;
+  opacity: 0.08;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  z-index: 1;
+}
+
+.v0-package-card:hover::after {
+  opacity: 0.16;
+  transform: scale(1.05) rotate(-2deg);
+}
+
+[data-theme="light"] .v0-package-card::after {
+  filter: invert(1);
+  opacity: 0.06;
+}
+
+[data-theme="light"] .v0-package-card:hover::after {
+  opacity: 0.12;
+}
+
 .v0-package-glow {
   pointer-events: none;
   position: absolute;
@@ -2199,6 +2407,7 @@ table.custom-table tr:hover td {
 
 .v0-package-top {
   position: relative;
+  z-index: 2;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -2256,6 +2465,7 @@ table.custom-table tr:hover td {
 /* Segmented Bar */
 .v0-segmented-bar {
   position: relative;
+  z-index: 2;
   margin-top: 20px;
   display: flex;
   align-items: center;
@@ -2278,6 +2488,7 @@ table.custom-table tr:hover td {
 /* Package Metrics */
 .v0-metrics-grid {
   position: relative;
+  z-index: 2;
   margin-top: 20px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -3379,6 +3590,191 @@ table.custom-table tr:hover td {
   line-height: 1;
   margin: 6px 0 4px 0;
 }
+
+/* ==========================================================================
+   FAZ 1 QUICK WINS: DERSE KİMLER GELİYOR & SAKATLIK BAYRAKLARI & HAKEDİŞİM
+   ========================================================================== */
+
+/* 1. "Derse Kimler Geliyor?" Katılımcı Avatarları (Social Proof) */
+.v0-attendees-row {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.v0-session-card:hover .v0-attendees-row {
+  border-color: var(--border-medium);
+}
+
+.v0-attendees-avatars {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.v0-attendee-avatar-bubble {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, hsl(var(--avatar-hue, 210), 65%, 38%), hsl(var(--avatar-hue, 210), 75%, 25%));
+  color: #FFFFFF;
+  border: 2px solid var(--bg-surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-left: -7px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease, z-index 0.15s ease;
+  user-select: none;
+}
+
+.v0-attendee-avatar-bubble:first-child {
+  margin-left: 0;
+}
+
+.v0-attendee-avatar-bubble:hover {
+  transform: scale(1.2) translateY(-2px);
+  z-index: 5;
+}
+
+.v0-attendee-avatar-bubble.empty {
+  background: var(--volt-lime-muted);
+  border-color: rgba(204, 255, 0, 0.4);
+  color: var(--volt-lime);
+  font-size: 13px;
+}
+
+.v0-attendees-text {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.v0-attendees-label strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.v0-attendees-label.empty {
+  color: var(--text-muted);
+  font-style: normal;
+}
+
+.v0-attendees-label.empty em {
+  color: var(--volt-lime);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.v0-waitlist-inline-tag {
+  color: var(--flame-orange);
+  font-weight: 700;
+  font-size: 11px;
+  margin-left: 4px;
+}
+
+/* 2. Yoklama Ekranı: Sakatlık & Sağlık Kısıt Rozeti */
+.v0-injury-badge-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(255, 85, 0, 0.08);
+  border: 1px solid rgba(255, 85, 0, 0.3);
+  border-radius: var(--radius-xs);
+  padding: 7px 10px;
+  margin: 4px 0;
+  transition: all 0.2s ease;
+}
+
+.v0-injury-badge-wrap.no-notes {
+  background: var(--bg-surface-elevated);
+  border-color: var(--border-subtle);
+  border-style: dashed;
+}
+
+.v0-injury-badge-wrap.no-notes:hover {
+  border-color: var(--border-medium);
+}
+
+.v0-injury-badge-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--flame-orange);
+  font-weight: 600;
+  line-height: 1.35;
+  flex: 1;
+}
+
+.v0-injury-badge-wrap.no-notes .v0-injury-badge-content {
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.v0-injury-edit-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.v0-injury-edit-btn:hover {
+  border-color: var(--flame-orange);
+  color: var(--flame-orange);
+  background: rgba(255, 85, 0, 0.12);
+}
+
+/* 3. Koç Hakedişim Tablo Rozetleri */
+.hakedis-badge-substitute {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 85, 0, 0.12);
+  color: var(--flame-orange);
+  border: 1px solid rgba(255, 85, 0, 0.3);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.hakedis-badge-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--volt-lime);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
 
 
 

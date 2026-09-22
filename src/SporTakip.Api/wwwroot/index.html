@@ -7,13 +7,16 @@
   
   <!-- PWA & Mobile Web App Meta -->
   <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/icon-dark-32x32.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <meta name="theme-color" content="#ccff00">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SporTakip">
   
   <!-- CSS -->
-  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/app.css?v=2.4.6">
 </head>
 <body>
 
@@ -22,65 +25,78 @@
     
     <!-- Top Unified App Header -->
     <header class="v0-app-header">
-      <!-- Desktop Brand Logo & Mobile Greeting -->
-      <div style="display:flex; align-items:center; gap:20px;">
+      <!-- Left: Brand Logo & Mode Switcher -->
+      <div class="v0-header-left">
         <div class="v0-desktop-brand" onclick="navigateTo('home')" style="cursor:pointer;" title="Ana Sayfaya Dön">
-          <div class="brand-logo-box">⚡</div>
+          <div class="brand-logo-box">
+            <img src="/images/compound-brand-icon.png?v=2.4.6" alt="Compound Athletic" class="brand-logo-img">
+          </div>
           <div>
             <div class="v0-desktop-brand-title">SPOR<span>TAKİP</span></div>
             <div class="v0-desktop-brand-sub">Compound Athletic</div>
           </div>
         </div>
 
-        <div class="v0-user-greeting">
-          <p class="v0-greeting-sub" id="athlete-greeting-sub">Hoş Geldiniz,</p>
-          <div class="v0-greeting-name">
-            <span id="athlete-greeting-name">Misafir Sporcu</span>
-            <span aria-hidden="true">👋</span>
-          </div>
-          <span class="v0-badge-athlete" id="athlete-role-badge">
-            <span class="v0-badge-dot" id="athlete-badge-dot"></span>
-            <span id="athlete-status-label">Giriş Yapılmadı</span>
-          </span>
+        <!-- Mode / Workspace Switcher (Sadece Coach / Admin'e görünür) -->
+        <div class="v0-mode-switcher" id="app-mode-switcher" style="display:none;" title="Çalışma Alanı Değiştir">
+          <button type="button" class="v0-mode-btn active" id="mode-btn-athlete" onclick="setAppMode('athlete')">
+            <span>🏃</span> Sporcu
+          </button>
+          <button type="button" class="v0-mode-btn" id="mode-btn-staff" onclick="setAppMode('staff')">
+            <span>⚡</span> Salon
+          </button>
         </div>
       </div>
 
-      <!-- Desktop Center Navigation (Role Based) -->
+      <!-- Desktop Center Navigation (Moda ve Yetkiye Göre Dinamik) -->
       <nav class="v0-desktop-nav" id="app-desktop-nav">
-        <!-- Standart Sporcu Sekmeleri -->
-        <button type="button" class="v0-desk-nav-btn active" data-tab="home" onclick="navigateTo('home')">
+        <!-- 1. Sporcu Modu Sekmeleri -->
+        <button type="button" class="v0-desk-nav-btn nav-athlete-item active" data-mode="athlete" data-tab="home" onclick="navigateTo('home')">
           <span>🏠</span> Ana Sayfa
         </button>
-        <button type="button" class="v0-desk-nav-btn" data-tab="sessions" onclick="navigateTo('sessions')">
+        <button type="button" class="v0-desk-nav-btn nav-athlete-item" data-mode="athlete" data-tab="sessions" onclick="navigateTo('sessions')">
           <span>📅</span> Seanslar
         </button>
-        <button type="button" class="v0-desk-nav-btn" data-tab="workout" id="nav-btn-workout" onclick="navigateTo('workout')">
+        <button type="button" class="v0-desk-nav-btn nav-athlete-item" data-mode="athlete" data-tab="workout" id="nav-btn-workout" onclick="navigateTo('workout')">
           <span>📈</span> Antrenmanım
         </button>
-        <button type="button" class="v0-desk-nav-btn" data-tab="profile" id="nav-btn-profile" onclick="navigateTo('profile')">
+        <button type="button" class="v0-desk-nav-btn nav-athlete-item" data-mode="athlete" data-tab="profile" id="nav-btn-profile" onclick="navigateTo('profile')">
           <span>👤</span> Profilim
         </button>
 
-        <!-- Antrenör & Yönetici Sekmeleri (Yalnızca yetkili personele görünür) -->
-        <button type="button" class="v0-desk-nav-btn staff-tab" data-tab="yoklama" id="nav-btn-yoklama" style="display:none;" onclick="navigateTo('yoklama')">
-          <span>⚡</span> Hızlı Yoklama
+        <!-- 2. Salon Masası Sekmeleri (Sadece staff modunda görünür) -->
+        <button type="button" class="v0-desk-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="yoklama" id="nav-btn-yoklama" style="display:none;" onclick="navigateTo('yoklama')">
+          <span>⚡</span> Yoklama
         </button>
-        <button type="button" class="v0-desk-nav-btn staff-tab" data-tab="uyeler" id="nav-btn-uyeler" style="display:none;" onclick="navigateTo('uyeler')">
-          <span>👥</span> Üyeler & Paketler
+        <button type="button" class="v0-desk-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="uyeler" id="nav-btn-uyeler" style="display:none;" onclick="navigateTo('uyeler')">
+          <span>👥</span> Üyeler
         </button>
-        <button type="button" class="v0-desk-nav-btn staff-tab" data-tab="dashboard" id="nav-btn-dashboard" style="display:none;" onclick="navigateTo('dashboard')">
-          <span>📊</span> Yönetim Paneli
+        <button type="button" class="v0-desk-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="hakedisim" id="nav-btn-hakedisim" style="display:none;" onclick="navigateTo('hakedisim')">
+          <span>💵</span> Hakedişim
         </button>
-        <button type="button" class="v0-desk-nav-btn staff-tab" data-tab="kasa" id="nav-btn-kasa" style="display:none;" onclick="navigateTo('kasa')">
-          <span>💰</span> Kasa & Hakediş
+        <button type="button" class="v0-desk-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="dashboard" id="nav-btn-dashboard" style="display:none;" onclick="navigateTo('dashboard')">
+          <span>📊</span> Finans
+        </button>
+        <button type="button" class="v0-desk-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="kasa" id="nav-btn-kasa" style="display:none;" onclick="navigateTo('kasa')">
+          <span>📋</span> Bordrolar
         </button>
       </nav>
 
       <!-- Right Header Actions -->
       <div class="v0-header-actions">
+        <!-- Misafir Giriş Butonu -->
         <button type="button" class="v0-desk-login-btn" id="v0-login-header-btn" onclick="openOtpDrawer()" title="SMS ile Giriş Yap">
           <span>⚡</span> Giriş Yap
         </button>
+
+        <!-- Minimal Profil Çipi (Giriş yapıldığında görünür) -->
+        <div class="v0-header-user-pill" id="header-user-pill" style="display:none;" onclick="handleAvatarClick()" title="Profil ve Hesap Bilgileri">
+          <span class="v0-user-pill-dot" id="athlete-badge-dot"></span>
+          <div class="v0-user-pill-info">
+            <span class="v0-user-pill-name" id="athlete-greeting-name">Sporcu</span>
+            <span class="v0-user-pill-role" id="athlete-status-label">Antrenör</span>
+          </div>
+        </div>
 
         <button type="button" aria-label="Tema Değiştir" id="theme-toggle-header" class="v0-bell-btn" onclick="toggleTheme()" title="Açık / Koyu Tema Değiştir">
           <span id="theme-icon-desktop" style="font-size:16px;">🌙</span>
@@ -92,7 +108,7 @@
         </button>
 
         <div class="v0-avatar-ring" onclick="handleAvatarClick()" title="Profil / Giriş">
-          <img src="/images/default-avatar.png" alt="Profil Fotoğrafı" class="v0-avatar-img" id="athlete-avatar-img">
+          <img src="/images/default-avatar.png?v=2.4.6" alt="Profil Fotoğrafı" class="v0-avatar-img" id="athlete-avatar-img">
         </div>
       </div>
     </header>
@@ -339,9 +355,9 @@
         </div>
 
         <!-- Selected Slot Details (Active filter indicator) -->
-        <div id="slot-details-box" style="display:none; margin-top:10px; padding:10px 14px; background:var(--bg-surface-elevated); border-radius:var(--radius-xs); border:1px solid var(--border-subtle); font-size:12.5px; display:flex; justify-content:space-between; align-items:center;">
+        <div id="slot-details-box" class="slot-details-box" style="display:none;">
           <span id="slot-details-text">Saat 19:00 için kayıtlı sporcular filtrelendi.</span>
-          <button class="action-btn-sm" onclick="clearSlotFilter()" style="font-size:11px; padding:4px 8px;">Filtreyi Kaldır ✕</button>
+          <button type="button" class="btn-clear-slot-icon" onclick="clearSlotFilter()" title="Filtreyi Kaldır" aria-label="Filtreyi Kaldır">✕</button>
         </div>
       </div>
 
@@ -427,8 +443,8 @@
 
       <div class="page-header">
         <div>
-          <h2 class="page-title">YÖNETİM & <span class="text-volt">KASA</span></h2>
-          <p class="page-subtitle">Aylık finansal durum, salon payı, hoca hakedişleri ve kritik uyarılar.</p>
+          <h2 class="page-title">SALON <span class="text-volt">FİNANSI</span></h2>
+          <p class="page-subtitle">Aylık toplam ciro, tahsil edilen kasa, salon işletme payı ve üye istatistikleri.</p>
         </div>
         <div>
           <button class="btn-primary" onclick="openNewMemberModal()">+ Yeni Üye Kaydı</button>
@@ -570,12 +586,12 @@
       </div>
     </section>
 
-    <!-- ==================== 5. KASA & HAKEDİŞ ==================== -->
+    <!-- ==================== 5. EĞİTMEN BORDROLARI ==================== -->
     <section id="view-kasa" class="v0-section animate-fade-in" style="display:none;">
       <div class="page-header">
         <div>
-          <h2 class="page-title">HAKEDİŞ & <span class="text-volt">KASA</span></h2>
-          <p class="page-subtitle">Hocaların girdiği ders başına primleri, ikame payları ve salon geliri.</p>
+          <h2 class="page-title">EĞİTMEN <span class="text-volt">BORDROLARI</span></h2>
+          <p class="page-subtitle">Salondaki tüm hocaların girdiği seanslar, ikame ders primleri ve salon hakediş tablosu.</p>
         </div>
       </div>
 
@@ -599,35 +615,103 @@
       </div>
     </section>
 
+    <!-- ==================== 5.1 KOÇ KİŞİSEL HAKEDİŞİM ==================== -->
+    <section id="view-hakedisim" class="v0-section animate-fade-in" style="display:none;">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">KİŞİSEL <span class="text-volt">HAKEDİŞİM</span></h2>
+          <p class="page-subtitle">Girdiğiniz seansların dökümü, %40 ikame primleriniz ve bu ayki kişisel net kazancınız.</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <select id="hakedis-month-select" class="form-control" style="max-width:180px;" onchange="handleHakedisMonthChange(this.value)">
+            <!-- Populated dynamically -->
+          </select>
+          <button type="button" class="btn-secondary" onclick="loadMyEarningsView()">🔄 Yenile</button>
+        </div>
+      </div>
+
+      <!-- Koç Hakediş Özet Metrikleri (3 Kart) -->
+      <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="stat-card">
+          <div class="stat-label">Toplam Verilen Seans</div>
+          <div class="stat-value text-volt" id="hakedis-total-lessons">0</div>
+          <div class="stat-meta" id="hakedis-lessons-meta">0 Asıl · 0 İkame Ders</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">İkame Ders Payım (%40)</div>
+          <div class="stat-value text-orange" id="hakedis-sub-lessons">0 Seans</div>
+          <div class="stat-meta">Başka hocanın yerine girilen</div>
+        </div>
+        <div class="stat-card cyan">
+          <div class="stat-label">Bu Ayki Tahmini Hakedişim</div>
+          <div class="stat-value text-cyan" id="hakedis-total-amount">₺0</div>
+          <div class="stat-meta" id="hakedis-amount-meta">Ders primi + paket payı</div>
+        </div>
+      </div>
+
+      <!-- Ders Detay Tablosu -->
+      <div class="glass-card table-responsive" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:17px; font-weight:800; color:var(--text-primary);">📋 Seans Seans Prim Dökümü</h3>
+          <span style="font-size:12px; color:var(--text-muted);" id="hakedis-table-count">0 seans listelendi</span>
+        </div>
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Tarih & Saat</th>
+              <th>Sporcu Adı</th>
+              <th>Paket</th>
+              <th>Ders No</th>
+              <th>Ders Türü</th>
+              <th>Durum</th>
+              <th style="text-align:right;">Kazanılan Prim</th>
+            </tr>
+          </thead>
+          <tbody id="hakedis-table-body">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- Unified Glassmorphic Bottom Navigation -->
     <nav class="v0-bottom-nav">
       <div class="v0-bottom-nav-inner" id="v0-bottom-nav-inner">
-        <button type="button" class="v0-nav-btn active" data-tab="home" onclick="navigateTo('home')">
+        <!-- 1. Sporcu Modu Butonları (4 Buton) -->
+        <button type="button" class="v0-nav-btn nav-athlete-item active" data-mode="athlete" data-tab="home" onclick="navigateTo('home')">
           <span class="v0-nav-icon">🏠</span>
           <span class="v0-nav-label">Ana Sayfa</span>
           <span class="v0-nav-active-dot"></span>
         </button>
-        <button type="button" class="v0-nav-btn" data-tab="sessions" onclick="navigateTo('sessions')">
+        <button type="button" class="v0-nav-btn nav-athlete-item" data-mode="athlete" data-tab="sessions" onclick="navigateTo('sessions')">
           <span class="v0-nav-icon">📅</span>
           <span class="v0-nav-label">Seanslar</span>
         </button>
-        <button type="button" class="v0-nav-btn" data-tab="workout" id="mob-btn-workout" onclick="navigateTo('workout')">
+        <button type="button" class="v0-nav-btn nav-athlete-item" data-mode="athlete" data-tab="workout" id="mob-btn-workout" onclick="navigateTo('workout')">
           <span class="v0-nav-icon">📈</span>
           <span class="v0-nav-label">Antrenman</span>
         </button>
-        <button type="button" class="v0-nav-btn" data-tab="profile" id="mob-btn-profile" onclick="navigateTo('profile')">
+        <button type="button" class="v0-nav-btn nav-athlete-item" data-mode="athlete" data-tab="profile" id="mob-btn-profile" onclick="navigateTo('profile')">
           <span class="v0-nav-icon">👤</span>
           <span class="v0-nav-label">Profilim</span>
         </button>
 
-        <!-- Staff / Antrenör Hızlı Sekmeleri (Sadece Coach/Admin'de görünür) -->
-        <button type="button" class="v0-nav-btn staff-tab" data-tab="yoklama" id="mob-btn-yoklama" style="display:none;" onclick="navigateTo('yoklama')">
+        <!-- 2. Salon Masası Butonları (Sadece staff modunda aktifken görünür - Maksimum 4 Buton) -->
+        <button type="button" class="v0-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="yoklama" id="mob-btn-yoklama" style="display:none;" onclick="navigateTo('yoklama')">
           <span class="v0-nav-icon">⚡</span>
           <span class="v0-nav-label">Yoklama</span>
         </button>
-        <button type="button" class="v0-nav-btn staff-tab" data-tab="uyeler" id="mob-btn-uyeler" style="display:none;" onclick="navigateTo('uyeler')">
+        <button type="button" class="v0-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="uyeler" id="mob-btn-uyeler" style="display:none;" onclick="navigateTo('uyeler')">
           <span class="v0-nav-icon">👥</span>
           <span class="v0-nav-label">Üyeler</span>
+        </button>
+        <button type="button" class="v0-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="hakedisim" id="mob-btn-hakedisim" style="display:none;" onclick="navigateTo('hakedisim')">
+          <span class="v0-nav-icon">💵</span>
+          <span class="v0-nav-label">Hakediş</span>
+        </button>
+        <button type="button" class="v0-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="dashboard" id="mob-btn-dashboard" style="display:none;" onclick="navigateTo('dashboard')">
+          <span class="v0-nav-icon">📊</span>
+          <span class="v0-nav-label">Finans</span>
         </button>
       </div>
     </nav>
@@ -988,6 +1072,33 @@
     </div>
   </div>
 
+  <!-- Modal: Sporcu Sakatlık & Sağlık Kısıt Notu Düzenle -->
+  <div class="modal-backdrop" id="modal-edit-member-notes">
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="display:flex; align-items:center; gap:8px;"><span>⚠️</span> Sporcu Sağlık & Sakatlık Notu</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;" id="edit-member-notes-name">Sporcu Adı</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-edit-member-notes')">✕</button>
+      </div>
+      <form id="edit-member-notes-form" onsubmit="handleSaveMemberNotes(event)">
+        <input type="hidden" id="edit-member-notes-id">
+        <div class="form-group">
+          <label>Sakatlık, Fıtık veya Sağlık Kısıt Notu</label>
+          <textarea id="edit-member-notes-textarea" class="form-control" rows="3" placeholder="Örn: Bel fıtığı L4-L5 - Ağır deadlift kısıtı, Trap Bar ve Core stabilitesi önerilir."></textarea>
+          <small style="color:var(--text-muted); font-size:11.5px; margin-top:6px; display:block;">
+            💡 Bu not antrenman yoklama listesinde tüm koçlara uyarı rozeti olarak görünecektir. Boş bırakıp kaydederseniz uyarı kaldırılır.
+          </small>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-edit-member-notes')">Vazgeç</button>
+          <button type="submit" class="btn-primary">💾 Notu Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ==================== OTP SLIDE-UP SHEET ==================== -->
   <div class="v0-otp-backdrop" id="v0-otp-drawer" onclick="handleOtpBackdropClick(event)">
     <div class="v0-otp-sheet">
@@ -1048,6 +1159,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Javascript -->
-  <script type="module" src="/js/app.js"></script>
+  <script type="module" src="/js/app.js?v=2.4.6"></script>
 </body>
 </html>
