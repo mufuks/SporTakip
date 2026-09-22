@@ -16,7 +16,7 @@
   <meta name="apple-mobile-web-app-title" content="SporTakip">
   
   <!-- CSS -->
-  <link rel="stylesheet" href="/css/app.css?v=2.4.6">
+  <link rel="stylesheet" href="/css/app.css?v=2.7.5">
 </head>
 <body>
 
@@ -25,27 +25,27 @@
     
     <!-- Top Unified App Header -->
     <header class="v0-app-header">
-      <!-- Left: Brand Logo & Mode Switcher -->
+      <!-- Left: Brand Logo -->
       <div class="v0-header-left">
         <div class="v0-desktop-brand" onclick="navigateTo('home')" style="cursor:pointer;" title="Ana Sayfaya Dön">
           <div class="brand-logo-box">
-            <img src="/images/compound-brand-icon.png?v=2.4.6" alt="Compound Athletic" class="brand-logo-img">
+            <img src="/images/compound-brand-icon.png?v=2.7.5" alt="Compound Athletic" class="brand-logo-img">
           </div>
           <div>
             <div class="v0-desktop-brand-title">SPOR<span>TAKİP</span></div>
             <div class="v0-desktop-brand-sub">Compound Athletic</div>
           </div>
         </div>
+      </div>
 
-        <!-- Mode / Workspace Switcher (Sadece Coach / Admin'e görünür) -->
-        <div class="v0-mode-switcher" id="app-mode-switcher" style="display:none;" title="Çalışma Alanı Değiştir">
-          <button type="button" class="v0-mode-btn active" id="mode-btn-athlete" onclick="setAppMode('athlete')">
-            <span>🏃</span> Sporcu
-          </button>
-          <button type="button" class="v0-mode-btn" id="mode-btn-staff" onclick="setAppMode('staff')">
-            <span>⚡</span> Salon
-          </button>
-        </div>
+      <!-- Mode / Workspace Switcher (Sadece Coach / Admin'e görünür) -->
+      <div class="v0-mode-switcher" id="app-mode-switcher" style="display:none;" title="Çalışma Alanı Değiştir">
+        <button type="button" class="v0-mode-btn active" id="mode-btn-athlete" onclick="setAppMode('athlete')">
+          <span>🏃</span> Sporcu
+        </button>
+        <button type="button" class="v0-mode-btn" id="mode-btn-staff" onclick="setAppMode('staff')">
+          <span>🏢</span> Salon
+        </button>
       </div>
 
       <!-- Desktop Center Navigation (Moda ve Yetkiye Göre Dinamik) -->
@@ -66,7 +66,7 @@
 
         <!-- 2. Salon Masası Sekmeleri (Sadece staff modunda görünür) -->
         <button type="button" class="v0-desk-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="yoklama" id="nav-btn-yoklama" style="display:none;" onclick="navigateTo('yoklama')">
-          <span>⚡</span> Yoklama
+          <span>📋</span> Yoklama
         </button>
         <button type="button" class="v0-desk-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="uyeler" id="nav-btn-uyeler" style="display:none;" onclick="navigateTo('uyeler')">
           <span>👥</span> Üyeler
@@ -86,7 +86,7 @@
       <div class="v0-header-actions">
         <!-- Misafir Giriş Butonu -->
         <button type="button" class="v0-desk-login-btn" id="v0-login-header-btn" onclick="openOtpDrawer()" title="SMS ile Giriş Yap">
-          <span>⚡</span> Giriş Yap
+          <img src="/images/tiger1_badge.png?v=2.7.5" alt="Giriş" class="tiger-icon-inline tiger-icon-sm"> Giriş Yap
         </button>
 
         <!-- Minimal Profil Çipi (Giriş yapıldığında görünür) -->
@@ -108,7 +108,7 @@
         </button>
 
         <div class="v0-avatar-ring" onclick="handleAvatarClick()" title="Profil / Giriş">
-          <img src="/images/default-avatar.png?v=2.4.6" alt="Profil Fotoğrafı" class="v0-avatar-img" id="athlete-avatar-img">
+          <img src="/images/default-avatar.png?v=2.7.5" alt="Profil Fotoğrafı" class="v0-avatar-img" id="athlete-avatar-img">
         </div>
       </div>
     </header>
@@ -121,13 +121,15 @@
           <!-- GUEST WELCOME CARD (Shown when NOT logged in) -->
           <div class="v0-package-card" id="athlete-guest-welcome" style="text-align:center; padding:28px 20px;">
             <div class="v0-package-glow"></div>
-            <div style="font-size:38px; margin-bottom:10px;">⚡</div>
+            <div class="v0-guest-tiger-wrap">
+              <img src="/images/tiger2_badge.png?v=2.7.5" alt="Compound Athletic" class="v0-guest-tiger-img">
+            </div>
             <h3 style="font-size:18px; font-weight:800; color:var(--text-primary); margin:0 0 8px 0;">Compound Athletic</h3>
             <p style="font-size:13px; color:var(--text-secondary); margin:0 0 20px 0; line-height:1.5;">
               Ders haklarınızı, aktif paketinizi ve antrenman takviminizi görüntülemek için telefon numaranızla giriş yapın.
             </p>
             <button type="button" class="v0-btn-submit" onclick="openOtpDrawer()" style="margin:0 auto; max-width:240px; padding:12px; font-size:13px;">
-              <span>📱</span> SMS ile Giriş Yap
+              <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:4px;"> SMS ile Giriş Yap
             </button>
           </div>
 
@@ -241,7 +243,7 @@
             <p style="font-size:12px; color:var(--text-secondary); margin:0;">Belirli bir şablon olmadan kendi egzersizlerini serbestçe logla.</p>
           </div>
           <button type="button" class="v0-btn-submit" onclick="startNewWorkout(null)" style="padding:10px 20px; font-size:13px; font-weight:800; border-radius:9999px; display:inline-flex; align-items:center; gap:6px; cursor:pointer; width:auto; margin-top:0;">
-            <span>⚡</span> Serbest Başlat
+            <img src="/images/tiger1_badge.png?v=2.7.5" alt="Başlat" class="tiger-icon-inline tiger-icon-sm"> Serbest Başlat
           </button>
         </div>
 
@@ -326,7 +328,7 @@
       <!-- Quick Filter Chips -->
       <div class="filter-chips">
         <button class="filter-chip active" data-filter="all" onclick="setAttendanceFilter('all')">Tüm Aktif Paketler</button>
-        <button class="filter-chip" data-filter="expiring" onclick="setAttendanceFilter('expiring')">⚡ Son 1-2 Dersi Kalanlar</button>
+        <button class="filter-chip" data-filter="expiring" onclick="setAttendanceFilter('expiring')"><img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-xs"> Son 1-2 Dersi Kalanlar</button>
         <button class="filter-chip" data-filter="unpaid" onclick="setAttendanceFilter('unpaid')">💳 Borçlu Üyeler</button>
       </div>
 
@@ -502,7 +504,7 @@
         <!-- Expiring Packages -->
         <div class="glass-card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <h3 style="font-size:17px;">⚡ Paketi Bitmek Üzere Olanlar</h3>
+            <h3 style="font-size:17px; display:flex; align-items:center; gap:8px;"><img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm"> Paketi Bitmek Üzere Olanlar</h3>
             <span class="lesson-badge badge-amber">Son 1-2 Ders</span>
           </div>
           <div id="dashboard-expiring-list">
@@ -698,7 +700,7 @@
 
         <!-- 2. Salon Masası Butonları (Sadece staff modunda aktifken görünür - Maksimum 4 Buton) -->
         <button type="button" class="v0-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="yoklama" id="mob-btn-yoklama" style="display:none;" onclick="navigateTo('yoklama')">
-          <span class="v0-nav-icon">⚡</span>
+          <span class="v0-nav-icon">📋</span>
           <span class="v0-nav-label">Yoklama</span>
         </button>
         <button type="button" class="v0-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="uyeler" id="mob-btn-uyeler" style="display:none;" onclick="navigateTo('uyeler')">
@@ -1042,7 +1044,7 @@
         <!-- Şablon 2: Paket Bitiş & Yenileme -->
         <div class="wa-template-card">
           <div class="wa-template-title">
-            <span>⚡</span> Şablon 2: Paket Yenileme Uyarısı (Son Dersler)
+            <span><img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-xs"></span> Şablon 2: Paket Yenileme Uyarısı (Son Dersler)
           </div>
           <div class="wa-template-body" id="wa-template-text-2">
             Yükleniyor...
@@ -1155,10 +1157,89 @@
     </div>
   </div>
 
+  <!-- ==================== NOTIFICATION CENTER DRAWER ==================== -->
+  <div id="v0-notification-drawer" class="v0-otp-drawer" onclick="handleNotificationBackdropClick(event)">
+    <div class="v0-otp-panel" onclick="event.stopPropagation()" style="max-height:85vh; display:flex; flex-direction:column;">
+      <div class="v0-drawer-drag-pill" onclick="closeNotificationDrawer()"></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:20px;">🔔</span>
+          <h3 style="font-size:18px; margin:0; font-family:var(--font-heading); font-weight:800; color:var(--text-primary);">Bildirimler</h3>
+        </div>
+        <button type="button" onclick="closeNotificationDrawer()" class="v0-drawer-close" title="Kapat">✕</button>
+      </div>
+
+      <!-- Tarayıcı Bildirimleri Yetkisi -->
+      <div style="background:var(--bg-surface-elevated); padding:12px 14px; border-radius:12px; border:1px solid var(--border-subtle); margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <div>
+          <div style="font-size:12.5px; font-weight:700; color:var(--text-primary);">Tarayıcı Anlık Bildirimleri</div>
+          <div id="push-status-label" style="font-size:11px; color:var(--text-muted); margin-top:2px;">Seans saatinden önce anlık uyarı al</div>
+        </div>
+        <button type="button" id="btn-toggle-push" onclick="togglePushPermission()" style="background:var(--volt-lime-accent); color:#000; border:none; padding:6px 14px; border-radius:999px; font-size:11.5px; font-weight:800; cursor:pointer; flex-shrink:0;">
+          İzin Ver
+        </button>
+      </div>
+
+      <!-- Bildirim Listesi -->
+      <div id="v0-notification-list" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px; padding-right:2px;">
+        <!-- JS ile dinamik doldurulur -->
+      </div>
+
+      <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
+        <button type="button" onclick="markAllNotificationsRead()" style="background:transparent; border:none; color:var(--volt-lime); font-size:12px; font-weight:700; cursor:pointer; text-decoration:underline;">
+          Tümünü Okundu Say
+        </button>
+        <span style="font-size:11px; color:var(--text-muted);" id="notification-unread-summary">0 yeni bildirim</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PWA INSTALL EXPERIENCES ==================== -->
+  <!-- Modal: iOS Safari PWA Kurulum Rehberi -->
+  <div class="modal-backdrop" id="modal-pwa-ios-guide">
+    <div class="modal-content" style="max-width:440px; text-align:center;">
+      <div class="modal-header" style="justify-content:center; position:relative;">
+        <div style="text-align:center;">
+          <div style="width:58px; height:58px; margin:0 auto 8px auto; border-radius:16px; overflow:hidden; border:2px solid var(--volt-lime); box-shadow:0 0 18px var(--volt-lime-glow); background:#0a0a0c; display:grid; place-items:center;">
+            <img src="/images/tiger2_badge.png?v=2.7.5" alt="SporTakip" style="width:100%; height:100%; object-fit:contain; padding:4px;">
+          </div>
+          <h3 style="font-size:17px; font-weight:800; margin:0;">iPhone'a SporTakip'i Yükle</h3>
+          <p style="font-size:12px; color:var(--text-secondary); margin:4px 0 0 0;">Safari üzerinden 3 adımda ana ekranınıza ekleyin:</p>
+        </div>
+        <button class="modal-close" style="position:absolute; right:0; top:0;" onclick="closeModal('modal-pwa-ios-guide')">✕</button>
+      </div>
+
+      <div class="pwa-ios-steps">
+        <div class="pwa-ios-step">
+          <div class="pwa-ios-step-num">1</div>
+          <div class="pwa-ios-step-content">
+            Safari ekranının en altındaki <strong>Paylaş</strong> <span class="pwa-ios-icon-badge">⎋</span> simgesine dokunun.
+          </div>
+        </div>
+        <div class="pwa-ios-step">
+          <div class="pwa-ios-step-num">2</div>
+          <div class="pwa-ios-step-content">
+            Açılan menüde aşağı kaydırarak <strong>"Ana Ekrana Ekle"</strong> <span class="pwa-ios-icon-badge">⊞</span> seçeneğini bulun ve dokunun.
+          </div>
+        </div>
+        <div class="pwa-ios-step">
+          <div class="pwa-ios-step-num">3</div>
+          <div class="pwa-ios-step-content">
+            Sağ üst köşedeki <strong>"Ekle"</strong> butonuna basın. SporTakip ana ekranınızda bağımsız mobil uygulama olarak kurulacaktır! 🐯
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn-primary" style="width:100%; padding:12px; font-size:13px; font-weight:800;" onclick="closeModal('modal-pwa-ios-guide')">
+        Anladım, Harika! 👍
+      </button>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Javascript -->
-  <script type="module" src="/js/app.js?v=2.4.6"></script>
+  <script type="module" src="/js/app.js?v=2.7.5"></script>
 </body>
 </html>

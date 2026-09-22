@@ -479,6 +479,85 @@ public class GymServiceTests : IDisposable
         Assert.Single(earnings.LessonHistory);
         Assert.Equal("Mert Sporcu", earnings.LessonHistory[0].MemberName);
     }
+
+    [Fact]
+    public async Task MarkAttendance_Duplicate_Attended_In_Same_Hour_Throws_Exception()
+    {
+        // Arrange
+        var member = new Member { FullName = "Duplicate Test Member" };
+        var package = new Package { Name = "Grup 8 Ders", LessonCount = 8, DefaultPrice = 3000m };
+        var trainer = new Trainer { FullName = "Gülçin", Role = "Eğitmen", DefaultShareRate = 0.40m };
+        _db.Members.Add(member);
+        _db.Packages.Add(package);
+        _db.Trainers.Add(trainer);
+        await _db.SaveChangesAsync();
+
+        var sub = new Subscription
+        {
+            MemberId = member.Id,
+            PackageId = package.Id,
+            PrimaryTrainerId = trainer.Id,
+            Price = 3000m,
+            TotalLessons = 8,
+            CompletedLessons = 2,
+            Status = "Active"
+        };
+        _db.Subscriptions.Add(sub);
+        await _db.SaveChangesAsync();
+
+        var now = new DateTime(2026, 9, 22, 19, 0, 0, DateTimeKind.Utc);
+        var markDto = new MarkAttendanceDto(sub.Id, now, trainer.Id, "Attended", "İlk yoklama");
+
+        // 1. İlk yoklama başarılı olmalı ve 1 ders düşmeli (2 -> 3)
+        var first = await _service.MarkAttendanceAsync(markDto);
+        Assert.NotNull(first);
+        var updatedSub = await _db.Subscriptions.FindAsync(sub.Id);
+        Assert.Equal(3, updatedSub!.CompletedLessons);
+
+        // 2. Aynı saatte tekrar 'Attended' çağrılırsa hata fırlatmalı ve ders düşmemeli!
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.MarkAttendanceAsync(markDto));
+        Assert.Contains("zaten 'Geldi' yoklaması işlenmiş", ex.Message);
+
+        var subAfterAttempt = await _db.Subscriptions.FindAsync(sub.Id);
+        Assert.Equal(3, subAfterAttempt!.CompletedLessons); // Tekrar düşmedi!
+    }
+
+    [Fact]
+    public async Task MarkAttendance_Transition_From_Attended_To_Excused_Refunds_Lesson()
+    {
+        // Arrange
+        var member = new Member { FullName = "Refund Test Member" };
+        var package = new Package { Name = "Grup 8 Ders", LessonCount = 8, DefaultPrice = 3000m };
+        var trainer = new Trainer { FullName = "Gülçin", Role = "Eğitmen", DefaultShareRate = 0.40m };
+        _db.Members.Add(member);
+        _db.Packages.Add(package);
+        _db.Trainers.Add(trainer);
+        await _db.SaveChangesAsync();
+
+        var sub = new Subscription
+        {
+            MemberId = member.Id,
+            PackageId = package.Id,
+            PrimaryTrainerId = trainer.Id,
+            Price = 3000m,
+            TotalLessons = 8,
+            CompletedLessons = 2,
+            Status = "Active"
+        };
+        _db.Subscriptions.Add(sub);
+        await _db.SaveChangesAsync();
+
+        var now = new DateTime(2026, 9, 22, 19, 0, 0, DateTimeKind.Utc);
+        // 1. Geldi olarak işaretle (2 -> 3 ders oldu)
+        await _service.MarkAttendanceAsync(new MarkAttendanceDto(sub.Id, now, trainer.Id, "Attended", "Katıldı"));
+        var sub1 = await _db.Subscriptions.FindAsync(sub.Id);
+        Assert.Equal(3, sub1!.CompletedLessons);
+
+        // 2. Yanlışlıkla basıldığı fark edilip 'Excused' yapıldı (hak iade edilmeli: 3 -> 2)
+        await _service.MarkAttendanceAsync(new MarkAttendanceDto(sub.Id, now, trainer.Id, "Excused", "Mazeretli"));
+        var sub2 = await _db.Subscriptions.FindAsync(sub.Id);
+        Assert.Equal(2, sub2!.CompletedLessons);
+    }
 }
 
 

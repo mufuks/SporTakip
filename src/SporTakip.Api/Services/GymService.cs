@@ -360,24 +360,79 @@ public class GymService(AppDbContext db)
         }
 
         var lessonDate = dto.LessonDate ?? DateTime.UtcNow;
-        var scheduledRecord = await db.AttendanceRecords
-            .FirstOrDefaultAsync(a => a.SubscriptionId == subscription.Id && a.Status == "Scheduled" && a.LessonDate.Date == lessonDate.Date, cancellationToken);
+
+        // 1. Aynı gün ve saatte (veya aynı gün Scheduled durumunda) mevcut bir yoklama kaydı var mı?
+        var existingRecord = await db.AttendanceRecords
+            .Include(a => a.Subscription)
+            .FirstOrDefaultAsync(a => a.SubscriptionId == subscription.Id 
+                && a.LessonDate.Date == lessonDate.Date 
+                && (a.LessonDate.Hour == lessonDate.Hour || a.Status == "Scheduled"), cancellationToken);
 
         AttendanceRecord attendance;
-        if (scheduledRecord != null)
+        if (existingRecord != null)
         {
-            attendance = scheduledRecord;
-            attendance.LessonDate = lessonDate;
-            attendance.TrainerId = attendingTrainer?.Id;
-            attendance.Status = status;
-            attendance.IsSubstitute = isSubstitute;
-            attendance.SubstituteShareAmount = substituteShare;
-            attendance.UnitLessonPrice = unitPrice;
-            attendance.TrainerShareAmount = trainerShare;
-            attendance.Notes = dto.Notes ?? scheduledRecord.Notes;
+            // Eğer bu saatteki seans için zaten "Attended" (Geldi) ise ve tekrar "Attended" deniyorsa: mükerrer ders düşmeyi engelle!
+            if (existingRecord.Status == "Attended" && status == "Attended")
+            {
+                throw new InvalidOperationException($"Bu sporcu için saat {existingRecord.LessonDate:HH:mm} seansında zaten 'Geldi' yoklaması işlenmiş. Aynı saatte mükerrer ders düşülemez.");
+            }
+
+            var oldStatus = existingRecord.Status;
+            existingRecord.Status = status;
+            existingRecord.LessonDate = lessonDate;
+            if (attendingTrainer != null) existingRecord.TrainerId = attendingTrainer.Id;
+            existingRecord.IsSubstitute = isSubstitute;
+            existingRecord.SubstituteShareAmount = substituteShare;
+            existingRecord.UnitLessonPrice = unitPrice;
+            existingRecord.TrainerShareAmount = trainerShare;
+            if (!string.IsNullOrWhiteSpace(dto.Notes)) existingRecord.Notes = dto.Notes;
+
+            // Ders hakkı yönetimi:
+            // Scheduled -> Attended veya Missed: 1 ders hakkı düş
+            if (oldStatus == "Scheduled" && (status == "Attended" || status == "Missed"))
+            {
+                if (subscription.RemainingLessons <= 0)
+                {
+                    throw new InvalidOperationException("Bu pakette kalan ders hakkı bulunmuyor.");
+                }
+                subscription.CompletedLessons++;
+            }
+            // Attended veya Missed -> Excused (Mazeretli Telafi): Düşülmüş dersi iade et!
+            else if ((oldStatus == "Attended" || oldStatus == "Missed") && status == "Excused")
+            {
+                if (subscription.CompletedLessons > 0)
+                {
+                    subscription.CompletedLessons--;
+                }
+            }
+            // Excused -> Attended veya Missed: 1 ders hakkı düş
+            else if (oldStatus == "Excused" && (status == "Attended" || status == "Missed"))
+            {
+                if (subscription.RemainingLessons <= 0)
+                {
+                    throw new InvalidOperationException("Bu pakette kalan ders hakkı bulunmuyor.");
+                }
+                subscription.CompletedLessons++;
+            }
+
+            if (subscription.CompletedLessons >= subscription.TotalLessons)
+            {
+                subscription.Status = "Completed";
+            }
+            else if (subscription.Status == "Completed" && subscription.CompletedLessons < subscription.TotalLessons)
+            {
+                subscription.Status = "Active";
+            }
+
+            attendance = existingRecord;
         }
         else
         {
+            if (subscription.Status != "Active" || subscription.RemainingLessons <= 0)
+            {
+                throw new InvalidOperationException("Bu pakette kalan ders hakkı bulunmuyor veya paket aktif değil.");
+            }
+
             var lessonNumber = subscription.CompletedLessons + 1;
             attendance = new AttendanceRecord
             {
@@ -393,16 +448,14 @@ public class GymService(AppDbContext db)
                 Notes = dto.Notes
             };
             db.AttendanceRecords.Add(attendance);
-        }
 
-        // SADECE "Attended" (Geldi) ve "Missed" (3 saat kala/habersiz gelmedi, hak yandı) durumlarında kalan ders düşer!
-        // "Excused" (En az 3 saat önce haberli telafi) durumunda kalan ders düşmez!
-        if (status == "Attended" || status == "Missed")
-        {
-            subscription.CompletedLessons++;
-            if (subscription.CompletedLessons >= subscription.TotalLessons)
+            if (status == "Attended" || status == "Missed")
             {
-                subscription.Status = "Completed";
+                subscription.CompletedLessons++;
+                if (subscription.CompletedLessons >= subscription.TotalLessons)
+                {
+                    subscription.Status = "Completed";
+                }
             }
         }
 

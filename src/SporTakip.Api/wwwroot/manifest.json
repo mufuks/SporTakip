@@ -1,21 +1,78 @@
 {
+  "id": "/",
   "name": "SporTakip - Compound Athletic",
   "short_name": "SporTakip",
-  "description": "Butik Spor Salonu Hızlı Yoklama ve Hakediş Takip Sistemi",
+  "description": "Butik Spor Salonu Hızlı Yoklama, Seans ve Hakediş Yönetim Sistemi",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#10b981",
+  "orientation": "portrait",
+  "background_color": "#0A0A0C",
+  "theme_color": "#0A0A0C",
+  "lang": "tr",
+  "categories": ["fitness", "sports", "productivity"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "⚡ Hızlı Yoklama",
+      "short_name": "Yoklama",
+      "description": "Antrenör hızlı yoklama ekranına git",
+      "url": "/?tab=yoklama",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "📅 Günün Seansları",
+      "short_name": "Seanslar",
+      "description": "Seans programı ve rezervasyon",
+      "url": "/?tab=sessions",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "🏠 Ana Sayfa",
+      "short_name": "Ana Sayfa",
+      "description": "Sporcu ana sayfası",
+      "url": "/?tab=home",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

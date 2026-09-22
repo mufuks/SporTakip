@@ -3,6 +3,8 @@ import { Api } from './api.js?v=2.4.1';
 // State
 let currentTab = 'home';
 let currentAthleteTab = 'home';
+window.currentTab = currentTab;
+window.currentAthleteTab = currentAthleteTab;
 let currentFilter = 'all'; // all, expiring, unpaid
 let activeSubscriptions = [];
 let allMembers = [];
@@ -54,7 +56,7 @@ function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
   toast.className = 'toast';
-  const icon = type === 'success' ? '⚡' : '⚠️';
+  const icon = type === 'success' ? '<img src="/images/tiger1_badge.png?v=2.7.5" class="tiger-icon-inline tiger-icon-sm">' : '⚠️';
   toast.innerHTML = `<span style="font-size:18px;">${icon}</span> <span>${message}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
@@ -109,6 +111,8 @@ window.navigateTo = function(tabName) {
   }
   localStorage.setItem('sportakip_app_mode', currentAppMode);
 
+  window.currentTab = tabName;
+  window.currentAthleteTab = tabName;
   currentTab = tabName;
   currentAthleteTab = tabName;
   localStorage.setItem('sportakip_tab', tabName);
@@ -413,7 +417,9 @@ function renderAttendanceList(subs) {
   if (!subs || subs.length === 0) {
     container.innerHTML = `
       <div class="glass-card" style="text-align:center; padding:48px 20px;">
-        <div style="font-size:48px; margin-bottom:12px;">⚡</div>
+        <div class="v0-guest-tiger-wrap">
+          <img src="/images/tiger2_badge.png?v=2.7.5" alt="" class="v0-guest-tiger-img">
+        </div>
         <h3 style="font-size:20px;">Aktif paket veya seans bulunamadı</h3>
         <p style="color:var(--text-secondary); margin-top:8px;">Filtrenizi değiştirebilir, saatlik slotu temizleyebilir veya yeni seans planlayabilirsiniz.</p>
       </div>`;
@@ -440,6 +446,16 @@ function renderAttendanceList(subs) {
 
     // Default primary trainer id
     const primaryTrainerId = sub.primaryTrainerId || 2; // Varsayılan Gülçin (Eğitmen)
+
+    // Check if member already attended in this slot
+    let isAlreadyAttendedInSlot = false;
+    if (selectedSlotHour !== null && typeof capacitySlotsData !== 'undefined' && capacitySlotsData) {
+      const activeSlot = capacitySlotsData.find(s => s.hour === selectedSlotHour);
+      const slotMem = activeSlot?.members?.find(m => m.subscriptionId === sub.id);
+      if (slotMem && slotMem.status === 'Attended') {
+        isAlreadyAttendedInSlot = true;
+      }
+    }
 
     return `
       <div class="${cardClass}" id="sub-card-${sub.id}">
@@ -480,7 +496,7 @@ function renderAttendanceList(subs) {
           </select>
         </div>
         <div id="sub-substitute-badge-${sub.id}" style="display:none; font-size:11.5px; color:var(--flame-orange); font-weight:800; background:rgba(255,85,0,0.12); padding:4px 8px; border-radius:4px; border:1px solid rgba(255,85,0,0.3);">
-          ⚡ İkame Seans: %40 Hak Ediş Yazılacak
+          <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-xs"> İkame Seans: %40 Hak Ediş Yazılacak
         </div>
 
         <div style="font-size:12px; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;">
@@ -492,9 +508,15 @@ function renderAttendanceList(subs) {
 
         <!-- 3 Ana Salon Kuralı Butonları -->
         <div style="display:flex; flex-direction:column; gap:8px;">
-          <button class="touch-btn btn-attend" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Attended')">
-            <span>⚡</span> GELDİ (DERS DÜŞ)
-          </button>
+          ${isAlreadyAttendedInSlot ? `
+            <button class="touch-btn btn-attend already-attended" title="Bu saatteki seans için yoklama zaten alınmış">
+              <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:4px;"> ✓ BU SEANSTA GELDİ (${sub.completedLessons}. Ders)
+            </button>
+          ` : `
+            <button class="touch-btn btn-attend" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Attended')">
+              <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:4px;"> GELDİ (DERS DÜŞ)
+            </button>
+          `}
           
           <div style="display:flex; gap:8px;">
             <button class="action-btn-sm" style="color:var(--pulse-rose);" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Missed')" title="3 saatten az kala haber veya habersiz gelmedi (Ders Yanar)">
@@ -558,7 +580,7 @@ window.handleQuickAttendance = async function(subId, memberName, status) {
     await loadCapacitySlots();
     await loadAttendanceView();
   } catch (err) {
-    showToast(`Hata: ${err.message}`, 'error');
+    showToast(`${err.message}`, 'warning');
     if (card) {
       card.style.opacity = '1';
       card.style.pointerEvents = 'auto';
@@ -1317,13 +1339,14 @@ window.handleScheduleSession = async function(e) {
   const hour = parseInt(document.getElementById('schedule-hour').value);
   const notes = document.getElementById('schedule-notes').value;
 
-  const sessionTime = new Date(`${dateStr}T${hour.toString().padStart(2, '0')}:00:00`);
+  // Local wall-clock ISO string (without trailing Z) so server preserves local hour 19:00
+  const sessionTimeStr = `${dateStr}T${hour.toString().padStart(2, '0')}:00:00`;
 
   try {
     await Api.scheduleSession({
       subscriptionId: subId,
       trainerId: trainerId,
-      sessionTime: sessionTime.toISOString(),
+      sessionTime: sessionTimeStr,
       notes: notes
     });
 
@@ -1404,18 +1427,18 @@ window.handleSaveEditSession = async function(e) {
   const status = document.getElementById('edit-session-status').value;
   const notes = document.getElementById('edit-session-notes').value.trim();
 
-  const startTime = new Date(`${dateStr}T${startTimeStr}:00`);
-  const endTime = new Date(`${dateStr}T${endTimeStr}:00`);
+  const startIso = `${dateStr}T${startTimeStr}:00`;
+  const endIso = `${dateStr}T${endTimeStr}:00`;
 
-  if (endTime <= startTime) {
+  if (endIso <= startIso) {
     showToast('Bitiş saati başlangıç saatinden sonra olmalıdır.', 'error');
     return;
   }
 
   try {
     await Api.updateSession(slotId, {
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
+      startTime: startIso,
+      endTime: endIso,
       trainerId: trainerId,
       capacity: capacity,
       sessionType: sessionType,
@@ -1757,7 +1780,7 @@ async function renderSessionsList(containerId, dateStr) {
 
       let avatarBubblesHtml = '';
       if (confirmedAthletes.length === 0) {
-        avatarBubblesHtml = `<span class="v0-attendee-avatar-bubble empty" title="İlk katılan sen ol!">⚡</span>`;
+        avatarBubblesHtml = `<span class="v0-attendee-avatar-bubble empty" title="İlk katılan sen ol!"><img src="/images/tiger1_badge.png?v=2.7.5" alt="" style="width:14px; height:14px; object-fit:contain;"></span>`;
       } else {
         const maxBubbles = 4;
         const visibleAthletes = confirmedAthletes.slice(0, maxBubbles);
@@ -1770,7 +1793,7 @@ async function renderSessionsList(containerId, dateStr) {
 
       let attendeesTextHtml = '';
       if (confirmedAthletes.length === 0) {
-        attendeesTextHtml = `<span class="v0-attendees-label empty">Henüz katılımcı yok — <em>ilk sen katıl! ⚡</em></span>`;
+        attendeesTextHtml = `<span class="v0-attendees-label empty">Henüz katılımcı yok — <em>ilk sen katıl! 🐯</em></span>`;
       } else if (confirmedAthletes.length === 1) {
         attendeesTextHtml = `<span class="v0-attendees-label"><strong>${escapeHtml(confirmedAthletes[0].memberName)}</strong> katılıyor</span>`;
       } else if (confirmedAthletes.length === 2) {
@@ -1821,7 +1844,7 @@ async function renderSessionsList(containerId, dateStr) {
           </div>
 
           <div class="v0-cancel-notice ${isPastDeadline ? 'passed' : ''}">
-            <span class="v0-cancel-icon">⚡</span>
+            <span class="v0-cancel-icon"><img src="/images/tiger1_badge.png?v=2.7.5" alt="" style="width:16px; height:16px; object-fit:contain;"></span>
             <div>
               <strong style="color:var(--text-primary);">Son İptal: ${cancelTimeStr}</strong>
               — ${isPastDeadline ? 'Son iptal vakti geçti (İptal edilirse ders hakkınız düşer).' : 'Ders hakkınız yanmadan iptal edilebilir.'}
@@ -1968,7 +1991,7 @@ window.renderAthleteProfile = async function() {
     console.warn('Profil verileri çekilemedi', e);
   }
 
-  const customAvatar = localStorage.getItem('sportakip_custom_avatar') || '/images/default-avatar.png';
+  const customAvatar = localStorage.getItem('sportakip_custom_avatar') || '/images/default-avatar.png?v=2.7.5';
   const hasCustomAvatar = !!localStorage.getItem('sportakip_custom_avatar');
 
   const curHeight = memberDetails?.heightCm || '';
@@ -2000,7 +2023,7 @@ window.renderAthleteProfile = async function() {
             </button>
             ${hasCustomAvatar ? `
               <button type="button" onclick="resetAvatarToDefault()" style="background:transparent; border:none; color:var(--volt-lime); font-size:11px; font-weight:700; cursor:pointer; text-decoration:underline;">
-                3D Avatar'a Dön
+                Compound Avatarına Dön
               </button>` : ''}
           </div>
         </div>
@@ -2012,11 +2035,11 @@ window.renderAthleteProfile = async function() {
 
     <!-- 2. Fiziksel Metrikler & Vücut Profili (Boy / Kilo / Yaş / Cinsiyet) -->
     <div class="v0-card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
-        <h4 style="font-size:14px; font-weight:800; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:8px;">
-          <span>📏</span> Fiziksel Profil & Metrikler
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;">
+        <h4 style="font-size:14px; font-weight:800; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:8px; white-space:nowrap;">
+          <span>📏</span> Vücut Metrikleri
         </h4>
-        <span id="profile-bmi-badge" style="${curBmi ? 'display:inline-flex;' : 'display:none;'} align-items:center; gap:6px; font-size:11.5px; font-weight:800; padding:3px 10px; border-radius:999px; background:var(--volt-lime-muted); color:var(--volt-lime); border:1px solid var(--border-subtle);">
+        <span id="profile-bmi-badge" style="${curBmi ? 'display:inline-flex;' : 'display:none;'} align-items:center; gap:6px; font-size:11.5px; font-weight:800; padding:4px 10px; border-radius:999px; background:var(--volt-lime-muted); color:var(--volt-lime); border:1px solid var(--border-subtle); flex-shrink:0; white-space:nowrap;">
           <span id="profile-bmi-text">VKİ: ${curBmi} · ${curBmiCategory}</span>
         </span>
       </div>
@@ -2056,6 +2079,28 @@ window.renderAthleteProfile = async function() {
       ${reservationsHtml}
     </div>
 
+    <!-- 4. Uygulama & Mobil Cihaz Durumu (PWA) -->
+    <div class="v0-card" style="${isAppInstalled() ? 'border:1px solid rgba(16,185,129,0.35); background:rgba(16,185,129,0.06);' : 'border:1px solid var(--volt-lime); background:linear-gradient(135deg, rgba(204,255,0,0.08), var(--bg-surface-elevated));'}">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <img src="/images/tiger2_badge.png?v=2.7.5" alt="SporTakip" style="width:36px; height:36px; object-fit:contain; filter:drop-shadow(0 0 10px rgba(204,255,0,0.4));">
+          <div>
+            <h4 style="margin:0; font-size:13.5px; font-weight:800; color:var(--text-primary);">${isAppInstalled() ? 'SporTakip Mobil Uygulaması Aktif' : 'Uygulamayı Cihazınıza Yükleyin'}</h4>
+            <p style="margin:2px 0 0 0; font-size:11.5px; color:var(--text-secondary);">${isAppInstalled() ? 'Uygulama tam ekran modunda cihazınızda kurulu çalışıyor.' : 'Ana ekrana ekleyerek 1 saniyede açılan mobil deneyim yaşayın.'}</p>
+          </div>
+        </div>
+        ${isAppInstalled() ? `
+          <span style="font-size:11px; font-weight:800; color:var(--volt-lime); background:var(--volt-lime-muted); padding:4px 10px; border-radius:999px; border:1px solid var(--border-subtle);">
+            ✓ Kurulu
+          </span>
+        ` : `
+          <button type="button" class="btn-primary" style="padding:8px 14px; font-size:12px; font-weight:800;" onclick="triggerPwaInstall()">
+            <img src="/images/tiger1_badge.png?v=2.7.5" class="tiger-icon-inline tiger-icon-xs" style="margin-right:4px;"> ${isIosDevice() ? 'Nasıl Yüklenir?' : 'Hemen Yükle'}
+          </button>
+        `}
+      </div>
+    </div>
+
     <button style="width:100%; border:1px solid rgba(239,68,68,0.4); background:rgba(239,68,68,0.08); color:var(--pulse-rose); border-radius:12px; padding:12px; font-weight:700; font-size:13px; cursor:pointer; margin-top:8px;" onclick="handleLogout()">
       Çıkış Yap
     </button>
@@ -2079,6 +2124,8 @@ window.recalcProfileBmi = function() {
     else if (bmi >= 30) { cat = 'Yüksek'; color = '#EF4444'; }
 
     badge.style.display = 'inline-flex';
+    badge.style.flexShrink = '0';
+    badge.style.whiteSpace = 'nowrap';
     badge.style.color = color;
     badge.style.borderColor = color;
     if (text) text.innerText = `VKİ: ${bmi} · ${cat}`;
@@ -2135,12 +2182,12 @@ window.handleAvatarFileUpload = function(event) {
 window.resetAvatarToDefault = function() {
   localStorage.removeItem('sportakip_custom_avatar');
   updateAppAvatars();
-  showToast('⚡ Varsayılan 3D sporcu karakterine dönüldü.');
+  showToast('🐯 Varsayılan Compound Athletic kaplan amblemine dönüldü.');
   if (currentAthleteTab === 'profile') renderAthleteProfile();
 };
 
 function updateAppAvatars() {
-  const avatarUrl = localStorage.getItem('sportakip_custom_avatar') || '/images/default-avatar.png';
+  const avatarUrl = localStorage.getItem('sportakip_custom_avatar') || '/images/default-avatar.png?v=2.7.5';
   document.querySelectorAll('.v0-avatar-img, #athlete-avatar-img, #profile-avatar-img').forEach(img => {
     img.src = avatarUrl;
   });
@@ -2164,8 +2211,139 @@ window.handleAvatarClick = function() {
 };
 
 window.handleNotificationClick = function() {
-  showToast('🔔 Seans hatırlatmaları ve bildirimleriniz aktif.');
+  openNotificationDrawer();
 };
+
+window.openNotificationDrawer = function() {
+  const drawer = document.getElementById('v0-notification-drawer');
+  if (drawer) {
+    drawer.classList.add('open');
+    renderNotificationItems();
+  }
+  const dot = document.querySelector('.v0-bell-dot');
+  if (dot) dot.style.display = 'none';
+};
+
+window.closeNotificationDrawer = function() {
+  const drawer = document.getElementById('v0-notification-drawer');
+  if (drawer) drawer.classList.remove('open');
+};
+
+window.handleNotificationBackdropClick = function(e) {
+  if (e.target.id === 'v0-notification-drawer') closeNotificationDrawer();
+};
+
+window.togglePushPermission = async function() {
+  if (!('Notification' in window)) {
+    showToast('Tarayıcınız anlık bildirimleri desteklemiyor.', 'warning');
+    return;
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    updatePushUi();
+    if (perm === 'granted') {
+      showToast('✓ Bildirim izinleri başarıyla aktif edildi!', 'success');
+      try {
+        new Notification('SporTakip | Compound Athletic', {
+          body: 'Seans ve paket hatırlatma bildirimleriniz aktif! 🐯',
+          icon: '/icons/icon-192.png'
+        });
+      } catch (e) {
+        // Notification constructor may throw on mobile
+      }
+    } else {
+      showToast('Bildirim izni verilmedi veya engellendi.', 'warning');
+    }
+  } catch (err) {
+    showToast('Bildirim izni alınamadı.', 'error');
+  }
+};
+
+function updatePushUi() {
+  const btn = document.getElementById('btn-toggle-push');
+  const label = document.getElementById('push-status-label');
+  if (!btn || !label) return;
+  if (!('Notification' in window)) {
+    label.innerText = 'Bu tarayıcıda bildirim desteklenmiyor';
+    btn.style.display = 'none';
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    label.innerText = 'Bildirimler aktif ve çalışıyor ✓';
+    btn.innerText = 'Aktif ✓';
+    btn.style.background = 'rgba(34, 197, 94, 0.2)';
+    btn.style.color = '#4ade80';
+    btn.style.cursor = 'default';
+  } else if (Notification.permission === 'denied') {
+    label.innerText = 'Bildirim izni tarayıcı ayarlarından engelli';
+    btn.innerText = 'Engelli';
+    btn.style.background = 'rgba(239, 68, 68, 0.2)';
+    btn.style.color = '#f87171';
+  } else {
+    label.innerText = 'Seans saatinden önce anlık uyarı al';
+    btn.innerText = 'İzin Ver';
+    btn.style.background = 'var(--volt-lime-accent)';
+    btn.style.color = '#000';
+    btn.style.cursor = 'pointer';
+  }
+}
+
+function renderNotificationItems() {
+  const container = document.getElementById('v0-notification-list');
+  if (!container) return;
+  updatePushUi();
+
+  const user = Api.getUser();
+  const notifs = [
+    {
+      id: 1,
+      unread: true,
+      icon: '📅',
+      title: 'Bugünkü Seans Hatırlatması',
+      desc: user ? `${user.fullName || 'Sporcu'}, bugün planlanan seansınız için stüdyoya 10 dakika önce gelmenizi öneririz.` : 'Seanslarınızı ve doluluk durumunu Seanslar sekmesinden takip edebilirsiniz.',
+      time: 'Bugün'
+    },
+    {
+      id: 2,
+      unread: true,
+      icon: '⚡',
+      title: 'Paket ve Seans Durumu',
+      desc: 'Kalan derslerinizi ve seans hakkınızı Profilim sekmesindeki karttan anlık takip edebilirsiniz.',
+      time: '1 saat önce'
+    },
+    {
+      id: 3,
+      unread: false,
+      icon: '🐯',
+      title: 'Compound Athletic Mobil PWA',
+      desc: 'SporTakip uygulamasını ana ekranınıza ekleyerek tam ekran ve çevrimdışı hızlı erişim sağlayabilirsiniz.',
+      time: 'Dün'
+    }
+  ];
+
+  const unreadCount = notifs.filter(n => n.unread).length;
+  const summary = document.getElementById('notification-unread-summary');
+  if (summary) summary.innerText = `${unreadCount} okunmamış bildirim`;
+
+  container.innerHTML = notifs.map(n => `
+    <div class="v0-notification-card ${n.unread ? 'unread' : ''}">
+      <div class="v0-notif-icon-box">${n.icon}</div>
+      <div class="v0-notif-body">
+        <div class="v0-notif-title">${escapeHtml(n.title)}</div>
+        <div class="v0-notif-desc">${escapeHtml(n.desc)}</div>
+        <div class="v0-notif-time">${n.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.markAllNotificationsRead = function() {
+  document.querySelectorAll('.v0-notification-card.unread').forEach(el => el.classList.remove('unread'));
+  const summary = document.getElementById('notification-unread-summary');
+  if (summary) summary.innerText = 'Tümü okundu ✓';
+  showToast('✓ Tüm bildirimler okundu olarak işaretlendi.');
+};
+
 
 // ==================== OTP DRAWER CONTROLLER ====================
 window.openOtpDrawer = function() {
@@ -2817,14 +2995,81 @@ async function loadWorkoutProgress() {
   }
 }
 
+// ==================== PWA INSTALL & LIFECYCLE CONTROLLER ====================
+let deferredInstallPrompt = null;
+
+export function isAppInstalled() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true ||
+         document.referrer.includes('android-app://');
+}
+window.isAppInstalled = isAppInstalled;
+
+export function isIosDevice() {
+  return /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
+}
+window.isIosDevice = isIosDevice;
+
+window.triggerPwaInstall = async function() {
+  if (isAppInstalled()) {
+    showToast('✓ SporTakip zaten bu cihazda mobil uygulama olarak kurulu!');
+    return;
+  }
+
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    try {
+      const choiceResult = await deferredInstallPrompt.userChoice;
+      if (choiceResult && choiceResult.outcome === 'accepted') {
+        showToast('⚡ SporTakip uygulaması cihazınıza kuruldu!');
+        window.dismissPwaBanner();
+      }
+    } catch (err) {
+      console.warn('PWA install prompt error:', err);
+    }
+    deferredInstallPrompt = null;
+  } else if (isIosDevice()) {
+    openModal('modal-pwa-ios-guide');
+  } else {
+    showToast('Tarayıcınızın adres çubuğundaki veya menüsündeki "Uygulamayı Yükle" seçeneğiyle kurabilirsiniz.', 'info');
+  }
+};
+
+window.dismissPwaBanner = function() {
+  const banner = document.getElementById('pwa-install-banner');
+  if (banner) {
+    banner.classList.remove('show');
+    setTimeout(() => { banner.style.display = 'none'; }, 350);
+  }
+  localStorage.setItem('sportakip_pwa_dismissed', Date.now().toString());
+};
+
+function initPwaInstallFlow() {
+  // Capture beforeinstallprompt for Chrome / Android / Edge (ready for user click)
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+  });
+
+  // Track appinstalled event
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    showToast('🎉 SporTakip başarıyla ana ekranınıza yüklendi!');
+    if (currentAthleteTab === 'profile') renderAthleteProfile();
+  });
+}
+
 // App Initialization
 document.addEventListener('DOMContentLoaded', () => {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('[PWA] ServiceWorker registration failed:', err);
+    });
   }
   setupOtpBoxListeners();
   updateAppAvatars();
   updateNavForUserRole();
+  initPwaInstallFlow();
 
   const urlParams = new URLSearchParams(window.location.search);
   const requestedTab = urlParams.get('tab') || localStorage.getItem('sportakip_tab') || 'home';

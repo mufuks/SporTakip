@@ -163,5 +163,36 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - `Tiger_Emblem.png`: Gövde, omuzlar ve pençeleri içeren şeffaf atletik amblem.
     - `Badge_Circular.png`: 4x supersampling (1024x1024 -> 256x256) ve Lanczos interpolasyonu ile oluşturulan pürüzsüz volt neon çerçeveli rozet.
   - **Canlı Web/PWA Entegrasyonu:** Header marka ikonu, default avatar, kart filigranı ve PWA simgeleri yeni pürüzsüz varlıklarla güncellendi.
-
+- **2026-09-22 (v2.6.7 - Kapsamlı Mobil Görünüm Overhaul & Özgün Kaplan Amblemleri Entegrasyonu):**
+  - **İstilacı PWA Banner'ının Kaldırılması:** Mobilde ekranın altını ve floating navigasyon barını kapatan hantal popup kutusu tamamen kaldırılarak arayüz ferahlatıldı. PWA kurulumu doğal yerine (Profilim sekmesindeki şık "Uygulamayı Cihazınıza Yükleyin" kartı ve iOS Safari 3 adımlı kurulum rehberi modalına) taşındı.
+  - **Özgün Kaplan Amblemleri (`tiger1` & `tiger2`):** Generic şimşek emojileri (`⚡`) sistem genelinde Compound Athletic'in özgün kükreyen kaplan amblemleriyle değiştirildi:
+    - `tiger1_badge.png`: Header mod anahtarı (`Salon`), Hızlı Yoklama sekmeleri ve butonları (`GELDİ (DERS DÜŞ)`), Serbest İdman Başlat düğmesi, Seans katılımcı baloncukları ve bildirim ikonları.
+    - `tiger2_badge.png`: Misafir karşılama kartı (3D pulsing neon glow ile) ve Profil altındaki PWA mobil uygulama kartı.
+  - **Mobil Yerleşim & Navigasyon Boşlukları (Safe Area & Padding):**
+    - `.v0-athlete-shell` alt boşluğu `padding-bottom: 110px`'e ayarlandı.
+    - `#v0-view-profile`, `#v0-view-sessions`, `#v0-view-workout` sekmelerine `110px-120px` alt boşluk verilerek "Çıkış Yap" veya "İdmanı Başlat" gibi son butonların floating bottom bar altında kalması kesin olarak engellendi.
+    - Floating bottom bar mobilde `rgba(14, 14, 18, 0.94)` frosted glass, 18px radius ve touch-friendly 44px hedef alanlarıyla ekranın altına milimetrik oturtuldu.
+  - **Service Worker & Canlı Önbellek Stratejisi:** `.js` ve `.css` varlıkları için Network-first stratejisine geçilerek geliştirme ve yayın esnasındaki stale cache ve ReferenceError problemleri kalıcı olarak çözüldü; versiyon `v2.6.7`'ye yükseltildi.
+- **2026-09-22 (v2.7.5 - Mobil Header/Geçiş İyileştirmesi, UTC Saat Dilimi Düzeltmesi, Mükerrer Ders Düşme Koruması & Bildirim Merkezi):**
+  - **Kaplan Varlıklarının Saf Şeffaflığı & Siyah Arka Plan Temizliği:**
+    - `compound-brand-icon.png`, `default-avatar.png`, `tiger1_badge.png`, `tiger2_badge.png`, `compound-watermark.png` ve PWA simgeleri sıfırdan Python ve Lanczos interpolasyonu ile üretildi; tüm köşeler ve arka plan pikselleri kesin `%100` şeffaf (`RGBA [0,0,0,0]`) hale getirildi. Siyah kutu ve dikdörtgen lekeler tamamen yok edildi.
+    - Profil avatarında "3D Avatar'a Dön" metni "Compound Avatarına Dön" olarak güncellendi.
+  - **Mobilde Üst Mod Anahtarı [Sporcu | Salon] Yerleşimi:**
+    - Header mobilde (`<= 640px`) `flex-wrap: wrap` yapısına geçirildi. 1. satırda sol tarafta Marka Logosu, sağ tarafta işlem butonları (Tema, Bildirim, Avatar) konumlandırıldı.
+    - Mod Anahtarı (`#app-mode-switcher`) 2. satıra 100% genişlikte ve konforlu dokunmatik alanlarla (`flex: 1`) yerleştirildi. Simgelerin altında kalma ve taşma sorunu tamamen giderildi.
+    - Kullanıcı talebi doğrultusunda Salon modu simgesi kaplan yerine stüdyo binası simgesi (`🏢 Salon`) ve Yoklama simgesi (`📋 Yoklama`) olarak güncellendi.
+  - **Profilim VKİ Rozeti Hizalama Düzeltmesi:**
+    - Başlık "📏 Fiziksel Profil & Metrikler" yerine daha kompakt "📏 Vücut Metrikleri" yapıldı.
+    - Rozete `flex-shrink: 0; white-space: nowrap;` verilerek "Yüksek" veya "Fazla Kilolu" kategorilerinde rozetin alt satıra kayması ve taşması engellendi.
+  - **Etkileşimli Bildirim Merkezi Çekmecesi (Notification Center Drawer):**
+    - Zil ikonuna tıklandığında beliren tekil toast mesajı yerine, alttan açılan şık `#v0-notification-drawer` çekmecesi devreye alındı.
+    - İçerik: Bugünkü Seans Hatırlatması, Kalan Paket/Ders Durumu, Sistem/PWA bilgisi.
+    - Tarayıcı Anlık Bildirim İzni (`Notification.requestPermission()`) switch'i ve "Tümünü Okundu Say" butonu eklendi.
+  - **Seans Planlama UTC (+3 Saat) Dilimi Düzeltmesi:**
+    - `handleScheduleSession` ve `handleSaveEditSession` fonksiyonlarında `.toISOString()` kullanımının yerel saat 19:00'u UTC 16:00'ya çekmesi engellendi; duvardaki saat formatında yerel ISO string (`${dateStr}T${hour}:00:00`) gönderilerek seansların tam seçilen saatte stüdyo slotuna düşmesi sağlandı.
+  - **Aynı Seansta Mükerrer Ders Düşme Koruması (Domain Logic & UI):**
+    - `GymService.MarkAttendanceAsync`: Aynı gün ve saatteki seansta sporcu zaten `Attended` (Geldi) durumundaysa mükerrer çağrılarda yeni ders düşülmesi engellendi (`InvalidOperationException` ile koruma).
+    - Durum geçişleri güvenli hale getirildi: `Attended -> Excused` yapıldığında ders hakkı sporcuya iade edilir (`CompletedLessons--`).
+    - UI tarafında (`renderAttendanceList`): İlgili saat slotunda zaten yoklaması alınmış üyeler için buton `✓ BU SEANSTA GELDİ (Ders Düşüldü)` olarak yeşil rozetle gösterilerek mükerrer tıklama riski ortadan kaldırıldı.
+  - **Test Doğrulaması:** 53 birim ve entegrasyon testinin tamamı başarıyla geçti (53/53 passed). Versiyon `v2.7.5` olarak yayınlandı.
 
