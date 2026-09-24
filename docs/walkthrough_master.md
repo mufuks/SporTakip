@@ -352,6 +352,13 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     4. **Tohum Veri Senkronizasyonu:** `DbSeeder.cs` içerisinde `sinanUser` ve `gulcinUser` kullanıcılarına `UserRole.Athlete` yetkisi tanımlandı; `Member` profilleri ve personel katılım paketleri başlangıçta garanti altına alındı.
     5. **PWA Slot Senkronizasyonu:** `app.js` içerisindeki `myReservationSlotIds` eşleştirmesinde `sessionSlotId` desteği eklendi; rezerve edilen seanslarda buton anında **"✓ Rezerve Edildi"** durumuna geçer.
   - **Doğrulama:** 63/63 test (%100 Başarılı) tamamlandı. `Hoca_1` (`+905324445566`) ile uçtan uca tarayıcı rezervasyon akışı başarıyla test edildi ve ekran görüntüsü alındı. Sürüm `v2.9.9`.
+- **2026-09-24 (v2.9.9 Refactoring - DbSeeder Temizliği & Modülerleştirme):**
+  - **Kullanıcı Talebi:** *"DbSeeder'ımızı temizleyelim büyük ölçüde, kullananlara temiz birşeyler sunalım. 1 olsun. gereksiz seans vs olmasın ama"*
+  - **Uygulanan Değişiklikler:**
+    - `DbSeeder.cs` içerisindeki eski geriye dönük isim değiştirme döngüleri, kişisel numara bazlı test hesapları, karmaşık geçmiş yoklama ve set logları tamamen temizlendi (satır sayısı 802'den 297'ye düşürüldü).
+    - Kod 6 temiz ve modüler metoda ayrıldı: `SeedSuperAdminAsync`, `SeedPackagesAsync`, `SeedExercisesAsync`, `SeedTrainersAsync`, `SeedDemoAthleteAsync`, `SeedTodaySessionsAsync`.
+    - Sistemde yalnızca 1 SuperAdmin, 1 Salon Sahibi (`SalonSahibi_1`), 1 Eğitmen (`Hoca_1`), 15 Temel Egzersiz, Standart Paketler, 1 temiz örnek sporcu (`Atlet_1`) ve seans takviminin canlı test edilebilmesi için bugüne ait yalnızca 2 seans bırakıldı.
+    - Testler 63/63 (%100) başarıyla doğrulandı.
 
 
 
