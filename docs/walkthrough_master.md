@@ -286,6 +286,15 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Doğrulama & Test:**
     - 56 birim ve entegrasyon testinin tamamı başarıyla geçti (56/56 passed).
     - Tarayıcı alt ajanı ile `+905550000000` SuperAdmin girişi, mod butonları ve sistem yönetim paneli ekran görüntüsüyle (`docs/screenshots/superadmin_panel_view.png`) doğrulandı. Sürüm `v2.9.3`.
+- **2026-09-24 (v2.9.4 - Bulut Dağıtım Altyapısı: Render, Docker & Bulut PostgreSQL / Neon Desteği):**
+  - **Docker Multi-Stage Build:** .NET 10 SDK ve ASP.NET Core 10 runtime tabanlı, katman önbellekli (layer caching) ve hafif production `Dockerfile` ile `.dockerignore` oluşturuldu.
+  - **Dinamik Port ($PORT) Entegrasyonu:** Render, Railway veya bulut konteyner ortamları tarafından atanan `$PORT` ortam değişkeni Kestrel dinleme portuna otomatik bağlandı (`builder.WebHost.UseUrls($"http://*:{port}")`).
+  - **Akıllı PostgreSQL URI Çözümleyici (`ParsePostgresConnectionString`):** Neon.tech ve Supabase tarafından sağlanan standart `postgresql://user:pass@host:5432/db` formatındaki bağlantı dizeleri otomatik ayrıştırılarak Npgsql ADO.NET formatına dönüştürüldü; `DATABASE_URL` ortam değişkeni ile sıfır konfigürasyonla çalışması sağlandı.
+  - **Veritabanı Sağlayıcı Güvenliği:** `DbSeeder.cs` içindeki SQLite'a özgü `ALTER TABLE` komutları `db.Database.IsSqlite()` şartına bağlandı; bulut PostgreSQL ortamlarında schema tohumlamanın pürüzsüz çalışması garanti altına alındı.
+  - **Neon Entegrasyonu & MCP Kurulumu:** Neon CLI (`neon@6.0.0`) ve Neon MCP sunucusu IDE'ye başarıyla entegre edildi. Proje `orange-queen-18548661` (production branch) ile linklendi, `neon.ts` yapılandırması yayınlandı (`neon deploy`).
+  - **Test Doğrulaması:** 56/56 birim ve entegrasyon testi 0 hata ile başarıyla doğrulandı. Sürüm `v2.9.4`.
+
+
 
 
 

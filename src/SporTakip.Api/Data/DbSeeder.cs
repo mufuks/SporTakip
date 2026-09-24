@@ -13,11 +13,14 @@ public static class DbSeeder
     {
         await db.Database.EnsureCreatedAsync();
 
-        // Güvenli sütun kontrolü (SQLite ALTER TABLE)
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN HeightCm INTEGER NULL;"); } catch { }
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN WeightKg TEXT NULL;"); } catch { }
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN Age INTEGER NULL;"); } catch { }
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN Gender TEXT NULL;"); } catch { }
+        // Güvenli sütun kontrolü (Yalnızca SQLite migration desteği için)
+        if (db.Database.IsSqlite())
+        {
+            try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN HeightCm INTEGER NULL;"); } catch { }
+            try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN WeightKg TEXT NULL;"); } catch { }
+            try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN Age INTEGER NULL;"); } catch { }
+            try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN Gender TEXT NULL;"); } catch { }
+        }
 
         // 0. Platform SuperAdmin Tohumlama (Platform Yöneticisi)
         var superAdminPhone = configuration?["SuperAdmin:Phone"] ?? "+905550000000";

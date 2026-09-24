@@ -10,12 +10,28 @@ using SporTakip.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Port yapılandırması (Render, Railway, Docker için dinamik $PORT desteği)
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    builder.WebHost.UseUrls($"http://*:{port}");
+}
+
 // 1. Veritabanı (PostgreSQL veya SQLite Çift Sağlayıcı Desteği)
 var provider = builder.Configuration["DatabaseProvider"] ?? "Sqlite";
 var sqliteConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=sportakip.db";
-var postgresConn = builder.Configuration.GetConnectionString("PostgresConnection");
 
-if (provider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(postgresConn))
+// DATABASE_URL veya PostgresConnection'ı al ve URI ise dönüştür
+var rawPostgres = builder.Configuration.GetConnectionString("PostgresConnection")
+                  ?? builder.Configuration["DATABASE_URL"]
+                  ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+
+var postgresConn = !string.IsNullOrWhiteSpace(rawPostgres) ? ParsePostgresConnectionString(rawPostgres) : null;
+
+var usePostgres = provider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase)
+                  || (!string.IsNullOrWhiteSpace(postgresConn) && !provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase));
+
+if (usePostgres && !string.IsNullOrEmpty(postgresConn))
 {
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseNpgsql(postgresConn));
@@ -133,3 +149,33 @@ app.MapControllers();
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+// ── PostgreSQL URI Dönüştürücü Yardımcısı (Neon, Supabase, Render uyumu) ──
+static string ParsePostgresConnectionString(string connectionStringOrUri)
+{
+    if (string.IsNullOrWhiteSpace(connectionStringOrUri)) return connectionStringOrUri;
+
+    // Eğer standart URI formatındaysa (postgres:// veya postgresql://)
+    if (connectionStringOrUri.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+        connectionStringOrUri.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        try
+        {
+            var uri = new Uri(connectionStringOrUri);
+            var userInfo = uri.UserInfo.Split(':');
+            var username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
+            var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+            var host = uri.Host;
+            var port = uri.Port > 0 ? uri.Port : 5432;
+            var database = uri.AbsolutePath.TrimStart('/');
+
+            return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;";
+        }
+        catch
+        {
+            return connectionStringOrUri;
+        }
+    }
+
+    return connectionStringOrUri;
+}
