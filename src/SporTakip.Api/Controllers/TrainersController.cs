@@ -36,6 +36,21 @@ public class TrainersController(GymService gymService) : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<TrainerDto>> UpdateTrainer(int id, [FromBody] UpdateTrainerDto dto, CancellationToken ct)
+    {
+        try
+        {
+            var trainer = await gymService.UpdateTrainerAsync(id, dto, ct);
+            if (trainer == null) return NotFound(new { error = "Eğitmen bulunamadı." });
+            return Ok(trainer);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 }
 
 

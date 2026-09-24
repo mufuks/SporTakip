@@ -18,9 +18,9 @@ public class DashboardController(GymService gymService) : ControllerBase
     }
 
     /// <summary>
-    /// Salon geneli hakediş ve ciro bordrosu (Yalnızca Salon Sahibi / Admin).
+    /// Salon geneli hakediş ve ciro bordrosu (Yalnızca Salon Sahibi / Admin ve SuperAdmin).
     /// </summary>
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "SuperAdmin, Admin")]
     [HttpGet("payroll")]
     public async Task<ActionResult<List<TrainerShareSummaryDto>>> GetPayroll(
         [FromQuery] int? year,
@@ -36,7 +36,7 @@ public class DashboardController(GymService gymService) : ControllerBase
     /// <summary>
     /// Giriş yapan antrenörün yalnızca kendi girdiği dersleri ve hak ettiği prim dökümünü döner (Gizli/Şeffaf bordro).
     /// </summary>
-    [Authorize(Roles = "Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
     [HttpGet("my-earnings")]
     public async Task<ActionResult<TrainerPersonalEarningsDto>> GetMyEarnings(
         [FromQuery] int? year,

@@ -681,6 +681,101 @@ public class GymServiceTests : IDisposable
         var activePackages = await _service.GetPackagesAsync(includeInactive: false);
         Assert.DoesNotContain(activePackages, p => p.Id == created.Id);
     }
+
+    [Fact]
+    public async Task UpdateTrainer_UpdatesTrainerFieldsAndSyncsWithAppUser()
+    {
+        // Arrange
+        var user = new AppUser
+        {
+            PhoneNumber = "+905321112233",
+            FullName = "Eski Hoca Adı",
+            Roles = UserRole.Coach,
+            PhoneVerified = true
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        var trainer = new Trainer
+        {
+            FullName = "Eski Hoca Adı",
+            Phone = "+905321112233",
+            Role = "Eğitmen",
+            DefaultShareRate = 0.40m,
+            UserId = user.Id,
+            IsActive = true
+        };
+        _db.Trainers.Add(trainer);
+        await _db.SaveChangesAsync();
+
+        // Act
+        var updateDto = new UpdateTrainerDto(
+            FullName: "Hoca_1",
+            Role: "Salon Sahibi",
+            Phone: "05329998877",
+            DefaultShareRate: 0.35m,
+            IsActive: true
+        );
+        var result = await _service.UpdateTrainerAsync(trainer.Id, updateDto);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Hoca_1", result.FullName);
+        Assert.Equal("+905329998877", result.Phone);
+        Assert.Equal("Salon Sahibi", result.Role);
+        Assert.Equal(0.35m, result.DefaultShareRate);
+
+        // Verify AppUser sync
+        var syncedUser = await _db.Users.FindAsync(user.Id);
+        Assert.NotNull(syncedUser);
+        Assert.Equal("Hoca_1", syncedUser.FullName);
+        Assert.Equal("+905329998877", syncedUser.PhoneNumber);
+    }
+
+    [Fact]
+    public async Task UpdateMember_SyncsPhoneWithAppUser()
+    {
+        // Arrange
+        var user = new AppUser
+        {
+            PhoneNumber = "+905551112233",
+            FullName = "Eski Sporcu",
+            Roles = UserRole.Athlete,
+            PhoneVerified = true
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        var member = new Member
+        {
+            FullName = "Eski Sporcu",
+            Phone = "+905551112233",
+            Email = "eski@test.com",
+            UserId = user.Id,
+            IsActive = true
+        };
+        _db.Members.Add(member);
+        await _db.SaveChangesAsync();
+
+        // Act
+        var updateDto = new UpdateMemberDto(
+            FullName: "Atlet_1",
+            Phone: "05553334455",
+            Email: "atlet1@test.com",
+            Notes: null,
+            IsActive: true
+        );
+        var result = await _service.UpdateMemberAsync(member.Id, updateDto);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Atlet_1", result.FullName);
+
+        var syncedUser = await _db.Users.FindAsync(user.Id);
+        Assert.NotNull(syncedUser);
+        Assert.Equal("Atlet_1", syncedUser.FullName);
+        Assert.Equal("+905553334455", syncedUser.PhoneNumber);
+    }
 }
 
 

@@ -197,6 +197,14 @@ public record CreateTrainerDto(
     decimal DefaultShareRate
 );
 
+public record UpdateTrainerDto(
+    string FullName,
+    string Role,
+    string? Phone,
+    decimal DefaultShareRate,
+    bool IsActive = true
+);
+
 
 public record ScheduleSessionDto(
     int SubscriptionId,

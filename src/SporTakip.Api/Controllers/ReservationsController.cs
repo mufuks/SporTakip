@@ -13,7 +13,7 @@ public class ReservationsController(IReservationService reservationService) : Co
     /// <summary>
     /// Seans için yer ayırtır. Kontenjan dolduysa otomatik olarak yedek listeye (Waitlist) alır.
     /// </summary>
-    [Authorize(Roles = "Athlete, Admin")]
+    [Authorize(Roles = "SuperAdmin, Athlete, Admin")]
     [HttpPost("book")]
     [ProducesResponseType(typeof(ReservationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -65,7 +65,7 @@ public class ReservationsController(IReservationService reservationService) : Co
     /// <summary>
     /// Salona gelen sporcunun yoklamasını onaylar (Check-in). V1 %40 İkame hoca primi ve hakediş işletilir.
     /// </summary>
-    [Authorize(Roles = "Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
     [HttpPost("check-in")]
     [ProducesResponseType(typeof(CheckInResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

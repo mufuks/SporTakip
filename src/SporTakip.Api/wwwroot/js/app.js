@@ -95,8 +95,10 @@ window.navigateTo = function(tabName) {
   const user = Api.getUser();
   const token = Api.getToken();
   const roles = user && user.roles ? user.roles : (user && user.role ? [user.role] : []);
-  const isCoach = roles.includes('Coach') || roles.includes('Admin');
-  const isAdmin = roles.includes('Admin');
+  const isSuperAdmin = roles.includes('SuperAdmin');
+  const isAdmin = roles.includes('Admin') || isSuperAdmin;
+  const isCoach = roles.includes('Coach') || isAdmin;
+  const canAccessAdminPanel = isSuperAdmin || isAdmin;
 
   // RBAC validation: Staff-only tabs
   const staffTabs = ['yoklama', 'takvim', 'dashboard', 'uyeler', 'kasa', 'hakedisim'];
@@ -111,6 +113,14 @@ window.navigateTo = function(tabName) {
       currentAppMode = 'staff';
     } else {
       currentAppMode = 'staff';
+    }
+  } else if (tabName === 'superadmin') {
+    if (!token || !user || !canAccessAdminPanel) {
+      showToast('Platform yönetim paneline erişmek için Salon Sahibi veya SuperAdmin yetkisi gereklidir.', 'error');
+      tabName = 'home';
+      currentAppMode = 'athlete';
+    } else {
+      currentAppMode = 'superadmin';
     }
   } else if (['home', 'sessions', 'workout', 'profile'].includes(tabName)) {
     currentAppMode = 'athlete';
@@ -182,9 +192,10 @@ window.setAppMode = function(mode) {
   const isSuperAdmin = roles.includes('SuperAdmin');
   const isCoach = roles.includes('Coach') || roles.includes('Admin') || isSuperAdmin;
   const isAdmin = roles.includes('Admin') || isSuperAdmin;
+  const canAccessAdminPanel = isSuperAdmin || isAdmin;
 
-  if (mode === 'superadmin' && (!token || !user || !isSuperAdmin)) {
-    showToast('Platform yönetim paneline erişmek için SuperAdmin yetkisi gereklidir.', 'error');
+  if (mode === 'superadmin' && (!token || !user || !canAccessAdminPanel)) {
+    showToast('Platform yönetim paneline erişmek için Salon Sahibi veya SuperAdmin yetkisi gereklidir.', 'error');
     mode = isCoach ? 'staff' : 'athlete';
   } else if (mode === 'staff' && (!token || !user || !isCoach)) {
     showToast('Salon masasına erişmek için antrenör veya yönetici yetkisi gereklidir.', 'error');
@@ -211,7 +222,8 @@ window.setAppMode = function(mode) {
 window.toggleAppMode = function() {
   const user = Api.getUser();
   const roles = user && user.roles ? user.roles : (user && user.role ? [user.role] : []);
-  if (roles.includes('SuperAdmin')) {
+  const canAccessAdmin = roles.includes('SuperAdmin') || roles.includes('Admin');
+  if (canAccessAdmin) {
     if (currentAppMode === 'athlete') window.setAppMode('staff');
     else if (currentAppMode === 'staff') window.setAppMode('superadmin');
     else window.setAppMode('athlete');
@@ -228,8 +240,9 @@ window.updateNavForUserRole = function() {
   const isSuperAdmin = roles.includes('SuperAdmin');
   const isAdmin = roles.includes('Admin') || isSuperAdmin;
   const isCoach = roles.includes('Coach') || isAdmin;
+  const canAccessAdminPanel = isSuperAdmin || isAdmin;
 
-  if (!isSuperAdmin && currentAppMode === 'superadmin') {
+  if (!canAccessAdminPanel && currentAppMode === 'superadmin') {
     currentAppMode = isCoach ? 'staff' : 'athlete';
   } else if (!isCoach && currentAppMode === 'staff') {
     currentAppMode = 'athlete';
@@ -241,13 +254,13 @@ window.updateNavForUserRole = function() {
   const staffBtn = document.getElementById('mode-btn-staff');
   const superAdminBtn = document.getElementById('mode-btn-superadmin');
   if (modeSwitcher) {
-    const showSwitcher = isCoach || isSuperAdmin;
+    const showSwitcher = isCoach || canAccessAdminPanel;
     modeSwitcher.style.setProperty('display', showSwitcher ? 'inline-flex' : 'none', 'important');
     modeSwitcher.classList.toggle('hidden-switcher', !showSwitcher);
     if (athleteBtn) athleteBtn.classList.toggle('active', currentAppMode === 'athlete');
     if (staffBtn) staffBtn.classList.toggle('active', currentAppMode === 'staff');
     if (superAdminBtn) {
-      superAdminBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
+      superAdminBtn.style.display = canAccessAdminPanel ? 'inline-flex' : 'none';
       superAdminBtn.classList.toggle('active', currentAppMode === 'superadmin');
     }
   }
@@ -281,11 +294,11 @@ window.updateNavForUserRole = function() {
   const navSuperAdminBtn = document.getElementById('nav-btn-superadmin');
   const mobSuperAdminBtn = document.getElementById('mob-btn-superadmin');
   if (navSuperAdminBtn) {
-    navSuperAdminBtn.style.display = (currentAppMode === 'superadmin' && isSuperAdmin) ? 'inline-flex' : 'none';
+    navSuperAdminBtn.style.display = (currentAppMode === 'superadmin' && canAccessAdminPanel) ? 'inline-flex' : 'none';
     navSuperAdminBtn.classList.toggle('active', currentTab === 'superadmin');
   }
   if (mobSuperAdminBtn) {
-    mobSuperAdminBtn.style.display = (currentAppMode === 'superadmin' && isSuperAdmin) ? 'flex' : 'none';
+    mobSuperAdminBtn.style.display = (currentAppMode === 'superadmin' && canAccessAdminPanel) ? 'flex' : 'none';
     mobSuperAdminBtn.classList.toggle('active', currentTab === 'superadmin');
   }
 
@@ -1003,7 +1016,7 @@ function renderTrainersTable(trainers) {
   const tbody = document.getElementById('trainers-table-body');
   if (!tbody) return;
   if (!trainers || trainers.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">Kayıtlı eğitmen bulunamadı.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:20px;">Kayıtlı eğitmen bulunamadı.</td></tr>';
     return;
   }
   tbody.innerHTML = trainers.map(t => `
@@ -1012,10 +1025,52 @@ function renderTrainersTable(trainers) {
       <td>${getRoleBadgeHtml(t.role)}</td>
       <td style="white-space:nowrap;">${t.phone ? escapeHtml(t.phone) : '<span style="color:var(--text-muted);">-</span>'}</td>
       <td style="white-space:nowrap;"><strong style="color:var(--flame-orange);">%${Math.round(t.defaultShareRate * 100)}</strong></td>
-      <td><span class="lesson-badge badge-green">Aktif</span></td>
+      <td><span class="lesson-badge ${t.isActive ? 'badge-green' : 'badge-red'}">${t.isActive ? 'Aktif' : 'Pasif'}</span></td>
+      <td style="text-align:right;">
+        <button class="btn-secondary" style="padding:4px 9px; font-size:11px; color:var(--cyber-cyan); border-color:rgba(0,242,254,0.3);" onclick="openEditTrainerModal(${t.id})">
+          ✏️ Düzenle
+        </button>
+      </td>
     </tr>
   `).join('');
 }
+
+window.openEditTrainerModal = function(id) {
+  const trainer = allTrainers.find(t => t.id === id);
+  if (!trainer) return;
+  document.getElementById('edit-t-id').value = trainer.id;
+  document.getElementById('edit-t-name').value = trainer.fullName || '';
+  document.getElementById('edit-t-role').value = trainer.role || 'Eğitmen';
+  document.getElementById('edit-t-phone').value = trainer.phone || '';
+  document.getElementById('edit-t-share-rate').value = Math.round((trainer.defaultShareRate || 0.40) * 100);
+  document.getElementById('edit-t-active').checked = trainer.isActive !== false;
+  openModal('modal-edit-trainer');
+};
+
+window.handleUpdateTrainerSubmit = async function(e) {
+  e.preventDefault();
+  const id = parseInt(document.getElementById('edit-t-id').value);
+  const fullName = document.getElementById('edit-t-name').value.trim();
+  const role = document.getElementById('edit-t-role').value;
+  const phone = document.getElementById('edit-t-phone').value.trim();
+  const shareRate = parseFloat(document.getElementById('edit-t-share-rate').value) / 100;
+  const isActive = document.getElementById('edit-t-active').checked;
+
+  try {
+    const updated = await Api.updateTrainer(id, {
+      fullName,
+      role,
+      phone: phone || null,
+      defaultShareRate: shareRate,
+      isActive
+    });
+    showToast(`✅ Eğitmen ${updated.fullName} güncellendi!`);
+    closeModal('modal-edit-trainer');
+    await loadInitialData();
+  } catch (err) {
+    showToast(`Eğitmen güncellenemedi: ${err.message}`, 'error');
+  }
+};
 
 function updateTrainerSelects(trainers) {
   const options = trainers.map(t => `<option value="${t.id}">${escapeHtml(t.fullName)} (${escapeHtml(t.role)})</option>`).join('');
@@ -1922,7 +1977,13 @@ async function loadAthleteHome() {
 
     if (greetingSubEl) greetingSubEl.innerText = 'Merhaba,';
     if (nameEl) nameEl.innerText = user.fullName || user.phoneNumber || 'Sporcu';
-    if (roleEl) roleEl.innerText = user.role === 'Admin' ? 'Salon Yöneticisi' : user.role === 'Coach' ? 'Antrenör' : 'Aktif Sporcu';
+    const homeRoles = user.roles ? user.roles : (user.role ? [user.role] : []);
+    if (roleEl) {
+      if (homeRoles.includes('SuperAdmin')) roleEl.innerText = '🛡️ SuperAdmin';
+      else if (homeRoles.includes('Admin')) roleEl.innerText = 'Salon Yöneticisi';
+      else if (homeRoles.includes('Coach')) roleEl.innerText = 'Antrenör';
+      else roleEl.innerText = 'Aktif Sporcu';
+    }
     if (badgeDot) badgeDot.style.background = '#CCFF00';
     if (loginHeaderBtn) loginHeaderBtn.style.display = 'none';
 
@@ -2656,7 +2717,7 @@ window.renderAthleteProfile = async function() {
           <p style="font-size:13px; font-family:monospace; color:var(--text-muted); margin:0 0 6px 0;">${escapeHtml(user.phoneNumber)}</p>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <span style="font-size:11px; font-weight:700; color:var(--volt-lime); background:var(--volt-lime-muted); padding:2px 8px; border-radius:999px; border:1px solid var(--border-subtle);">
-              ${user.role === 'Admin' ? 'Salon Yöneticisi' : user.role === 'Coach' ? 'Antrenör' : 'Aktif Üye'}
+              ${(user.roles && user.roles.includes('SuperAdmin')) ? '🛡️ SuperAdmin' : ((user.roles && user.roles.includes('Admin')) || user.role === 'Admin') ? 'Salon Yöneticisi' : ((user.roles && user.roles.includes('Coach')) || user.role === 'Coach') ? 'Antrenör' : 'Aktif Üye'}
             </span>
             <button type="button" onclick="document.getElementById('v0-avatar-file-input').click()" style="background:transparent; border:1px solid var(--border-medium); color:var(--text-secondary); font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; cursor:pointer;">
               Fotoğraf Değiştir
@@ -3745,6 +3806,10 @@ window.handleLeadSubmit = function(event) {
 
 // ==================== 14. SUPERADMIN PLATFORM YÖNETİMİ ====================
 let superAdminUsers = [];
+let currentSaSortCol = 'created';
+let currentSaSortDir = 'desc';
+let currentSaRoleFilter = 'all';
+let currentSaSearchQuery = '';
 
 window.loadSuperAdminView = async function() {
   const statsUsers = document.getElementById('sa-stat-total-users');
@@ -3771,7 +3836,8 @@ window.loadSuperAdminView = async function() {
     if (statsSubsMeta) statsSubsMeta.innerText = `${stats.activeSubscriptions || 0} Aktif Üyelik (${stats.totalSubscriptions || 0} Toplam)`;
 
     superAdminUsers = users || [];
-    renderSuperAdminUsersTable(superAdminUsers);
+    updateRoleCounts();
+    filterAndRenderSuperAdminUsers();
   } catch (err) {
     if (tbody) {
       tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:var(--pulse-rose);">Veri yüklenemedi: ${escapeHtml(err.message)}</td></tr>`;
@@ -3780,12 +3846,130 @@ window.loadSuperAdminView = async function() {
   }
 };
 
+window.sortSuperAdminUsers = function(col) {
+  if (currentSaSortCol === col) {
+    currentSaSortDir = currentSaSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    currentSaSortCol = col;
+    currentSaSortDir = col === 'created' ? 'desc' : 'asc';
+  }
+  updateSortIcons();
+  filterAndRenderSuperAdminUsers();
+};
+
+window.filterSuperAdminByRole = function(role) {
+  currentSaRoleFilter = role;
+  document.querySelectorAll('.sa-chip').forEach(c => {
+    const chipRole = c.id.replace('sa-chip-', '');
+    const isActive = (role === 'all' && c.id === 'sa-chip-all') ||
+                     (role === 'SuperAdmin' && c.id === 'sa-chip-superadmin') ||
+                     (role === 'Admin' && c.id === 'sa-chip-admin') ||
+                     (role === 'Coach' && c.id === 'sa-chip-coach') ||
+                     (role === 'Athlete' && c.id === 'sa-chip-athlete');
+    c.classList.toggle('active', isActive);
+  });
+  filterAndRenderSuperAdminUsers();
+};
+
+window.filterSuperAdminUsers = function(query) {
+  currentSaSearchQuery = (query || '').toLowerCase().trim();
+  filterAndRenderSuperAdminUsers();
+};
+
+function filterAndRenderSuperAdminUsers() {
+  let list = [...superAdminUsers];
+
+  // 1. Rol filtresi
+  if (currentSaRoleFilter !== 'all') {
+    list = list.filter(u => {
+      const roles = Array.isArray(u.roles) ? u.roles : [];
+      return roles.includes(currentSaRoleFilter);
+    });
+  }
+
+  // 2. Metin araması (İsim, Telefon, ID, Profil)
+  if (currentSaSearchQuery) {
+    list = list.filter(u =>
+      (u.fullName && u.fullName.toLowerCase().includes(currentSaSearchQuery)) ||
+      (u.phoneNumber && u.phoneNumber.toLowerCase().includes(currentSaSearchQuery)) ||
+      (u.linkedProfile && u.linkedProfile.toLowerCase().includes(currentSaSearchQuery)) ||
+      String(u.id) === currentSaSearchQuery
+    );
+  }
+
+  // 3. Sıralama
+  list.sort((a, b) => {
+    let valA, valB;
+    if (currentSaSortCol === 'name') {
+      valA = (a.fullName || '').toLowerCase();
+      valB = (b.fullName || '').toLowerCase();
+      return currentSaSortDir === 'asc' ? valA.localeCompare(valB, 'tr') : valB.localeCompare(valA, 'tr');
+    } else if (currentSaSortCol === 'phone') {
+      valA = (a.phoneNumber || '').toLowerCase();
+      valB = (b.phoneNumber || '').toLowerCase();
+      return currentSaSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (currentSaSortCol === 'role') {
+      const roleRank = r => r.includes('SuperAdmin') ? 4 : (r.includes('Admin') ? 3 : (r.includes('Coach') ? 2 : 1));
+      valA = roleRank(a.roles || []);
+      valB = roleRank(b.roles || []);
+      return currentSaSortDir === 'asc' ? valA - valB : valB - valA;
+    } else if (currentSaSortCol === 'profile') {
+      valA = (a.linkedProfile || '').toLowerCase();
+      valB = (b.linkedProfile || '').toLowerCase();
+      return currentSaSortDir === 'asc' ? valA.localeCompare(valB, 'tr') : valB.localeCompare(valA, 'tr');
+    } else { // created
+      valA = new Date(a.createdAt || 0).getTime();
+      valB = new Date(b.createdAt || 0).getTime();
+      return currentSaSortDir === 'asc' ? valA - valB : valB - valA;
+    }
+  });
+
+  renderSuperAdminUsersTable(list);
+}
+
+function updateSortIcons() {
+  const cols = ['name', 'phone', 'role', 'profile', 'created'];
+  cols.forEach(c => {
+    const el = document.getElementById(`sort-icon-${c}`);
+    if (!el) return;
+    if (currentSaSortCol === c) {
+      el.innerText = currentSaSortDir === 'asc' ? '▲' : '▼';
+      el.style.color = 'var(--volt-lime)';
+      el.style.opacity = '1';
+    } else {
+      el.innerText = '↕';
+      el.style.color = 'inherit';
+      el.style.opacity = '0.4';
+    }
+  });
+}
+
+function updateRoleCounts() {
+  const countAll = superAdminUsers.length;
+  const countSa = superAdminUsers.filter(u => (u.roles || []).includes('SuperAdmin')).length;
+  const countOwner = superAdminUsers.filter(u => (u.roles || []).includes('Admin')).length;
+  const countCoach = superAdminUsers.filter(u => (u.roles || []).includes('Coach')).length;
+  const countAthlete = superAdminUsers.filter(u => (u.roles || []).includes('Athlete')).length;
+
+  const elAll = document.getElementById('sa-count-all');
+  const elSa = document.getElementById('sa-count-sa');
+  const elOwner = document.getElementById('sa-count-owner');
+  const elCoach = document.getElementById('sa-count-coach');
+  const elAthlete = document.getElementById('sa-count-athlete');
+
+  if (elAll) elAll.innerText = countAll;
+  if (elSa) elSa.innerText = countSa;
+  if (elOwner) elOwner.innerText = countOwner;
+  if (elCoach) elCoach.innerText = countCoach;
+  if (elAthlete) elAthlete.innerText = countAthlete;
+}
+
 window.renderSuperAdminUsersTable = function(usersList) {
   const tbody = document.getElementById('sa-users-table-body');
   if (!tbody) return;
 
   if (!usersList || usersList.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:var(--text-muted);">Kayıtlı kullanıcı bulunamadı.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:var(--text-muted);">Arama kriterlerine uygun kullanıcı bulunamadı.</td></tr>`;
     return;
   }
 
@@ -3812,7 +3996,7 @@ window.renderSuperAdminUsersTable = function(usersList) {
       <tr>
         <td>
           <div style="font-weight:700; color:var(--text-primary); font-size:13.5px;">${escapeHtml(u.fullName || 'İsimsiz Kullanıcı')}</div>
-          <div style="font-size:11px; color:var(--text-muted);">ID: ${escapeHtml(u.id)}</div>
+          <div style="font-size:11px; color:var(--text-muted);">ID: ${escapeHtml(u.id)} ${u.isActive === false ? '<span style="color:var(--pulse-rose); font-weight:700;">(Pasif)</span>' : ''}</div>
         </td>
         <td>
           <code style="font-size:12.5px; color:var(--text-primary); background:rgba(255,255,255,0.04); padding:2px 6px; border-radius:4px;">${escapeHtml(u.phoneNumber)}</code>
@@ -3830,6 +4014,9 @@ window.renderSuperAdminUsersTable = function(usersList) {
         </td>
         <td style="text-align:right;">
           <div style="display:inline-flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+            <button class="btn-primary" style="padding:4px 10px; font-size:11px; background:rgba(204,255,0,0.15); color:var(--volt-lime); border:1px solid var(--volt-lime); font-weight:800;" onclick="openEditUserModal(${u.id})">
+              ✏️ Düzenle
+            </button>
             ${isAdmin ? `
               <button class="btn-secondary" style="padding:4px 9px; font-size:11px; color:var(--pulse-rose); border-color:rgba(244,63,94,0.3);" onclick="handleAssignRole('${escapeJsString(u.id)}', 'Admin', false)">
                 ✕ Salon Sahibini Al
@@ -3855,17 +4042,94 @@ window.renderSuperAdminUsersTable = function(usersList) {
   }).join('');
 };
 
-window.filterSuperAdminUsers = function(query) {
-  const q = (query || '').toLowerCase().trim();
-  if (!q) {
-    renderSuperAdminUsersTable(superAdminUsers);
-    return;
+window.openEditUserModal = function(userId) {
+  const u = superAdminUsers.find(x => x.id === userId);
+  if (!u) return;
+
+  const currUser = Api.getUser();
+  const currRoles = currUser && currUser.roles ? currUser.roles : [];
+  const isCallerSuperAdmin = currRoles.includes('SuperAdmin');
+
+  document.getElementById('edit-user-id').value = u.id;
+  document.getElementById('edit-user-fullname').value = u.fullName || '';
+  document.getElementById('edit-user-phone').value = u.phoneNumber || '';
+
+  const roles = Array.isArray(u.roles) ? u.roles : [];
+  const saCheck = document.getElementById('edit-user-role-superadmin');
+  const adminCheck = document.getElementById('edit-user-role-admin');
+  const coachCheck = document.getElementById('edit-user-role-coach');
+  const athleteCheck = document.getElementById('edit-user-role-athlete');
+
+  if (saCheck) {
+    saCheck.checked = roles.includes('SuperAdmin');
+    saCheck.disabled = !isCallerSuperAdmin;
+    const lblSa = document.getElementById('lbl-role-superadmin');
+    if (lblSa) lblSa.style.opacity = isCallerSuperAdmin ? '1' : '0.5';
   }
-  const filtered = superAdminUsers.filter(u => 
-    (u.fullName && u.fullName.toLowerCase().includes(q)) ||
-    (u.phoneNumber && u.phoneNumber.toLowerCase().includes(q))
-  );
-  renderSuperAdminUsersTable(filtered);
+  if (adminCheck) adminCheck.checked = roles.includes('Admin');
+  if (coachCheck) coachCheck.checked = roles.includes('Coach');
+  if (athleteCheck) athleteCheck.checked = roles.includes('Athlete') || roles.length === 0;
+
+  // Eğitmen ayarları
+  const trRole = document.getElementById('edit-user-trainer-role');
+  if (trRole) trRole.value = u.trainerRole || 'Eğitmen';
+  const trShare = document.getElementById('edit-user-share-rate');
+  if (trShare) trShare.value = u.defaultShareRate != null ? Math.round(u.defaultShareRate * 100) : 40;
+
+  const actCheck = document.getElementById('edit-user-is-active');
+  if (actCheck) actCheck.checked = u.isActive !== false;
+  const verCheck = document.getElementById('edit-user-phone-verified');
+  if (verCheck) verCheck.checked = u.phoneVerified !== false;
+
+  toggleTrainerFields();
+  openModal('modal-edit-user');
+};
+
+window.toggleTrainerFields = function() {
+  const isAdmin = document.getElementById('edit-user-role-admin')?.checked;
+  const isCoach = document.getElementById('edit-user-role-coach')?.checked;
+  const container = document.getElementById('edit-user-trainer-fields');
+  if (container) {
+    container.style.display = (isAdmin || isCoach) ? 'block' : 'none';
+  }
+};
+
+window.handleSaveEditUser = async function(e) {
+  e.preventDefault();
+  const userId = parseInt(document.getElementById('edit-user-id').value);
+  const fullName = document.getElementById('edit-user-fullname').value.trim();
+  const phoneNumber = document.getElementById('edit-user-phone').value.trim();
+  const isActive = document.getElementById('edit-user-is-active').checked;
+  const phoneVerified = document.getElementById('edit-user-phone-verified').checked;
+
+  const roles = [];
+  if (document.getElementById('edit-user-role-superadmin')?.checked) roles.push('SuperAdmin');
+  if (document.getElementById('edit-user-role-admin')?.checked) roles.push('Admin');
+  if (document.getElementById('edit-user-role-coach')?.checked) roles.push('Coach');
+  if (document.getElementById('edit-user-role-athlete')?.checked) roles.push('Athlete');
+
+  const trainerRole = document.getElementById('edit-user-trainer-role')?.value;
+  const shareRateVal = parseFloat(document.getElementById('edit-user-share-rate')?.value || '40');
+  const defaultShareRate = !isNaN(shareRateVal) ? shareRateVal / 100 : 0.40;
+
+  try {
+    const updated = await Api.updateSuperAdminUser(userId, {
+      fullName,
+      phoneNumber,
+      isActive,
+      phoneVerified,
+      roles,
+      trainerRole,
+      defaultShareRate
+    });
+
+    showToast(`✅ "${updated.fullName}" bilgileri ve numarası başarıyla güncellendi!`);
+    closeModal('modal-edit-user');
+    await loadSuperAdminView();
+    await loadInitialData();
+  } catch (err) {
+    showToast(`Güncelleme hatası: ${err.message}`, 'error');
+  }
 };
 
 window.handleAssignRole = async function(userId, role, assign) {
@@ -3877,6 +4141,7 @@ window.handleAssignRole = async function(userId, role, assign) {
     await Api.assignSuperAdminRole(userId, role, assign);
     showToast(`✓ Kullanıcı yetkisi başarıyla güncellendi!`);
     await loadSuperAdminView();
+    await loadInitialData();
   } catch (err) {
     showToast(`Yetki güncelleme hatası: ${err.message}`, 'error');
   }
@@ -3906,6 +4171,7 @@ window.handleCreateGymOwnerSubmit = async function(event) {
     showToast(`👑 Salon Sahibi "${fullName}" başarıyla tanımlandı!`);
     closeModal('modal-create-owner');
     await loadSuperAdminView();
+    await loadInitialData();
   } catch (err) {
     showToast(`Salon sahibi eklenemedi: ${err.message}`, 'error');
   }

@@ -244,6 +244,7 @@ public class GymService(AppDbContext db)
 
         if (member == null) return null;
 
+        var normalizedPhone = string.IsNullOrWhiteSpace(dto.Phone) ? null : AuthService.NormalizePhoneNumber(dto.Phone);
         member.FullName = dto.FullName.Trim();
         member.Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim();
         member.Email = string.IsNullOrWhiteSpace(dto.Email) ? null : dto.Email.Trim();
@@ -254,6 +255,24 @@ public class GymService(AppDbContext db)
         if (dto.WeightKg.HasValue) member.WeightKg = dto.WeightKg;
         if (dto.Age.HasValue) member.Age = dto.Age;
         if (!string.IsNullOrWhiteSpace(dto.Gender)) member.Gender = dto.Gender.Trim();
+
+        if (member.UserId.HasValue)
+        {
+            var user = await db.Users.FindAsync(new object[] { member.UserId.Value }, cancellationToken);
+            if (user != null)
+            {
+                user.FullName = member.FullName;
+                user.IsActive = member.IsActive;
+                if (!string.IsNullOrWhiteSpace(normalizedPhone))
+                {
+                    var conflict = await db.Users.AnyAsync(u => u.Id != user.Id && u.PhoneNumber == normalizedPhone, cancellationToken);
+                    if (!conflict)
+                    {
+                        user.PhoneNumber = normalizedPhone;
+                    }
+                }
+            }
+        }
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -811,6 +830,44 @@ public class GymService(AppDbContext db)
         db.Trainers.Add(trainer);
         await db.SaveChangesAsync(cancellationToken);
 
+        return new TrainerDto(trainer.Id, trainer.FullName, trainer.Role, trainer.Phone, trainer.DefaultShareRate, trainer.IsActive);
+    }
+
+    public async Task<TrainerDto?> UpdateTrainerAsync(int id, UpdateTrainerDto dto, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(dto.FullName))
+            throw new ArgumentException("Eğitmen adı boş olamaz.", nameof(dto));
+
+        var trainer = await db.Trainers.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (trainer == null) return null;
+
+        var normalizedPhone = !string.IsNullOrWhiteSpace(dto.Phone) ? AuthService.NormalizePhoneNumber(dto.Phone) : null;
+        trainer.FullName = dto.FullName.Trim();
+        trainer.Role = string.IsNullOrWhiteSpace(dto.Role) ? "Eğitmen" : dto.Role.Trim();
+        trainer.Phone = normalizedPhone;
+        if (dto.DefaultShareRate >= 0)
+            trainer.DefaultShareRate = dto.DefaultShareRate;
+        trainer.IsActive = dto.IsActive;
+
+        if (trainer.UserId.HasValue)
+        {
+            var user = await db.Users.FindAsync(new object[] { trainer.UserId.Value }, cancellationToken);
+            if (user != null)
+            {
+                user.FullName = trainer.FullName;
+                user.IsActive = trainer.IsActive;
+                if (!string.IsNullOrWhiteSpace(normalizedPhone))
+                {
+                    var conflict = await db.Users.AnyAsync(u => u.Id != user.Id && u.PhoneNumber == normalizedPhone, cancellationToken);
+                    if (!conflict)
+                    {
+                        user.PhoneNumber = normalizedPhone;
+                    }
+                }
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
         return new TrainerDto(trainer.Id, trainer.FullName, trainer.Role, trainer.Phone, trainer.DefaultShareRate, trainer.IsActive);
     }
 

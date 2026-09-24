@@ -15,7 +15,7 @@ public class WorkoutsController(IWorkoutService workoutService) : ControllerBase
     /// <summary>
     /// Yeni bir antrenman şablonu ve sıralı egzersizlerini oluşturur (Antrenör veya Admin).
     /// </summary>
-    [Authorize(Roles = "Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
     [HttpPost("templates")]
     [ProducesResponseType(typeof(WorkoutTemplateDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -70,7 +70,7 @@ public class WorkoutsController(IWorkoutService workoutService) : ControllerBase
     /// <summary>
     /// Canlı idmanı başlatır. TemplateId verilirse şablondaki hedef set kadar boş SetLog kutucukları otomatik türetilir.
     /// </summary>
-    [Authorize(Roles = "Athlete, Admin")]
+    [Authorize(Roles = "SuperAdmin, Athlete, Admin")]
     [HttpPost("start")]
     [ProducesResponseType(typeof(WorkoutLogDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -96,7 +96,7 @@ public class WorkoutsController(IWorkoutService workoutService) : ControllerBase
     /// <summary>
     /// Canlı idman esnasında tek bir seti loglar (ağırlık, tekrar, süre, tamamlandı durumu).
     /// </summary>
-    [Authorize(Roles = "Athlete, Admin")]
+    [Authorize(Roles = "SuperAdmin, Athlete, Admin")]
     [HttpPut("sets/{setLogId:int}")]
     [ProducesResponseType(typeof(SetLogDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -123,7 +123,7 @@ public class WorkoutsController(IWorkoutService workoutService) : ControllerBase
     /// <summary>
     /// Canlı idman oturumunu tamamlar (süreyi hesaplar, puan ve antrenman notlarını kaydeder).
     /// </summary>
-    [Authorize(Roles = "Athlete, Admin")]
+    [Authorize(Roles = "SuperAdmin, Athlete, Admin")]
     [HttpPost("{workoutLogId:int}/finish")]
     [ProducesResponseType(typeof(WorkoutLogDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -166,7 +166,7 @@ public class WorkoutsController(IWorkoutService workoutService) : ControllerBase
     /// <summary>
     /// Giriş yapan sporcunun geçmiş idman oturumlarını listeler.
     /// </summary>
-    [Authorize(Roles = "Athlete, Admin")]
+    [Authorize(Roles = "SuperAdmin, Athlete, Admin")]
     [HttpGet("history")]
     [ProducesResponseType(typeof(List<WorkoutLogDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMyWorkoutHistory([FromQuery] int take = 20, CancellationToken ct = default)
@@ -183,7 +183,7 @@ public class WorkoutsController(IWorkoutService workoutService) : ControllerBase
     /// <summary>
     /// Belirtilen egzersiz için sporcunun kişisel rekorunu (PR), tahmini 1RM değerini ve geçmiş tamamlanan setlerini döner.
     /// </summary>
-    [Authorize(Roles = "Athlete, Admin")]
+    [Authorize(Roles = "SuperAdmin, Athlete, Admin")]
     [HttpGet("progress/exercises/{exerciseId:int}")]
     [ProducesResponseType(typeof(ExerciseProgressDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

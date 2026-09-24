@@ -16,7 +16,7 @@ public class PackagesController(GymService gymService) : ControllerBase
         return Ok(packages);
     }
 
-    [Authorize(Roles = "Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
     [HttpPost]
     public async Task<ActionResult<PackageDto>> CreatePackage([FromBody] CreatePackageDto dto, CancellationToken ct)
     {
@@ -31,7 +31,7 @@ public class PackagesController(GymService gymService) : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
     [HttpPut("{id}")]
     public async Task<ActionResult<PackageDto>> UpdatePackage(int id, [FromBody] UpdatePackageDto dto, CancellationToken ct)
     {
@@ -50,7 +50,7 @@ public class PackagesController(GymService gymService) : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "SuperAdmin, Admin")]
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeletePackage(int id, CancellationToken ct)
     {

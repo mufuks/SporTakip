@@ -684,6 +684,7 @@
                 <th>Telefon</th>
                 <th>Varsayılan Prim</th>
                 <th>Durum</th>
+                <th style="text-align:right;">İşlem</th>
               </tr>
             </thead>
             <tbody id="trainers-table-body">
@@ -889,25 +890,44 @@
 
       <!-- Kullanıcı & Yetki Yönetim Tablosu -->
       <div class="glass-card table-responsive" style="margin-bottom:24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
           <div>
             <h3 style="font-size:17px; font-weight:800; color:var(--text-primary); margin:0;">👥 Kayıtlı Kullanıcılar ve Roller</h3>
-            <p style="font-size:12px; color:var(--text-muted); margin:2px 0 0 0;">Kullanıcılara doğrudan Salon Sahibi (Admin) veya Eğitmen (Coach) yetkisi atayın.</p>
+            <p style="font-size:12px; color:var(--text-muted); margin:2px 0 0 0;">Kullanıcıları arayın, sıralayın, telefon veya yetkilerini tek dokunuşla düzenleyin.</p>
           </div>
           <div class="search-box" style="max-width:280px; width:100%;">
             <input type="text" id="sa-user-search" class="search-input" placeholder="İsim veya telefon ara..." oninput="filterSuperAdminUsers(this.value)">
           </div>
         </div>
 
-        <table class="custom-table">
+        <!-- Rol Filtreleme Çipleri -->
+        <div class="sa-role-filter-chips" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
+          <button type="button" class="sa-chip active" id="sa-chip-all" onclick="filterSuperAdminByRole('all')">Tümü (<span id="sa-count-all">0</span>)</button>
+          <button type="button" class="sa-chip" id="sa-chip-superadmin" onclick="filterSuperAdminByRole('SuperAdmin')">🛡️ SuperAdmin (<span id="sa-count-sa">0</span>)</button>
+          <button type="button" class="sa-chip" id="sa-chip-admin" onclick="filterSuperAdminByRole('Admin')">👑 Salon Sahibi (<span id="sa-count-owner">0</span>)</button>
+          <button type="button" class="sa-chip" id="sa-chip-coach" onclick="filterSuperAdminByRole('Coach')">🥊 Eğitmen (<span id="sa-count-coach">0</span>)</button>
+          <button type="button" class="sa-chip" id="sa-chip-athlete" onclick="filterSuperAdminByRole('Athlete')">🏃 Sporcu (<span id="sa-count-athlete">0</span>)</button>
+        </div>
+
+        <table class="custom-table" id="sa-users-table">
           <thead>
             <tr>
-              <th>Kullanıcı</th>
-              <th>Telefon</th>
-              <th>Mevcut Roller</th>
-              <th>Bağlı Profil</th>
-              <th>Kayıt Tarihi</th>
-              <th style="text-align:right;">Yetki Yönetimi</th>
+              <th onclick="sortSuperAdminUsers('name')" style="cursor:pointer; user-select:none;" title="Ada göre sırala">
+                Kullanıcı <span id="sort-icon-name" class="sa-sort-icon" style="font-size:11px; opacity:0.6;">↕</span>
+              </th>
+              <th onclick="sortSuperAdminUsers('phone')" style="cursor:pointer; user-select:none;" title="Telefona göre sırala">
+                Telefon <span id="sort-icon-phone" class="sa-sort-icon" style="font-size:11px; opacity:0.6;">↕</span>
+              </th>
+              <th onclick="sortSuperAdminUsers('role')" style="cursor:pointer; user-select:none;" title="Role göre sırala">
+                Mevcut Roller <span id="sort-icon-role" class="sa-sort-icon" style="font-size:11px; opacity:0.6;">↕</span>
+              </th>
+              <th onclick="sortSuperAdminUsers('profile')" style="cursor:pointer; user-select:none;" title="Profile göre sırala">
+                Bağlı Profil <span id="sort-icon-profile" class="sa-sort-icon" style="font-size:11px; opacity:0.6;">↕</span>
+              </th>
+              <th onclick="sortSuperAdminUsers('created')" style="cursor:pointer; user-select:none;" title="Tarihe göre sırala">
+                Kayıt Tarihi <span id="sort-icon-created" class="sa-sort-icon" style="font-size:11px; color:var(--volt-lime);">▼</span>
+              </th>
+              <th style="text-align:right;">İşlemler & Yetki</th>
             </tr>
           </thead>
           <tbody id="sa-users-table-body">
@@ -1001,6 +1021,51 @@
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
           <button type="button" class="btn-secondary" onclick="closeModal('modal-new-trainer')">İptal</button>
           <button type="submit" class="btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Hoca / Eğitmen Düzenle -->
+  <div class="modal-backdrop" id="modal-edit-trainer">
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header">
+        <div>
+          <h3>✏️ Eğitmen Bilgilerini Düzenle</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;" id="edit-trainer-subtitle">Kadro ve Prim Ayarları</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-edit-trainer')">✕</button>
+      </div>
+      <form id="edit-trainer-form" onsubmit="handleUpdateTrainerSubmit(event)">
+        <input type="hidden" id="edit-t-id">
+        <div class="form-group">
+          <label>Hoca Ad Soyad *</label>
+          <input type="text" id="edit-t-name" class="form-control" placeholder="Örn: Hoca_1" required>
+        </div>
+        <div class="form-group">
+          <label>Rolü *</label>
+          <select id="edit-t-role" class="form-control" required>
+            <option value="Eğitmen">Eğitmen (Grup & Bireysel)</option>
+            <option value="PT">PT (Özel Ders Antrenörü)</option>
+            <option value="Salon Sahibi">Salon Sahibi / İşletmeci</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Telefon Numarası</label>
+          <input type="tel" id="edit-t-phone" class="form-control" placeholder="05XXXXXXXXX veya +905...">
+          <small style="color:var(--text-muted); font-size:11px; margin-top:3px; display:block;">Giriş hesabı ile otomatik senkronize edilir.</small>
+        </div>
+        <div class="form-group">
+          <label>Varsayılan Prim / Hakediş Oranı (%) *</label>
+          <input type="number" id="edit-t-share-rate" class="form-control" value="40" min="0" max="100" step="1" required>
+        </div>
+        <div class="form-group" style="display:flex; align-items:center; gap:10px; margin-top:14px; padding:10px 14px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:12px;">
+          <input type="checkbox" id="edit-t-active" style="width:18px; height:18px; accent-color:var(--volt-lime); cursor:pointer;">
+          <label for="edit-t-active" style="margin:0; font-size:13px; font-weight:700; color:var(--text-primary); cursor:pointer;">Kadroda Aktif (Seanslara atanabilir)</label>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-edit-trainer')">İptal</button>
+          <button type="submit" class="btn-primary" style="font-weight:800;">💾 Güncelle</button>
         </div>
       </form>
     </div>
@@ -1417,6 +1482,124 @@
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
           <button type="button" class="btn-secondary" onclick="closeModal('modal-edit-member-notes')">Vazgeç</button>
           <button type="submit" class="btn-primary">💾 Notu Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Kullanıcıyı Düzenle (SuperAdmin & Salon Sahibi) -->
+  <div class="modal-backdrop" id="modal-edit-user">
+    <div class="modal-content" style="max-width:520px;">
+      <div class="modal-header">
+        <div>
+          <h3>✏️ Kullanıcıyı Düzenle</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;" id="edit-user-subtitle">Telefon, İsim ve Yetki Yönetimi</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-edit-user')">✕</button>
+      </div>
+      <form id="edit-user-form" onsubmit="handleSaveEditUser(event)">
+        <input type="hidden" id="edit-user-id">
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Ad Soyad *</label>
+            <input type="text" id="edit-user-fullname" class="form-control" placeholder="Örn: SalonSahibi_1" required>
+          </div>
+          <div class="form-group">
+            <label>Telefon Numarası *</label>
+            <input type="tel" id="edit-user-phone" class="form-control" placeholder="05XXXXXXXXX veya +905..." required>
+            <small style="font-size:11px; color:var(--text-muted); display:block; margin-top:3px;">Giriş OTP kodu bu numaraya gider.</small>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="margin-bottom:8px; display:block;">Roller & Yetkiler</label>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(115px, 1fr)); gap:8px;">
+            <label style="display:flex; align-items:center; gap:8px; padding:10px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:10px; cursor:pointer;" id="lbl-role-superadmin">
+              <input type="checkbox" id="edit-user-role-superadmin" value="SuperAdmin" style="accent-color:#c084fc;">
+              <span style="font-size:12px; font-weight:700; color:#c084fc;">🛡️ SuperAdmin</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; padding:10px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:10px; cursor:pointer;">
+              <input type="checkbox" id="edit-user-role-admin" value="Admin" onchange="toggleTrainerFields()" style="accent-color:#f59e0b;">
+              <span style="font-size:12px; font-weight:700; color:#f59e0b;">👑 Salon Sahibi</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; padding:10px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:10px; cursor:pointer;">
+              <input type="checkbox" id="edit-user-role-coach" value="Coach" onchange="toggleTrainerFields()" style="accent-color:#10B981;">
+              <span style="font-size:12px; font-weight:700; color:#10B981;">🥊 Eğitmen</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; padding:10px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:10px; cursor:pointer;">
+              <input type="checkbox" id="edit-user-role-athlete" value="Athlete" style="accent-color:var(--volt-lime);">
+              <span style="font-size:12px; font-weight:700; color:var(--text-secondary);">🏃 Sporcu</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Eğitmen / Kadro Ayarları (Admin veya Coach seçiliyse) -->
+        <div id="edit-user-trainer-fields" style="display:none; background:rgba(255,255,255,0.02); border:1px dashed var(--border-subtle); border-radius:12px; padding:14px; margin-bottom:14px;">
+          <div style="font-size:12px; font-weight:800; color:var(--flame-orange); margin-bottom:10px;">🏋️ Eğitmen / Kadro Ayarları</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group" style="margin:0;">
+              <label>Kadro Rolü / Unvan</label>
+              <select id="edit-user-trainer-role" class="form-control">
+                <option value="Salon Sahibi">Salon Sahibi</option>
+                <option value="Eğitmen">Eğitmen</option>
+                <option value="PT">PT (Özel Antrenör)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label>Varsayılan Prim Payı (%)</label>
+              <input type="number" id="edit-user-share-rate" class="form-control" min="0" max="100" placeholder="40">
+            </div>
+          </div>
+        </div>
+
+        <!-- Kullanıcı Durumu -->
+        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap; padding:10px 14px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:12px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; cursor:pointer; color:var(--text-primary); margin:0;">
+            <input type="checkbox" id="edit-user-is-active" style="width:17px; height:17px; accent-color:var(--volt-lime); cursor:pointer;">
+            <span>Hesap Aktif</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; cursor:pointer; color:var(--text-primary); margin:0;">
+            <input type="checkbox" id="edit-user-phone-verified" style="width:17px; height:17px; accent-color:var(--volt-lime); cursor:pointer;">
+            <span>Telefon Onaylandı (OTP Geçerli)</span>
+          </label>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-edit-user')">İptal</button>
+          <button type="submit" class="btn-primary" style="font-weight:800;">💾 Değişiklikleri Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Yeni Salon Sahibi Oluştur -->
+  <div class="modal-backdrop" id="modal-create-owner">
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header">
+        <div>
+          <h3>👑 Yeni Salon Sahibi Tanımla</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;">Platforma Yeni Salon Yöneticisi Ekle</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-create-owner')">✕</button>
+      </div>
+      <form id="form-create-owner" onsubmit="handleCreateGymOwnerSubmit(event)">
+        <div class="form-group">
+          <label>Ad Soyad *</label>
+          <input type="text" id="owner-name" class="form-control" placeholder="Örn: SalonSahibi_1" required>
+        </div>
+        <div class="form-group">
+          <label>Telefon Numarası *</label>
+          <input type="tel" id="owner-phone" class="form-control" placeholder="05XXXXXXXXX veya +905..." required>
+          <small style="font-size:11px; color:var(--text-muted); display:block; margin-top:3px;">İlk girişinde OTP SMS bu numaraya gönderilir.</small>
+        </div>
+        <div class="form-group">
+          <label>Salon İşletme Payı Oranı (%)</label>
+          <input type="number" id="owner-share-rate" class="form-control" value="30" min="0" max="100">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-create-owner')">İptal</button>
+          <button type="submit" class="btn-primary" style="font-weight:800;">👑 Salon Sahibini Başlat</button>
         </div>
       </form>
     </div>

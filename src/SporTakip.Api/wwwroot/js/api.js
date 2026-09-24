@@ -325,12 +325,20 @@ export const Api = {
     return this.get('/superadmin/users');
   },
 
+  updateSuperAdminUser(userId, data) {
+    return this.put(`/superadmin/users/${userId}`, data);
+  },
+
   assignSuperAdminRole(userId, role, assign) {
     return this.post('/superadmin/assign-role', { userId, role, assign });
   },
 
   createGymOwner(fullName, phoneNumber, defaultShareRate = 0.30) {
     return this.post('/superadmin/create-gym-owner', { fullName, phoneNumber, defaultShareRate });
+  },
+
+  updateTrainer(trainerId, data) {
+    return this.put(`/trainers/${trainerId}`, data);
   }
 };
 

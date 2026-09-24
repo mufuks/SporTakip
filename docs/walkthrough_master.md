@@ -292,7 +292,49 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Akıllı PostgreSQL URI Çözümleyici (`ParsePostgresConnectionString`):** Neon.tech ve Supabase tarafından sağlanan standart `postgresql://user:pass@host:5432/db` formatındaki bağlantı dizeleri otomatik ayrıştırılarak Npgsql ADO.NET formatına dönüştürüldü; `DATABASE_URL` ortam değişkeni ile sıfır konfigürasyonla çalışması sağlandı.
   - **Veritabanı Sağlayıcı Güvenliği:** `DbSeeder.cs` içindeki SQLite'a özgü `ALTER TABLE` komutları `db.Database.IsSqlite()` şartına bağlandı; bulut PostgreSQL ortamlarında schema tohumlamanın pürüzsüz çalışması garanti altına alındı.
   - **Neon Entegrasyonu & MCP Kurulumu:** Neon CLI (`neon@6.0.0`) ve Neon MCP sunucusu IDE'ye başarıyla entegre edildi. Proje `orange-queen-18548661` (production branch) ile linklendi, `neon.ts` yapılandırması yayınlandı (`neon deploy`).
-  - **Test Doğrulaması:** 56/56 birim ve entegrasyon testi 0 hata ile başarıyla doğrulandı. Sürüm `v2.9.4`.
+  - **2026-09-24 (v2.9.5 - Kullanıcı & Rol Yönetimi Overhaul, Telefon Numarası Değiştirme, Anonim Tohum Veri & Çoklu Sıralama/Filtreleme):**
+  - **Kullanıcı Talepleri:**
+    1. *"kullanıcıların numarasını değiştirebilelim. data seed ile yaptıklarımız yanlış çünkü"*
+    2. *"Kayıtlı Kullanıcılar ve Roller'de sıralama filan da yapabilelm. super admin ve salon sahibi herşeyi editleyebilsin"*
+    3. *"dataseeder'da gerçek isim değil de Atlet_1 Atlet_2 Hoca_1 SalonSahibi_1 filan kullanalım :D"*
+  - **Tohum Veri & Veritabanı Anonimleştirme ([DbSeeder.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/DbSeeder.cs)):**
+    - Tohum verideki gerçek isimler anonimleştirildi: `SalonSahibi_1`, `Hoca_1`, `Atlet_1`, `Atlet_2`, `Atlet_3`.
+    - SQLite veritabanında geçmiş tohum verilerini anında güncelleyen in-place migrasyon eklendi; eski gerçek isimler otomatik olarak anonim adlara dönüştürüldü.
+    - Her sistem açılışında telefon numarasını eski numaraya sıfırlayan / mükerrer kayıt üreten hardcoded arama mantığı düzeltildi (`trainer.UserId` referansı ile korundu).
+  - **Kullanıcı & Telefon Numarası Düzenleme API'si (`PUT /api/superadmin/users/{id}`):**
+    - `SuperAdminController.UpdateUser`: Ad Soyad, Telefon Numarası, Aktiflik Durumu, Telefon Doğrulama Durumu, Roller (SuperAdmin, Admin, Coach, Athlete) ve Hoca Profil Alanları (Rol, Prim Oranı %) tek bir atomik işlemle güncellenebilir hale getirildi.
+    - E.164 telefon normalizasyonu ve çakışma (duplicate phone) kontrolü entegre edildi.
+    - Çift yönlü profil senkronizasyonu: `AppUser` üzerindeki telefon veya isim değişikliği bağlı `Trainer` ve `Member` profillerine; tersi durumda eğitmen/üye güncellemeleri de `AppUser` tablosuna anında yansıtıldı (`GymService.UpdateTrainerAsync`, `GymService.UpdateMemberAsync`).
+  - **SuperAdmin & Salon Sahibi Ortak Yetkilendirmesi:**
+    - `canAccessAdminPanel = isSuperAdmin || isAdmin`: Salon sahiplerinin de (Admin) Kullanıcı Yönetim paneline (`🛡️ Yönetim`) erişebilmesi sağlandı; ancak güvenlik sınırları gereği Salon Sahibi yalnızca Admin, Hoca ve Sporcu rollerini ve kullanıcı detaylarını yönetebilirken `SuperAdmin` rolünü yalnızca mevcut SuperAdmin'ler değiştirebilir.
+    - Kadro tablosuna `✏️ Düzenle` butonu ve `#modal-edit-trainer` eklenerek eğitmen bilgileri, telefon ve prim oranlarının doğrudan Kadro ekranından da güncellenmesi sağlandı.
+  - **İnteraktif Tablo Sıralama (Sorting) & Rol Çipleri (Filtering):**
+    - `#sa-users-table`: Sütun başlıklarına dinamik yön göstergeleri (`↕`, `▲`, `▼`) eklenerek Kullanıcı Adı, Telefon, Roller, Bağlı Profil ve Kayıt Tarihi sütunlarına göre çift yönlü (A-Z, Z-A) sıralama yeteneği kazandırıldı.
+    - Rol Filtre Çipleri: `Tümü`, `🛡️ SuperAdmin`, `👑 Salon Sahibi`, `🏋️ Eğitmen`, `🏃 Sporcu` butonları ile anlık sayaçlar (`chips`) entegre edildi; arama çubuğu ve sütun sıralamasıyla birlikte reaktif çalışır hale getirildi.
+  - **Kapsamlı Test Doğrulaması:**
+    - `GymServiceTests.cs` ve `SuperAdminControllerTests.cs` altına yeni testler eklendi (`UpdateTrainer_UpdatesTrainerFieldsAndSyncsWithAppUser`, `UpdateMember_SyncsPhoneWithAppUser`, `UpdateUser_UpdatesFieldsAndSyncsTrainerProfile`, `UpdateUser_ReturnsBadRequest_WhenPhoneNumberAlreadyExists`, `UpdateUser_ReturnsNotFound_WhenUserDoesNotExist`).
+    - Toplam **61/61 test %100 başarıyla ve sıfır derleme uyarısıyla** doğrulandı. Sürüm `v2.9.5`.
+- **2026-09-24 (v2.9.6 - Platform SuperAdmin Global Yetki & Salon Masası Erişimi):**
+  - **Kullanıcı Talebi:** *"superadmin "Salon" sekmesine giremiyor herşeye yetkili olması gerekirken"*
+  - **Kök Neden:**
+    - `app.js` içindeki `window.navigateTo` fonksiyonunda `isCoach = roles.includes('Coach') || roles.includes('Admin')` ve `isAdmin = roles.includes('Admin')` kontrollerinde `SuperAdmin` rolü unutulmuştu. SuperAdmin "Salon" butonuna bastığında `setAppMode('staff')` fonksiyonu `navigateTo('yoklama')` çağırıyor ve "Bu sayfaya erişmek için antrenör veya yönetici yetkisi gereklidir" hatasıyla kullanıcıyı tekrar `home` ve `athlete` moduna itiyordu.
+    - Backend katmanında `AuthService.GetRoleNames` metodu `SuperAdmin` kullanıcısına örtük olarak `Admin`, `Coach`, `Athlete` rollerini döndürmüyordu. Bu nedenle `[Authorize(Roles = "Admin")]` korumalı API uç noktaları (`/api/dashboard/payroll` vb.) 403 Forbidden dönüyordu.
+  - **Uygulanan Çözümler:**
+    1. **Frontend RBAC Konsolidasyonu ([app.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/app.js)):**
+       - `navigateTo`, `setAppMode`, `toggleAppMode` ve `updateNavForUserRole` fonksiyonlarında:
+         `const isSuperAdmin = roles.includes('SuperAdmin');`
+         `const isAdmin = roles.includes('Admin') || isSuperAdmin;`
+         `const isCoach = roles.includes('Coach') || isAdmin;`
+         hiyerarşisi kuruldu.
+       - SuperAdmin artık `[ 🏃 Sporcu | 🏢 Salon | 🛡️ Yönetim ]` sekmeleri arasında sorunsuz geçiş yapabilir; Yoklama, Üyeler, Hakedişim, Finans ve Bordrolar sekmelerine tam yetkiyle erişir.
+    2. **Backend Global Yetkilendirme ([AuthService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/AuthService.cs) & [DbSeeder.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/DbSeeder.cs)):**
+       - `AuthService.GetRoleNames`: `UserRole.SuperAdmin` flag'ine sahip kullanıcılara otomatik olarak `SuperAdmin`, `Admin`, `Coach`, `Athlete` rolleri verilerek hem JWT claim'leri hem de `/api/auth/me` yanıtları zenginleştirildi.
+       - `DbSeeder.cs` ve `AuthService.SendOtpAsync`: SuperAdmin hesabı oluşturulurken veya doğrulanırken `UserRole.SuperAdmin | UserRole.Admin | UserRole.Coach | UserRole.Athlete` olarak yetkilendirildi.
+    3. **Controller Seviyesinde Savunma Derinliği:**
+       - `DashboardController`, `PackagesController`, `SessionsController`, `ReservationsController`, `MembersController` ve `WorkoutsController` uç noktalarındaki `[Authorize(Roles = "...")]` niteleyicilerine açıkça `SuperAdmin` rolü eklendi.
+  - **Doğrulama:** 61/61 birim ve entegrasyon testi 0 hatayla geçti. Tarayıcı alt ajanı ile SuperAdmin'in "🏢 Salon" moduna geçişi, Finans ve Bordrolar ekranlarını eksiksiz görüntüleyebildiği doğrulandı. Sürüm `v2.9.6`.
+
+
 
 
 

@@ -35,11 +35,11 @@ public class AuthService(
         var isSuperAdminPhone = !string.IsNullOrWhiteSpace(superAdminPhone) && 
                                (NormalizePhoneNumber(superAdminPhone) == normalizedPhone || superAdminPhone == request.Phone);
 
-        if (user != null && isSuperAdminPhone && !user.Roles.HasFlag(UserRole.SuperAdmin))
+        if (user != null && isSuperAdminPhone && (!user.Roles.HasFlag(UserRole.SuperAdmin) || !user.Roles.HasFlag(UserRole.Admin)))
         {
-            user.Roles |= UserRole.SuperAdmin;
+            user.Roles |= (UserRole.SuperAdmin | UserRole.Admin | UserRole.Coach | UserRole.Athlete);
             await db.SaveChangesAsync(ct);
-            logger.LogInformation("🛡️ [SUPERADMIN UPGRADE] AppUser #{UserId} ({Name}) SuperAdmin rolüne yükseltildi.", user.Id, user.FullName);
+            logger.LogInformation("🛡️ [SUPERADMIN UPGRADE] AppUser #{UserId} ({Name}) SuperAdmin ve tüm rollere yükseltildi.", user.Id, user.FullName);
         }
 
         if (user == null)
@@ -51,7 +51,7 @@ public class AuthService(
                 {
                     PhoneNumber = normalizedPhone,
                     FullName = superAdminName,
-                    Roles = UserRole.SuperAdmin,
+                    Roles = UserRole.SuperAdmin | UserRole.Admin | UserRole.Coach | UserRole.Athlete,
                     PhoneVerified = false,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -475,10 +475,17 @@ public class AuthService(
     private static List<string> GetRoleNames(UserRole roles)
     {
         var list = new List<string>();
+        if (roles.HasFlag(UserRole.SuperAdmin))
+        {
+            list.Add("SuperAdmin");
+            list.Add("Admin");
+            list.Add("Coach");
+            list.Add("Athlete");
+            return list;
+        }
         if (roles.HasFlag(UserRole.Athlete))    list.Add("Athlete");
         if (roles.HasFlag(UserRole.Coach))      list.Add("Coach");
         if (roles.HasFlag(UserRole.Admin))      list.Add("Admin");
-        if (roles.HasFlag(UserRole.SuperAdmin)) list.Add("SuperAdmin");
         return list;
     }
 }

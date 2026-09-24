@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SporTakip.Api.Data;
 using SporTakip.Api.Models;
 using SporTakip.Api.Models.Identity;
+using SporTakip.Api.Services;
 
 namespace SporTakip.Api.Controllers;
 
@@ -20,7 +21,21 @@ public class SuperAdminController(ApplicationDbContext db, ILogger<SuperAdminCon
         bool PhoneVerified,
         DateTime CreatedAt,
         DateTime? LastLoginAt,
-        string? LinkedProfile
+        string? LinkedProfile,
+        int? TrainerProfileId = null,
+        string? TrainerRole = null,
+        decimal? DefaultShareRate = null,
+        int? MemberProfileId = null
+    );
+
+    public record UpdateUserRequest(
+        string FullName,
+        string PhoneNumber,
+        bool? IsActive,
+        bool? PhoneVerified,
+        List<string>? Roles,
+        string? TrainerRole = null,
+        decimal? DefaultShareRate = null
     );
 
     public record AssignRoleRequest(
@@ -105,11 +120,143 @@ public class SuperAdminController(ApplicationDbContext db, ILogger<SuperAdminCon
                 u.PhoneVerified,
                 u.CreatedAt,
                 u.LastLoginAt,
-                profile
+                profile,
+                u.TrainerProfile?.Id,
+                u.TrainerProfile?.Role,
+                u.TrainerProfile?.DefaultShareRate,
+                u.MemberProfile?.Id
             );
         }).ToList();
 
         return Ok(list);
+    }
+
+    /// <summary>
+    /// Kullanıcı bilgilerini (isim, telefon, roller, eğitmen profili) günceller.
+    /// SuperAdmin ve Salon Sahibi (Admin) yetkilidir.
+    /// </summary>
+    [HttpPut("users/{id:int}")]
+    public async Task<ActionResult<SuperAdminUserDto>> UpdateUser(int id, [FromBody] UpdateUserRequest req, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(req.FullName) || string.IsNullOrWhiteSpace(req.PhoneNumber))
+            return BadRequest(new { error = "Ad Soyad ve Telefon numarası boş bırakılamaz." });
+
+        var normalizedPhone = AuthService.NormalizePhoneNumber(req.PhoneNumber);
+        if (string.IsNullOrWhiteSpace(normalizedPhone))
+            return BadRequest(new { error = "Geçersiz telefon numarası formatı." });
+
+        // Başka bir kullanıcı aynı numarayı kullanıyor mu kontrol et
+        var duplicate = await db.Users.FirstOrDefaultAsync(u => u.Id != id && u.PhoneNumber == normalizedPhone, ct);
+        if (duplicate != null)
+            return BadRequest(new { error = $"Bu telefon numarası ({normalizedPhone}) zaten '{duplicate.FullName}' adlı kullanıcı tarafından kullanılıyor." });
+
+        var user = await db.Users
+            .Include(u => u.TrainerProfile)
+            .Include(u => u.MemberProfile)
+            .FirstOrDefaultAsync(u => u.Id == id, ct);
+
+        if (user == null)
+            return NotFound(new { error = "Kullanıcı bulunamadı." });
+
+        var oldPhone = user.PhoneNumber;
+        user.FullName = req.FullName.Trim();
+        user.PhoneNumber = normalizedPhone;
+        if (req.IsActive.HasValue) user.IsActive = req.IsActive.Value;
+        if (req.PhoneVerified.HasValue) user.PhoneVerified = req.PhoneVerified.Value;
+
+        // Rolleri güncelle
+        if (req.Roles != null && req.Roles.Count > 0)
+        {
+            UserRole newRoles = 0;
+            foreach (var r in req.Roles)
+            {
+                if (Enum.TryParse<UserRole>(r, true, out var parsedRole))
+                {
+                    newRoles |= parsedRole;
+                }
+            }
+            if (newRoles == 0) newRoles = UserRole.Athlete;
+            user.Roles = newRoles;
+        }
+
+        // TrainerProfile senkronizasyonu
+        if (user.TrainerProfile != null)
+        {
+            user.TrainerProfile.FullName = user.FullName;
+            user.TrainerProfile.Phone = user.PhoneNumber;
+            user.TrainerProfile.IsActive = user.IsActive;
+            if (!string.IsNullOrWhiteSpace(req.TrainerRole))
+                user.TrainerProfile.Role = req.TrainerRole.Trim();
+            if (req.DefaultShareRate.HasValue && req.DefaultShareRate.Value >= 0)
+                user.TrainerProfile.DefaultShareRate = req.DefaultShareRate.Value;
+        }
+        else if (user.Roles.HasFlag(UserRole.Admin) || user.Roles.HasFlag(UserRole.Coach))
+        {
+            var roleName = !string.IsNullOrWhiteSpace(req.TrainerRole) 
+                ? req.TrainerRole.Trim() 
+                : (user.Roles.HasFlag(UserRole.Admin) ? "Salon Sahibi" : "Eğitmen");
+            var shareRate = req.DefaultShareRate ?? (user.Roles.HasFlag(UserRole.Admin) ? 0.30m : 0.40m);
+
+            var newTrainer = new Trainer
+            {
+                FullName = user.FullName,
+                Phone = user.PhoneNumber,
+                Role = roleName,
+                DefaultShareRate = shareRate,
+                UserId = user.Id,
+                IsActive = user.IsActive
+            };
+            db.Trainers.Add(newTrainer);
+        }
+
+        // MemberProfile senkronizasyonu
+        if (user.MemberProfile != null)
+        {
+            user.MemberProfile.FullName = user.FullName;
+            user.MemberProfile.Phone = user.PhoneNumber;
+            user.MemberProfile.IsActive = user.IsActive;
+        }
+        else
+        {
+            var unlinkedMember = await db.Members.FirstOrDefaultAsync(m => m.UserId == null && (m.Phone == oldPhone || m.Phone == normalizedPhone), ct);
+            if (unlinkedMember != null)
+            {
+                unlinkedMember.UserId = user.Id;
+                unlinkedMember.FullName = user.FullName;
+                unlinkedMember.Phone = user.PhoneNumber;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("👤 [USER UPDATE] User #{UserId} ({Name}, {Phone}) başarıyla güncellendi.", user.Id, user.FullName, user.PhoneNumber);
+
+        var roleNames = new List<string>();
+        if (user.Roles.HasFlag(UserRole.SuperAdmin)) roleNames.Add("SuperAdmin");
+        if (user.Roles.HasFlag(UserRole.Admin))      roleNames.Add("Admin");
+        if (user.Roles.HasFlag(UserRole.Coach))      roleNames.Add("Coach");
+        if (user.Roles.HasFlag(UserRole.Athlete))    roleNames.Add("Athlete");
+
+        string? profile = null;
+        if (user.TrainerProfile != null)
+            profile = $"{user.TrainerProfile.Role} (Trainer #{user.TrainerProfile.Id})";
+        else if (user.MemberProfile != null)
+            profile = $"Sporcu (Member #{user.MemberProfile.Id})";
+
+        return Ok(new SuperAdminUserDto(
+            user.Id,
+            user.FullName,
+            user.PhoneNumber,
+            roleNames,
+            user.IsActive,
+            user.PhoneVerified,
+            user.CreatedAt,
+            user.LastLoginAt,
+            profile,
+            user.TrainerProfile?.Id,
+            user.TrainerProfile?.Role,
+            user.TrainerProfile?.DefaultShareRate,
+            user.MemberProfile?.Id
+        ));
     }
 
     /// <summary>

@@ -4601,4 +4601,45 @@ table.custom-table tr:hover td {
   box-shadow: none !important;
 }
 
+/* SuperAdmin / Yönetim Tablo Filtre Çipleri ve Sıralama İkonları */
+.sa-chip {
+  padding: 6px 13px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.sa-chip:hover {
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+.sa-chip.active {
+  background: rgba(204, 255, 0, 0.12);
+  color: var(--volt-lime);
+  border-color: var(--volt-lime);
+  box-shadow: 0 0 10px rgba(204, 255, 0, 0.15);
+}
+[data-theme="light"] .sa-chip.active {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #059669;
+}
+.sa-sort-icon {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 11px;
+  transition: color 0.15s ease;
+}
+#sa-users-table th:hover {
+  color: var(--volt-lime);
+}
+
 

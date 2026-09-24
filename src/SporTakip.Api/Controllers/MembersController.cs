@@ -34,7 +34,7 @@ public class MembersController(GymService gymService) : ControllerBase
         return CreatedAtAction(nameof(GetMember), new { id = member.Id }, member);
     }
 
-    [Authorize(Roles = "Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
     [HttpPut("{id}")]
     public async Task<ActionResult<MemberDto>> UpdateMember(int id, [FromBody] UpdateMemberDto dto, CancellationToken ct)
     {
@@ -55,9 +55,9 @@ public class MembersController(GymService gymService) : ControllerBase
     }
 
     /// <summary>
-    /// Antrenör ve Salon Sahibi için sporcu sağlık kısıtı / sakatlık notunu günceller.
+    /// Antrenör, Salon Sahibi ve SuperAdmin için sporcu sağlık kısıtı / sakatlık notunu günceller.
     /// </summary>
-    [Authorize(Roles = "Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
     [HttpPut("{id}/notes")]
     public async Task<ActionResult<MemberDto>> UpdateNotes(int id, [FromBody] UpdateMemberNotesDto dto, CancellationToken ct)
     {

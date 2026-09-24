@@ -11,9 +11,9 @@ namespace SporTakip.Api.Controllers;
 public class SessionsController(ISessionService sessionService) : ControllerBase
 {
     /// <summary>
-    /// Yeni seans slotu açar (Yalnızca Antrenör ve Salon Sahibi).
+    /// Yeni seans slotu açar (Yalnızca Antrenör, Salon Sahibi ve SuperAdmin).
     /// </summary>
-    [Authorize(Roles = "Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
     [HttpPost]
     [ProducesResponseType(typeof(SessionSlotDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -69,9 +69,9 @@ public class SessionsController(ISessionService sessionService) : ControllerBase
     }
 
     /// <summary>
-    /// Var olan seansın saatini, antrenörünü, kapasitesini veya başlığını günceller (Yalnızca Antrenör ve Salon Sahibi).
+    /// Var olan seansın saatini, antrenörünü, kapasitesini veya başlığını günceller (Yalnızca Antrenör, Salon Sahibi ve SuperAdmin).
     /// </summary>
-    [Authorize(Roles = "Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(SessionSlotDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -99,9 +99,9 @@ public class SessionsController(ISessionService sessionService) : ControllerBase
     }
 
     /// <summary>
-    /// Seansı iptal eder ve kayıtlı tüm sporcuları haberdar eder (Yalnızca Antrenör ve Salon Sahibi).
+    /// Seansı iptal eder ve kayıtlı tüm sporcuları haberdar eder (Yalnızca Antrenör, Salon Sahibi ve SuperAdmin).
     /// </summary>
-    [Authorize(Roles = "Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
