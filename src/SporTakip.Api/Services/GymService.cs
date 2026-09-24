@@ -278,13 +278,91 @@ public class GymService(AppDbContext db)
         );
     }
 
-    public async Task<List<PackageDto>> GetPackagesAsync(CancellationToken cancellationToken = default)
+    public async Task<List<PackageDto>> GetPackagesAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
     {
-        return await db.Packages
-            .Where(p => p.IsActive)
+        var query = db.Packages.AsQueryable();
+        if (!includeInactive)
+        {
+            query = query.Where(p => p.IsActive);
+        }
+
+        return await query
+            .OrderBy(p => p.PackageType)
+            .ThenBy(p => p.LessonCount)
             .Select(p => new PackageDto(p.Id, p.Name, p.PackageType, p.LessonCount, p.DefaultPrice, p.ValidityDays, p.IsActive))
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<PackageDto> CreatePackageAsync(CreatePackageDto dto, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Name))
+            throw new ArgumentException("Paket adı zorunludur.");
+        if (dto.LessonCount <= 0)
+            throw new ArgumentException("Ders sayısı en az 1 olmalıdır.");
+        if (dto.DefaultPrice < 0)
+            throw new ArgumentException("Paket fiyatı 0 veya daha büyük olmalıdır.");
+
+        var package = new Package
+        {
+            Name = dto.Name.Trim(),
+            PackageType = string.IsNullOrWhiteSpace(dto.PackageType) ? "GRUP" : dto.PackageType.Trim().ToUpperInvariant(),
+            LessonCount = dto.LessonCount,
+            DefaultPrice = dto.DefaultPrice,
+            ValidityDays = dto.ValidityDays > 0 ? dto.ValidityDays : 35,
+            IsActive = true
+        };
+
+        db.Packages.Add(package);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new PackageDto(package.Id, package.Name, package.PackageType, package.LessonCount, package.DefaultPrice, package.ValidityDays, package.IsActive);
+    }
+
+    public async Task<PackageDto> UpdatePackageAsync(int packageId, UpdatePackageDto dto, CancellationToken cancellationToken = default)
+    {
+        var package = await db.Packages.FindAsync([packageId], cancellationToken)
+            ?? throw new InvalidOperationException("Güncellenecek paket bulunamadı.");
+
+        if (string.IsNullOrWhiteSpace(dto.Name))
+            throw new ArgumentException("Paket adı zorunludur.");
+        if (dto.LessonCount <= 0)
+            throw new ArgumentException("Ders sayısı en az 1 olmalıdır.");
+        if (dto.DefaultPrice < 0)
+            throw new ArgumentException("Paket fiyatı 0 veya daha büyük olmalıdır.");
+
+        package.Name = dto.Name.Trim();
+        package.PackageType = string.IsNullOrWhiteSpace(dto.PackageType) ? "GRUP" : dto.PackageType.Trim().ToUpperInvariant();
+        package.LessonCount = dto.LessonCount;
+        package.DefaultPrice = dto.DefaultPrice;
+        package.ValidityDays = dto.ValidityDays > 0 ? dto.ValidityDays : 35;
+        package.IsActive = dto.IsActive;
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new PackageDto(package.Id, package.Name, package.PackageType, package.LessonCount, package.DefaultPrice, package.ValidityDays, package.IsActive);
+    }
+
+    public async Task<bool> DeletePackageAsync(int packageId, CancellationToken cancellationToken = default)
+    {
+        var package = await db.Packages
+            .Include(p => p.Subscriptions)
+            .FirstOrDefaultAsync(p => p.Id == packageId, cancellationToken)
+            ?? throw new InvalidOperationException("Silinecek paket bulunamadı.");
+
+        if (package.Subscriptions.Count > 0)
+        {
+            // Kullanımda olan paketleri güvenle pasife al (soft delete)
+            package.IsActive = false;
+        }
+        else
+        {
+            db.Packages.Remove(package);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
 
     public async Task<List<SubscriptionSummaryDto>> GetActiveSubscriptionsAsync(CancellationToken cancellationToken = default)
     {
@@ -421,6 +499,14 @@ public class GymService(AppDbContext db)
             {
                 throw new InvalidOperationException($"Bu sporcu için saat {existingRecord.LessonDate:HH:mm} seansında zaten 'Geldi' yoklaması işlenmiş. Aynı saatte mükerrer ders düşülemez.");
             }
+
+            // Bir kere yoklama alındıktan sonra katılım kesinleşir: "Geldiyse gelmiştir, sonradan gelmedi/iptal yapılamaz"
+            if (existingRecord.Status == "Attended" && status == "Missed")
+            {
+                throw new InvalidOperationException($"Bu sporcu için saat {existingRecord.LessonDate:HH:mm} seansında katılım 'Geldi' olarak kesinleşmiştir. 'Gelmedi' olarak değiştirilemez.");
+            }
+
+
 
             var oldStatus = existingRecord.Status;
             existingRecord.Status = status;

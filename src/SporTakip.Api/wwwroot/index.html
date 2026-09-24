@@ -668,6 +668,37 @@
           </table>
         </div>
       </div>
+
+      <!-- Paket & Fiyat Yönetimi -->
+      <div class="glass-card" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 style="font-size:17px; font-weight:800; display:inline-block; margin-right:8px;">Paketler & Fiyatlar</h3>
+            <span style="font-size:12px; color:var(--text-secondary);">Standart paketler ve varsayılan liste fiyatları</span>
+          </div>
+          <button class="btn-primary" id="btn-open-new-package" onclick="openCreatePackageModal()">
+            + Yeni Paket
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Paket Adı</th>
+                <th>Tür</th>
+                <th>Ders Sayısı</th>
+                <th>Geçerlilik</th>
+                <th>Liste Fiyatı</th>
+                <th>Durum</th>
+                <th style="text-align:right;">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody id="packages-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- ==================== 4. ÜYELER ==================== -->
@@ -990,6 +1021,13 @@
           <select id="sub-trainer-select" class="form-control">
             <option value="">Varsayılan Eğitmen</option>
           </select>
+        </div>
+        <div style="background:rgba(204,255,0,0.08); border:1px solid rgba(204,255,0,0.22); border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; color:var(--text-secondary); display:flex; gap:8px; align-items:center;">
+          <span style="font-size:16px;">💡</span>
+          <div>
+            <strong style="color:var(--volt-lime);">Esnek Fiyat:</strong>
+            <span>Paketin varsayılan fiyatı aşağıya gelir; bu sporcuya özel dilediğiniz tutarı yazarak değiştirebilirsiniz.</span>
+          </div>
         </div>
         <div class="form-group">
           <label>Paket Ücreti (TL) *</label>
@@ -1461,10 +1499,64 @@
     </div>
   </div>
 
+  <!-- Modal: Paket Oluştur / Düzenle -->
+  <div class="modal-backdrop" id="modal-package">
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="package-modal-title">Yeni Paket Tanımla</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;">Salon Standart Paketi</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-package')">✕</button>
+      </div>
+      <form id="package-form" onsubmit="handleSavePackage(event)">
+        <input type="hidden" id="pkg-id">
+        <div class="form-group">
+          <label>Paket Adı *</label>
+          <input type="text" id="pkg-name" class="form-control" placeholder="Örn: 8 Seans Fonksiyonel Grup" required>
+        </div>
+        <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Paket Türü *</label>
+            <select id="pkg-type" class="form-control" required>
+              <option value="GRUP">GRUP</option>
+              <option value="PT">PT (Özel Ders)</option>
+              <option value="OZEL">Özel / İkili</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Ders (Seans) Sayısı *</label>
+            <input type="number" id="pkg-lessons" class="form-control" min="1" max="100" value="8" required>
+          </div>
+        </div>
+        <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Varsayılan Liste Fiyatı (TL) *</label>
+            <input type="number" id="pkg-price" class="form-control" min="0" step="100" placeholder="8000" required>
+          </div>
+          <div class="form-group">
+            <label>Geçerlilik Süresi (Gün) *</label>
+            <input type="number" id="pkg-validity" class="form-control" min="1" max="365" value="35" required>
+          </div>
+        </div>
+        <div class="form-group" id="pkg-active-group" style="display:none; margin-top:8px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="pkg-is-active" checked style="width:16px; height:16px; accent-color:var(--volt-lime);">
+            <span style="font-size:13px;">Bu paket aktif ve satışa açık</span>
+          </label>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-package')">Vazgeç</button>
+          <button type="submit" class="btn-primary" id="btn-save-package">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Javascript -->
-  <script type="module" src="/js/app.js?v=2.8.9"></script>
+  <script type="module" src="/js/app.js?v=2.9.0"></script>
 </body>
 </html>

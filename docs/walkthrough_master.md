@@ -225,5 +225,21 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **İnteraktif 7 Günlük Takvim Şeridi (`#capacity-week-strip`):** Sporcu Seanslar takvimindeki stil ve mekanizma (`.v0-cal-days-grid`, `.v0-cal-day-cell`) doğrudan Saatlik Doluluk paneline uygulandı; Pzt-Paz 7 gün kompakt şerit olarak yerleştirildi. Seçili gün Volt Lime dolgu ve parıltıyla öne çıkar.
   - **Hızlı Gün Değiştirme (`◀`, `▶`) ve "Bugün" Kısayolu:** Tek dokunuşla önceki/sonraki güne geçiş butonları (`.v0-day-nav-arrow`) ve bugüne anında dönme rozeti (`#btn-capacity-today`) eklendi.
   - **Senkronize Tarih Seçici:** Dinamik metin etiketi (`#capacity-current-date-label`), takvim şeridi, yerleşik tarih seçici (`#capacity-date-picker`) ve saatlik kapasite slotları 2 yönlü kusursuz senkronizasyonla bağlandı.
+- **2026-09-24 (v2.9.0 - Yoklama Kaydı Kilitleme & Standart Paket / Esnek Fiyat Yönetimi):**
+  - **Kullanıcı Talepleri:**
+    1. *"Bu Seans'ta geldi diye tekrar geldi diyemiyoruz ama gelmedi diyebiliyoruz. geldiyse gelmiştir, gelmedi iptal demek saçma oluyor. bi kere yoklama aldıktan sonra kayıt kalsın, o yüzden yoklamada alt seçenekleri kaldırmak gerek gibi."*
+    2. *"-paketleri ve fiyatları nerede tanımlayacağız? atletten atlete paket fiyatı değişebilir esnek olmalı"*
+  - **Yoklamada Tek Seferlik Kesin Kayıt & Çelişkili Butonların Kaldırılması:**
+    - Üyenin yoklaması bir kez "Geldi" olarak alındığında kart kilitlenir: `✓ BU SEANSTA GELDİ (X. Ders)` rozeti gösterilir.
+    - Altındaki `❌ Gelmedi (Yandı)` ve `🕒 Mazeretli Telafi` butonları tamamen kaldırılır; sadece `💬 WhatsApp Mesajı Gönder` butonu bırakılır.
+    - `GymService.MarkAttendanceAsync` katmanında `Attended` olan kaydın `Missed` olarak ezilmesi engellendi.
+  - **Standart Paket & Fiyat Yönetimi (Finans Dashboard):**
+    - `view-dashboard` ekranında Kadro altına "Paketler & Fiyatlar" yönetim tablosu entegre edildi.
+    - `+ Yeni Paket` butonu ve `#modal-package` modalı üzerinden Paket Adı, Paket Türü (GRUP, PT, OZEL), Ders Sayısı, Geçerlilik Süresi (Gün) ve Varsayılan Liste Fiyatı tanımlanabilmektedir. `✏️ Düzenle` ve `✕ Pasif` aksiyonları eklendi.
+    - `PackagesController.cs` REST API (`GET`, `POST`, `PUT`, `DELETE /api/packages`) hayata geçirildi.
+  - **Üye Paket Tanımlamada Esnek Fiyat Bildirimi:**
+    - `#modal-new-sub` içine `💡 Esnek Fiyat` bilgilendirme kutusu eklendi; varsayılan liste fiyatı seçildiğinde dahi her sporcu için fiyatın serbestçe değiştirilebileceği netleştirildi.
+  - **Test Doğrulaması:** 56 birim ve entegrasyon testinin tamamı başarıyla geçti (56/56 passed). Versiyon `v2.9.0`.
+
 
 

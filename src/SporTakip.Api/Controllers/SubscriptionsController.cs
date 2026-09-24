@@ -18,7 +18,7 @@ public class SubscriptionsController(GymService gymService) : ControllerBase
     [HttpGet("packages")]
     public async Task<ActionResult<List<PackageDto>>> GetPackages(CancellationToken ct)
     {
-        var packages = await gymService.GetPackagesAsync(ct);
+        var packages = await gymService.GetPackagesAsync(cancellationToken: ct);
         return Ok(packages);
     }
 

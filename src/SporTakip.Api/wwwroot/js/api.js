@@ -192,9 +192,23 @@ export const Api = {
     return this.get('/subscriptions/active');
   },
 
-  getPackages() {
-    return this.get('/subscriptions/packages');
+  getPackages(all = false) {
+    const q = all ? '?all=true' : '';
+    return this.get(`/packages${q}`);
   },
+
+  createPackage(data) {
+    return this.post('/packages', data);
+  },
+
+  updatePackage(id, data) {
+    return this.put(`/packages/${id}`, data);
+  },
+
+  deletePackage(id) {
+    return this.delete(`/packages/${id}`);
+  },
+
 
   createSubscription(data) {
     return this.post('/subscriptions', data);

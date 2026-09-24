@@ -73,6 +73,16 @@ public record CreatePackageDto(
     int ValidityDays
 );
 
+public record UpdatePackageDto(
+    string Name,
+    string PackageType,
+    int LessonCount,
+    decimal DefaultPrice,
+    int ValidityDays,
+    bool IsActive
+);
+
+
 public record SubscriptionSummaryDto(
     int Id,
     int MemberId,

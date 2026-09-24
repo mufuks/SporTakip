@@ -1,4 +1,4 @@
-import { Api } from './api.js?v=2.8.8';
+import { Api } from './api.js?v=2.9.0';
 
 // State
 let currentTab = 'home';
@@ -155,7 +155,7 @@ window.navigateTo = function(tabName) {
   else if (tabName === 'profile') renderAthleteProfile();
   else if (tabName === 'yoklama') loadAttendanceView();
   else if (tabName === 'takvim') loadCalendarView(calYear, calMonth);
-  else if (tabName === 'dashboard') { loadDashboardView(); loadTrainers(); }
+  else if (tabName === 'dashboard') { loadDashboardView(); loadTrainers(); loadPackagesAdmin(); }
   else if (tabName === 'uyeler') loadMembersView();
   else if (tabName === 'kasa') loadKasaView();
   else if (tabName === 'hakedisim') loadMyEarningsView();
@@ -506,15 +506,28 @@ function renderAttendanceList(subs) {
     // Default primary trainer id
     const primaryTrainerId = sub.primaryTrainerId || 2; // Varsayılan Gülçin (Eğitmen)
 
-    // Check if member already attended in this slot
-    let isAlreadyAttendedInSlot = false;
-    if (selectedSlotHour !== null && typeof capacitySlotsData !== 'undefined' && capacitySlotsData) {
-      const activeSlot = capacitySlotsData.find(s => s.hour === selectedSlotHour);
-      const slotMem = activeSlot?.members?.find(m => m.subscriptionId === sub.id);
-      if (slotMem && slotMem.status === 'Attended') {
-        isAlreadyAttendedInSlot = true;
+    // Check if member already has an attendance record in the active slot (or today)
+    let slotMemberRecord = null;
+    let attendanceHourLabel = '';
+    if (typeof capacitySlotsData !== 'undefined' && capacitySlotsData) {
+      if (selectedSlotHour !== null) {
+        const activeSlot = capacitySlotsData.find(s => s.hour === selectedSlotHour);
+        slotMemberRecord = activeSlot?.members?.find(m => m.subscriptionId === sub.id);
+        if (slotMemberRecord) attendanceHourLabel = `Saat ${activeSlot.timeSlot}`;
+      } else {
+        // If no slot is clicked, find any recorded attendance today for this subscription
+        for (const slot of capacitySlotsData) {
+          const m = slot.members?.find(m => m.subscriptionId === sub.id);
+          if (m && (m.status === 'Attended' || m.status === 'Missed' || m.status === 'Excused')) {
+            slotMemberRecord = m;
+            attendanceHourLabel = `Saat ${slot.timeSlot}`;
+            break;
+          }
+        }
       }
     }
+
+    const attendanceStatus = slotMemberRecord?.status;
 
     return `
       <div class="${cardClass}" id="sub-card-${sub.id}">
@@ -550,7 +563,7 @@ function renderAttendanceList(subs) {
         <!-- Hoca Seçici & İkame Kuralı (%40) -->
         <div class="coach-picker-box">
           <span style="color:var(--text-muted); font-size:11px; font-weight:700;">DERSİ VEREN:</span>
-          <select id="sub-coach-${sub.id}" onchange="handleTrainerSelectionChange(${sub.id}, ${primaryTrainerId})">
+          <select id="sub-coach-${sub.id}" onchange="handleTrainerSelectionChange(${sub.id}, ${primaryTrainerId})" ${attendanceStatus ? 'disabled style="opacity:0.75;"' : ''}>
             ${allTrainers.map(t => `<option value="${t.id}" ${t.id === primaryTrainerId ? 'selected' : ''}>${escapeHtml(t.fullName)} (${escapeHtml(t.role)})</option>`).join('')}
           </select>
         </div>
@@ -565,29 +578,51 @@ function renderAttendanceList(subs) {
             : '<span style="color:var(--volt-lime); font-weight:700;">Ödendi ✓</span>'}
         </div>
 
-        <!-- 3 Ana Salon Kuralı Butonları -->
+        <!-- Yoklama Aksiyonları (Tek seferlik kesin kayıt & Çelişki önleme) -->
         <div style="display:flex; flex-direction:column; gap:8px;">
-          ${isAlreadyAttendedInSlot ? `
-            <button class="touch-btn btn-attend already-attended" title="Bu saatteki seans için yoklama zaten alınmış">
-              <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:4px;"> ✓ BU SEANSTA GELDİ (${sub.completedLessons}. Ders)
-            </button>
+          ${attendanceStatus === 'Attended' ? `
+            <div class="touch-btn already-attended" style="background:rgba(204,255,0,0.14); border:1px solid var(--volt-lime); color:var(--volt-lime); cursor:default; justify-content:center; font-weight:800; padding:12px; font-size:13.5px;" title="Yoklama kesinleşti: Bu sporcu seansa katıldı">
+              <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:6px;"> ✓ BU SEANSTA GELDİ (${sub.completedLessons}. Ders ${attendanceHourLabel ? '· ' + attendanceHourLabel : ''})
+            </div>
+            <div style="display:flex; justify-content:flex-end;">
+              <button class="action-btn-sm whatsapp" style="width:100%; justify-content:center;" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
+                <span>💬</span> WhatsApp Mesajı Gönder
+              </button>
+            </div>
+          ` : attendanceStatus === 'Missed' ? `
+            <div class="touch-btn already-attended" style="background:rgba(239,68,68,0.14); border:1px solid var(--pulse-rose); color:var(--pulse-rose); cursor:default; justify-content:center; font-weight:800; padding:12px; font-size:13.5px;" title="Yoklama kesinleşti: Gelmedi (Hak yandı)">
+              <span>❌</span> BU SEANSTA GELMEDİ (Ders Yandı)
+            </div>
+            <div style="display:flex; justify-content:flex-end;">
+              <button class="action-btn-sm whatsapp" style="width:100%; justify-content:center;" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
+                <span>💬</span> WhatsApp Mesajı Gönder
+              </button>
+            </div>
+          ` : attendanceStatus === 'Excused' ? `
+            <div class="touch-btn already-attended" style="background:rgba(245,158,11,0.14); border:1px solid var(--flame-orange); color:var(--flame-orange); cursor:default; justify-content:center; font-weight:800; padding:12px; font-size:13.5px;" title="Yoklama kesinleşti: Mazeretli telafi">
+              <span>🕒</span> MAZERETLİ TELAFİ (Ders Saklı)
+            </div>
+            <div style="display:flex; justify-content:flex-end;">
+              <button class="action-btn-sm whatsapp" style="width:100%; justify-content:center;" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
+                <span>💬</span> WhatsApp Mesajı Gönder
+              </button>
+            </div>
           ` : `
             <button class="touch-btn btn-attend" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Attended')">
               <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:4px;"> GELDİ (DERS DÜŞ)
             </button>
+            <div style="display:flex; gap:8px;">
+              <button class="action-btn-sm" style="color:var(--pulse-rose);" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Missed')" title="3 saatten az kala haber veya habersiz gelmedi (Ders Yanar)">
+                <span>❌</span> Gelmedi (Yandı)
+              </button>
+              <button class="action-btn-sm" style="color:var(--flame-orange);" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Excused')" title="En az 3 saat önce haber verdi (Hak Saklı)">
+                <span>🕒</span> Mazeretli Telafi
+              </button>
+              <button class="action-btn-sm whatsapp" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
+                <span>💬</span> WhatsApp
+              </button>
+            </div>
           `}
-          
-          <div style="display:flex; gap:8px;">
-            <button class="action-btn-sm" style="color:var(--pulse-rose);" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Missed')" title="3 saatten az kala haber veya habersiz gelmedi (Ders Yanar)">
-              <span>❌</span> Gelmedi (Yandı)
-            </button>
-            <button class="action-btn-sm" style="color:var(--flame-orange);" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Excused')" title="En az 3 saat önce haber verdi (Hak Saklı)">
-              <span>🕒</span> Mazeretli Telafi
-            </button>
-            <button class="action-btn-sm whatsapp" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
-              <span>💬</span> WhatsApp
-            </button>
-          </div>
         </div>
       </div>
     `;
@@ -964,6 +999,138 @@ window.handleCreateTrainer = async function(e) {
     showToast(`Hoca eklenemedi: ${err.message}`, 'error');
   }
 };
+
+// ==================== 5.1. PAKET VE FİYAT YÖNETİMİ ====================
+let allPackagesAdmin = [];
+
+async function loadPackagesAdmin() {
+  try {
+    allPackagesAdmin = await Api.getPackages(true); // all = true (hem aktif hem pasif)
+    renderPackagesTable(allPackagesAdmin);
+  } catch (err) {
+    console.error("Paketler yüklenemedi:", err);
+  }
+}
+
+function renderPackagesTable(pkgList) {
+  const tbody = document.getElementById('packages-table-body');
+  if (!tbody) return;
+  if (!pkgList || pkgList.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:20px;">Tanımlı paket bulunamadı.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = pkgList.map(p => `
+    <tr>
+      <td>
+        <strong style="color:var(--text-primary); font-size:14.5px;">${escapeHtml(p.name)}</strong>
+      </td>
+      <td>
+        <span style="font-size:11px; font-weight:700; color:var(--text-secondary); background:var(--bg-surface-elevated); padding:3px 7px; border-radius:4px; border:1px solid var(--border-subtle);">${escapeHtml(p.packageType || 'GRUP')}</span>
+      </td>
+      <td><strong style="color:var(--cyber-cyan);">${p.lessonCount}</strong> Seans</td>
+      <td>${p.validityDays} Gün</td>
+      <td><strong style="color:var(--volt-lime); font-size:14.5px;">${formatMoney(p.defaultPrice)}</strong></td>
+      <td>
+        ${p.isActive 
+          ? '<span class="lesson-badge badge-green" style="font-size:11px;">Aktif</span>' 
+          : '<span class="lesson-badge badge-red" style="font-size:11px;">Pasif</span>'}
+      </td>
+      <td style="text-align:right;">
+        <div style="display:flex; justify-content:flex-end; gap:6px;">
+          <button class="btn-secondary" style="padding:5px 10px; font-size:11.5px;" onclick="openEditPackageModal(${p.id})">
+            ✏️ Düzenle
+          </button>
+          ${p.isActive ? `
+            <button class="btn-secondary" style="padding:5px 10px; font-size:11.5px; color:var(--pulse-rose);" onclick="handleDeletePackage(${p.id}, '${escapeJsString(p.name)}')">
+              ✕ Pasif
+            </button>
+          ` : ''}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+window.openCreatePackageModal = function() {
+  document.getElementById('package-form')?.reset();
+  document.getElementById('pkg-id').value = '';
+  document.getElementById('package-modal-title').innerText = 'Yeni Paket Tanımla';
+  document.getElementById('btn-save-package').innerText = 'Paketi Kaydet';
+  const activeGroup = document.getElementById('pkg-active-group');
+  if (activeGroup) activeGroup.style.display = 'none';
+  openModal('modal-package');
+};
+
+window.openEditPackageModal = function(id) {
+  const pkg = allPackagesAdmin.find(p => p.id === id);
+  if (!pkg) return;
+
+  document.getElementById('pkg-id').value = pkg.id;
+  document.getElementById('pkg-name').value = pkg.name;
+  document.getElementById('pkg-type').value = pkg.packageType || 'GRUP';
+  document.getElementById('pkg-lessons').value = pkg.lessonCount;
+  document.getElementById('pkg-price').value = pkg.defaultPrice;
+  document.getElementById('pkg-validity').value = pkg.validityDays;
+
+  const activeGroup = document.getElementById('pkg-active-group');
+  const activeCheck = document.getElementById('pkg-is-active');
+  if (activeGroup && activeCheck) {
+    activeGroup.style.display = 'block';
+    activeCheck.checked = pkg.isActive;
+  }
+
+  document.getElementById('package-modal-title').innerText = 'Paketi Düzenle';
+  document.getElementById('btn-save-package').innerText = 'Değişiklikleri Kaydet';
+  openModal('modal-package');
+};
+
+window.handleSavePackage = async function(e) {
+  e.preventDefault();
+  const idVal = document.getElementById('pkg-id').value;
+  const isEdit = Boolean(idVal);
+
+  const payload = {
+    name: document.getElementById('pkg-name').value.trim(),
+    packageType: document.getElementById('pkg-type').value,
+    lessonCount: parseInt(document.getElementById('pkg-lessons').value),
+    defaultPrice: parseFloat(document.getElementById('pkg-price').value),
+    validityDays: parseInt(document.getElementById('pkg-validity').value)
+  };
+
+  try {
+    if (isEdit) {
+      payload.isActive = document.getElementById('pkg-is-active').checked;
+      await Api.updatePackage(parseInt(idVal), payload);
+      showToast(`✓ "${payload.name}" paketi güncellendi!`);
+    } else {
+      await Api.createPackage(payload);
+      showToast(`⚡ Yeni paket "${payload.name}" oluşturuldu!`);
+    }
+
+    closeModal('modal-package');
+    await loadPackagesAdmin();
+    // Refresh cached packages for subscription creation dropdown
+    packages = await Api.getPackages();
+  } catch (err) {
+    showToast(`Hata: ${err.message}`, 'error');
+  }
+};
+
+window.handleDeletePackage = async function(id, name) {
+  if (!confirm(`"${name}" paketini satıştan kaldırmak (pasife almak) istediğinize emin misiniz?`)) return;
+
+  try {
+    await Api.deletePackage(id);
+    showToast(`✓ "${name}" paketi pasife alındı.`);
+    await loadPackagesAdmin();
+    packages = await Api.getPackages();
+  } catch (err) {
+    showToast(`Hata: ${err.message}`, 'error');
+  }
+};
+
+window.loadPackagesAdmin = loadPackagesAdmin;
 
 // ==================== 6. GENİŞ AYLIK SEANS TAKVİMİ ====================
 let calYear = new Date().getFullYear();

@@ -601,6 +601,87 @@ public class GymServiceTests : IDisposable
         var sub2 = await _db.Subscriptions.FindAsync(sub.Id);
         Assert.Equal(2, sub2!.CompletedLessons);
     }
+
+    [Fact]
+    public async Task MarkAttendance_WhenAttended_CannotTransitionToMissed()
+    {
+        // Arrange
+        var member = new Member { FullName = "No Missed Allowed Member" };
+        var package = new Package { Name = "Grup 8 Ders", LessonCount = 8, DefaultPrice = 3000m };
+        var trainer = new Trainer { FullName = "Gülçin", Role = "Eğitmen", DefaultShareRate = 0.40m };
+        _db.Members.Add(member);
+        _db.Packages.Add(package);
+        _db.Trainers.Add(trainer);
+        await _db.SaveChangesAsync();
+
+        var sub = new Subscription
+        {
+            MemberId = member.Id,
+            PackageId = package.Id,
+            PrimaryTrainerId = trainer.Id,
+            Price = 3000m,
+            TotalLessons = 8,
+            CompletedLessons = 2,
+            Status = "Active"
+        };
+        _db.Subscriptions.Add(sub);
+        await _db.SaveChangesAsync();
+
+        var now = new DateTime(2026, 9, 23, 18, 0, 0, DateTimeKind.Utc);
+        // 1. Geldi olarak işaretlendi
+        await _service.MarkAttendanceAsync(new MarkAttendanceDto(sub.Id, now, trainer.Id, "Attended", "Katıldı"));
+
+        // 2. Sonradan 'Missed' olarak değiştirilmeye çalışılırsa hata fırlatmalı!
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.MarkAttendanceAsync(new MarkAttendanceDto(sub.Id, now, trainer.Id, "Missed", "Gelmedi"))
+        );
+        Assert.Contains("katılım 'Geldi' olarak kesinleşmiştir", ex.Message);
+    }
+
+    [Fact]
+    public async Task Package_Create_Update_Delete_WorksSuccessfully()
+    {
+        // 1. Create Package
+        var createDto = new CreatePackageDto(
+            Name: "20 Seans Reformer Pilates",
+            PackageType: "GRUP",
+            LessonCount: 20,
+            DefaultPrice: 16000m,
+            ValidityDays: 60
+        );
+
+        var created = await _service.CreatePackageAsync(createDto);
+        Assert.NotNull(created);
+        Assert.Equal("20 Seans Reformer Pilates", created.Name);
+        Assert.Equal(20, created.LessonCount);
+        Assert.Equal(16000m, created.DefaultPrice);
+        Assert.Equal(60, created.ValidityDays);
+        Assert.True(created.IsActive);
+
+        // 2. Update Package
+        var updateDto = new UpdatePackageDto(
+            Name: "20 Seans Reformer VIP",
+            PackageType: "OZEL",
+            LessonCount: 20,
+            DefaultPrice: 18000m,
+            ValidityDays: 75,
+            IsActive: true
+        );
+
+        var updated = await _service.UpdatePackageAsync(created.Id, updateDto);
+        Assert.NotNull(updated);
+        Assert.Equal("20 Seans Reformer VIP", updated.Name);
+        Assert.Equal("OZEL", updated.PackageType);
+        Assert.Equal(18000m, updated.DefaultPrice);
+
+        // 3. Delete Package
+        var deleted = await _service.DeletePackageAsync(created.Id);
+        Assert.True(deleted);
+
+        var activePackages = await _service.GetPackagesAsync(includeInactive: false);
+        Assert.DoesNotContain(activePackages, p => p.Id == created.Id);
+    }
 }
+
 
 
