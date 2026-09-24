@@ -41,6 +41,7 @@ public class AppUser
 [Flags]
 public enum UserRole
 {
+    None       = 0,
     Athlete    = 1,
     Coach      = 2,
     Admin      = 4,

@@ -11,11 +11,51 @@ public class ReservationService(
 {
     public async Task<ReservationDto> BookSlotAsync(int athleteUserId, int slotId, CancellationToken ct = default)
     {
-        // 1. Sporcu profilini bul
+        // 1. Sporcu profilini bul veya Kullanıcı Eğitmen/Yönetici ise otomatik oluştur
         var member = await db.Members
             .FirstOrDefaultAsync(m => m.UserId == athleteUserId, ct)
-            ?? await db.Members.FindAsync([athleteUserId], ct)
-            ?? throw new InvalidOperationException("Sporcu profili bulunamadı.");
+            ?? await db.Members.FindAsync([athleteUserId], ct);
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == athleteUserId, ct);
+
+        var userRoles = user?.Roles ?? UserRole.None;
+        bool isStaff = userRoles.HasFlag(UserRole.Coach) || 
+                       userRoles.HasFlag(UserRole.Admin) || 
+                       userRoles.HasFlag(UserRole.SuperAdmin);
+
+        if (member == null)
+        {
+            if (user != null)
+            {
+                if (!string.IsNullOrWhiteSpace(user.PhoneNumber))
+                {
+                    member = await db.Members.FirstOrDefaultAsync(m => m.Phone == user.PhoneNumber, ct);
+                }
+
+                if (member == null)
+                {
+                    member = new Member
+                    {
+                        UserId = user.Id,
+                        FullName = user.FullName,
+                        Phone = user.PhoneNumber,
+                        IsActive = true,
+                        Notes = isStaff ? "Eğitmen / Personel Sporcu Profili" : null
+                    };
+                    db.Members.Add(member);
+                    await db.SaveChangesAsync(ct);
+                }
+                else if (member.UserId != user.Id)
+                {
+                    member.UserId = user.Id;
+                    await db.SaveChangesAsync(ct);
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException("Sporcu profili bulunamadı.");
+            }
+        }
 
         // 2. Aktif ve kalan ders hakkı olan paketi bul
         var subscription = await db.Subscriptions
@@ -26,7 +66,45 @@ public class ReservationService(
 
         if (subscription == null || subscription.RemainingLessons <= 0)
         {
-            throw new InvalidOperationException("Aktif bir paketiniz veya kalan ders hakkınız bulunmuyor.");
+            if (isStaff)
+            {
+                var staffPackage = await db.Packages
+                    .FirstOrDefaultAsync(p => p.PackageType == "STAFF" || p.Name == "Eğitmen / Personel Katılımı", ct);
+
+                if (staffPackage == null)
+                {
+                    staffPackage = new Package
+                    {
+                        Name = "Eğitmen / Personel Katılımı",
+                        PackageType = "STAFF",
+                        LessonCount = 999,
+                        DefaultPrice = 0m,
+                        ValidityDays = 3650,
+                        IsActive = true
+                    };
+                    db.Packages.Add(staffPackage);
+                    await db.SaveChangesAsync(ct);
+                }
+
+                subscription = new Subscription
+                {
+                    MemberId = member.Id,
+                    PackageId = staffPackage.Id,
+                    Price = 0m,
+                    TotalLessons = 999,
+                    CompletedLessons = 0,
+                    StartDate = DateTime.UtcNow.Date,
+                    EndDate = DateTime.UtcNow.Date.AddYears(10),
+                    Status = "Active",
+                    Notes = "Eğitmen / Personel sınırsız seans katılım hakkı"
+                };
+                db.Subscriptions.Add(subscription);
+                await db.SaveChangesAsync(ct);
+            }
+            else
+            {
+                throw new InvalidOperationException("Aktif bir paketiniz veya kalan ders hakkınız bulunmuyor.");
+            }
         }
 
         // 3. Seans slotunu bul
@@ -86,7 +164,7 @@ public class ReservationService(
             SessionSlotId = slotId,
             MemberId = member.Id,
             SubscriptionId = subscription.Id,
-            BookedBy = "Athlete",
+            BookedBy = isStaff ? "Coach" : "Athlete",
             Status = status,
             WaitlistPosition = waitlistPosition,
             CreatedAt = DateTime.UtcNow
@@ -331,6 +409,15 @@ public class ReservationService(
         var member = await db.Members
             .FirstOrDefaultAsync(m => m.UserId == athleteUserId, ct)
             ?? await db.Members.FindAsync([athleteUserId], ct);
+
+        if (member == null)
+        {
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Id == athleteUserId, ct);
+            if (user != null && !string.IsNullOrWhiteSpace(user.PhoneNumber))
+            {
+                member = await db.Members.FirstOrDefaultAsync(m => m.Phone == user.PhoneNumber, ct);
+            }
+        }
 
         if (member == null) return [];
 

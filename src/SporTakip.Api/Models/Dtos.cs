@@ -300,5 +300,16 @@ public record TrainerLessonHistoryItemDto(
     string? Notes
 );
 
+public record GymInfoDto(
+    string StudioName,
+    string Address,
+    string MapsUrl,
+    string WorkingHours,
+    string? OwnerName,
+    string? OwnerPhone,
+    string? FormattedPhone,
+    string? CleanPhone
+);
+
 
 

@@ -776,6 +776,33 @@ public class GymServiceTests : IDisposable
         Assert.Equal("Atlet_1", syncedUser.FullName);
         Assert.Equal("+905553334455", syncedUser.PhoneNumber);
     }
+
+    [Fact]
+    public async Task GetGymInfoAsync_ReturnsDynamicSalonOwnerPhone()
+    {
+        // Arrange: Salon Sahibi rolünde antrenör ekle
+        var trainer = new Trainer
+        {
+            FullName = "SalonSahibi_Test",
+            Role = "Salon Sahibi",
+            Phone = "+905329990011",
+            DefaultShareRate = 0.30m,
+            IsActive = true
+        };
+        _db.Trainers.Add(trainer);
+        await _db.SaveChangesAsync();
+
+        // Act
+        var gymInfo = await _service.GetGymInfoAsync();
+
+        // Assert
+        Assert.NotNull(gymInfo);
+        Assert.Equal("Compound Athletic Stüdyosu", gymInfo.StudioName);
+        Assert.Equal("+905329990011", gymInfo.OwnerPhone);
+        Assert.Equal("+90 532 999 00 11", gymInfo.FormattedPhone);
+        Assert.Equal("905329990011", gymInfo.CleanPhone);
+        Assert.Equal("SalonSahibi_Test", gymInfo.OwnerName);
+    }
 }
 
 

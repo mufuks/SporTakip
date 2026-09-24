@@ -333,6 +333,25 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     3. **Controller Seviyesinde Savunma Derinliği:**
        - `DashboardController`, `PackagesController`, `SessionsController`, `ReservationsController`, `MembersController` ve `WorkoutsController` uç noktalarındaki `[Authorize(Roles = "...")]` niteleyicilerine açıkça `SuperAdmin` rolü eklendi.
   - **Doğrulama:** 61/61 birim ve entegrasyon testi 0 hatayla geçti. Tarayıcı alt ajanı ile SuperAdmin'in "🏢 Salon" moduna geçişi, Finans ve Bordrolar ekranlarını eksiksiz görüntüleyebildiği doğrulandı. Sürüm `v2.9.6`.
+- **2026-09-24 (v2.9.8 - Dinamik Stüdyo İletişim Kartı & Salon Sahibi Telefon Numarası):**
+  - **Kullanıcı Talebi:** Profilim sekmesindeki "Compound Athletic Stüdyosu" iletişim kartında salon sahibinin telefon numarasının gösterilmesi.
+  - **Uygulanan Çözümler:**
+    - `GymService.GetStudioContactInfoAsync`: Veritabanındaki `Salon Sahibi` (Admin) rolüne sahip antrenörün telefon numarasını ve adını dinamik olarak okuyup `appsettings.json` ile birleştiren API servisi geliştirildi (`/api/dashboard/gym-contact`).
+    - `app.js` (`renderStudioContactCardHtml`): Statik numara yerine API'den gelen dinamik telefon numarası `tel:` ve WhatsApp linklerine bağlandı.
+    - Birim testler (`GymServiceTests.cs`) ile doğrulandı. Sürüm `v2.9.8`.
+- **2026-09-24 (v2.9.9 - Eğitmen Sporcu Kimliği & Kendi Seansına Rezervasyon Yapabilme):**
+  - **Kullanıcı Talebi:** *"Eğitmen aynı zamanda sporcudur. isterse kendine rezerve edebilmeli"*
+  - **Kök Neden & Analiz:**
+    - `ReservationsController.BookSlot`: Yalnızca `SuperAdmin, Athlete, Admin` rollerine açıktı, `Coach` rolü `403 Forbidden` alıyordu.
+    - `ReservationService.BookSlotAsync`: Rezervasyon yapan kullanıcının `Members` tablosunda kaydı yoksa "Sporcu profili bulunamadı" hatası fırlatıyordu. Eğitmenlerin `Users` ve `Trainers` kaydı bulunurken `Members` kaydı bulunmuyordu.
+    - Paket/Abonelik Kısıtı: Eğitmenler müşteri gibi ücretli paket satın almadıkları için "Aktif bir paketiniz veya kalan ders hakkınız bulunmuyor" hatası oluşuyordu.
+  - **Uygulanan Çözümler:**
+    1. **Yetkilendirme:** `ReservationsController.BookSlot` ve `WorkoutsController` uç noktalarına `Coach` rolü eklendi (`[Authorize(Roles = "SuperAdmin, Athlete, Admin, Coach")]`).
+    2. **Otomatik Sporcu Kimliği (Member Auto-Provisioning):** `AuthService.GetRoleNames` metodu `Coach` ve `Admin` kullanıcıları için `Athlete` rol claim'ini otomatik dahil edecek şekilde güncellendi. `AuthService.VerifyOtpAsync`, `AuthService.GetCurrentUserProfileAsync` ve `ReservationService.BookSlotAsync` içerisinde antrenör veya yöneticilerin `Member` profili eksikse anında otomatik türetilip bağlandı.
+    3. **Ücretsiz Personel/Eğitmen Paketi:** `ReservationService.BookSlotAsync` içerisinde antrenör/yönetici rezervasyon yaparken aktif paketi yoksa **0 TL bedelli, 999 derslik sınırsız "Eğitmen / Personel Katılımı"** paketi otomatik tanımlanır. Bu sayede kasa, ciro ve bordro hesapları bozulmadan (0 TL olarak) yoklama ve rezervasyon foreign key ilişkileri eksiksiz çalışır.
+    4. **Tohum Veri Senkronizasyonu:** `DbSeeder.cs` içerisinde `sinanUser` ve `gulcinUser` kullanıcılarına `UserRole.Athlete` yetkisi tanımlandı; `Member` profilleri ve personel katılım paketleri başlangıçta garanti altına alındı.
+    5. **PWA Slot Senkronizasyonu:** `app.js` içerisindeki `myReservationSlotIds` eşleştirmesinde `sessionSlotId` desteği eklendi; rezerve edilen seanslarda buton anında **"✓ Rezerve Edildi"** durumuna geçer.
+  - **Doğrulama:** 63/63 test (%100 Başarılı) tamamlandı. `Hoca_1` (`+905324445566`) ile uçtan uca tarayıcı rezervasyon akışı başarıyla test edildi ve ekran görüntüsü alındı. Sürüm `v2.9.9`.
 
 
 

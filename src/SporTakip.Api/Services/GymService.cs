@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SporTakip.Api.Data;
 using SporTakip.Api.Models;
+using SporTakip.Api.Models.Identity;
 
 namespace SporTakip.Api.Services;
 
@@ -1096,5 +1097,84 @@ public class GymService(AppDbContext db)
             s.SalonShareAmount,
             s.TrainerShareAmount
         );
+    }
+
+    /// <summary>
+    /// Stüdyo genel iletişim ve adres bilgilerini döner. Telefon numarası sistemdeki aktif Salon Sahibi'nden (Admin) dinamik olarak çekilir.
+    /// </summary>
+    public async Task<GymInfoDto> GetGymInfoAsync(CancellationToken cancellationToken = default)
+    {
+        // 1. Rolü "Salon Sahibi" olan aktif antrenörü bul
+        var ownerTrainer = await db.Trainers
+            .Where(t => t.IsActive && (t.Role == "Salon Sahibi" || t.Role.Contains("Sahip")))
+            .OrderBy(t => t.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        string? ownerPhone = ownerTrainer?.Phone;
+        string? ownerName = ownerTrainer?.FullName;
+
+        // Trainer üzerinde telefon yoksa bağlı AppUser'dan al
+        if (string.IsNullOrWhiteSpace(ownerPhone) && ownerTrainer?.UserId != null)
+        {
+            var user = await db.Users.FindAsync([ownerTrainer.UserId.Value], cancellationToken);
+            if (user != null)
+            {
+                ownerPhone = user.PhoneNumber;
+                ownerName ??= user.FullName;
+            }
+        }
+
+        // 2. Trainer kaydında bulunamadıysa Admin rolüne sahip aktif ilk kullanıcıdan al
+        if (string.IsNullOrWhiteSpace(ownerPhone))
+        {
+            var adminUser = await db.Users
+                .Where(u => u.IsActive && u.Roles.HasFlag(UserRole.Admin) && !u.Roles.HasFlag(UserRole.SuperAdmin))
+                .OrderBy(u => u.Id)
+                .FirstOrDefaultAsync(cancellationToken)
+                ?? await db.Users.Where(u => u.IsActive && u.Roles.HasFlag(UserRole.Admin)).FirstOrDefaultAsync(cancellationToken);
+
+            if (adminUser != null)
+            {
+                ownerPhone = adminUser.PhoneNumber;
+                ownerName ??= adminUser.FullName;
+            }
+        }
+
+        // Güvenli varsayılan
+        ownerPhone ??= "+905321112233";
+        ownerName ??= "Salon Sahibi";
+
+        var cleanDigits = new string(ownerPhone.Where(char.IsDigit).ToArray());
+        var cleanPhone = cleanDigits.StartsWith("0") ? "90" + cleanDigits[1..] : (cleanDigits.StartsWith("90") ? cleanDigits : "90" + cleanDigits);
+        var formatted = FormatPhoneDisplay(ownerPhone);
+
+        return new GymInfoDto(
+            StudioName: "Compound Athletic Stüdyosu",
+            Address: "İhsaniye, Erkal Sk. No:5A, 16600 Nilüfer / Bursa",
+            MapsUrl: "https://maps.google.com/?q=%C4%B0hsaniye,+Erkal+Sk.+No:5A,+16600+Nil%C3%BCfer/Bursa",
+            WorkingHours: "Hafta İçi: 07:00 – 22:00 | Hafta Sonu: 09:00 – 18:00",
+            OwnerName: ownerName,
+            OwnerPhone: ownerPhone,
+            FormattedPhone: formatted,
+            CleanPhone: cleanPhone
+        );
+    }
+
+    private static string FormatPhoneDisplay(string phone)
+    {
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+        if (digits.StartsWith("90") && digits.Length == 12)
+        {
+            return $"+90 {digits.Substring(2, 3)} {digits.Substring(5, 3)} {digits.Substring(8, 2)} {digits.Substring(10, 2)}";
+        }
+        if (digits.StartsWith("0") && digits.Length == 11)
+        {
+            return $"+90 {digits.Substring(1, 3)} {digits.Substring(4, 3)} {digits.Substring(7, 2)} {digits.Substring(9, 2)}";
+        }
+        if (digits.Length == 10)
+        {
+            return $"+90 {digits.Substring(0, 3)} {digits.Substring(3, 3)} {digits.Substring(6, 2)} {digits.Substring(8, 2)}";
+        }
+        return phone;
     }
 }

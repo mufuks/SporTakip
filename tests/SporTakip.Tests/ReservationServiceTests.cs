@@ -376,4 +376,46 @@ public class ReservationServiceTests : IDisposable
         Assert.Equal(0, loadedSlot.ConfirmedCount);
         Assert.Equal(6, loadedSlot.RemainingCapacity);
     }
+
+    [Fact]
+    public async Task BookSlot_When_UserIsCoach_AllowsBooking_WithAutoStaffSubscription()
+    {
+        // Arrange: Eğitmen oluştur (önceden tanımlı sporcu profili veya paketi yok)
+        var (_, _, _, _, slot) = await SetupStandardScenarioAsync();
+        var coachUser = new AppUser
+        {
+            PhoneNumber = "+905329998877",
+            FullName = "Test Antrenör",
+            Roles = UserRole.Coach,
+            PhoneVerified = true
+        };
+        _db.Users.Add(coachUser);
+        await _db.SaveChangesAsync();
+
+        // Act: Eğitmen kendisi için seansa yer ayırtır
+        var booking = await _reservationService.BookSlotAsync(coachUser.Id, slot.Id);
+
+        // Assert
+        Assert.NotNull(booking);
+        Assert.Equal("Confirmed", booking.Status);
+        Assert.Equal(slot.Id, booking.SessionSlotId);
+
+        // Otomatik oluşturulan Member ve Subscription kayıtlarını doğrula
+        var member = await _db.Members.FirstOrDefaultAsync(m => m.UserId == coachUser.Id);
+        Assert.NotNull(member);
+        Assert.Equal(coachUser.FullName, member.FullName);
+
+        var subscription = await _db.Subscriptions
+            .Include(s => s.Package)
+            .FirstOrDefaultAsync(s => s.MemberId == member.Id && s.Status == "Active");
+        Assert.NotNull(subscription);
+        Assert.Equal(0m, subscription.Price);
+        Assert.Equal(999, subscription.TotalLessons);
+        Assert.Equal("STAFF", subscription.Package.PackageType);
+
+        // Rezervasyon listesinde göründüğünü doğrula
+        var myReservations = await _reservationService.GetMyReservationsAsync(coachUser.Id);
+        Assert.Single(myReservations);
+        Assert.Equal(booking.Id, myReservations[0].Id);
+    }
 }

@@ -13,7 +13,7 @@ public class ReservationsController(IReservationService reservationService) : Co
     /// <summary>
     /// Seans için yer ayırtır. Kontenjan dolduysa otomatik olarak yedek listeye (Waitlist) alır.
     /// </summary>
-    [Authorize(Roles = "SuperAdmin, Athlete, Admin")]
+    [Authorize(Roles = "SuperAdmin, Athlete, Admin, Coach")]
     [HttpPost("book")]
     [ProducesResponseType(typeof(ReservationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

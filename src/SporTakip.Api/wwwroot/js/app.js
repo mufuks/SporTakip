@@ -1,4 +1,4 @@
-import { Api } from './api.js?v=2.9.3';
+import { Api } from './api.js?v=2.9.9';
 
 // State
 let currentTab = 'home';
@@ -14,6 +14,108 @@ let capacitySlotsData = [];
 let selectedSlotHour = null;
 let currentCapacityDate = new Date().toISOString().split('T')[0];
 let waTargetSub = null;
+let currentGymInfo = null;
+
+async function getGymContactInfo(forceRefresh = false) {
+  if (currentGymInfo && !forceRefresh) return currentGymInfo;
+  try {
+    currentGymInfo = await Api.getGymInfo();
+  } catch (err) {
+    console.warn('[GymInfo] Dynamic gym info fetch failed:', err);
+    currentGymInfo = {
+      studioName: 'Compound Athletic Stüdyosu',
+      address: 'İhsaniye, Erkal Sk. No:5A, 16600 Nilüfer / Bursa',
+      mapsUrl: 'https://maps.google.com/?q=%C4%B0hsaniye,+Erkal+Sk.+No:5A,+16600+Nil%C3%BCfer/Bursa',
+      workingHours: 'Hafta İçi: 07:00 – 22:00 | Hafta Sonu: 09:00 – 18:00',
+      ownerName: 'Salon Sahibi',
+      ownerPhone: '+905321112233',
+      formattedPhone: '+90 532 111 22 33',
+      cleanPhone: '905321112233'
+    };
+  }
+  updateGlobalGymContactElements();
+  return currentGymInfo;
+}
+
+function updateGlobalGymContactElements() {
+  if (!currentGymInfo) return;
+  const { cleanPhone, formattedPhone, ownerPhone, ownerName } = currentGymInfo;
+
+  // WhatsApp linkleri
+  const waLinks = document.querySelectorAll('.gym-contact-wa, #landing-hero-wa, #landing-lead-wa, #unauth-schedule-wa, #studio-contact-wa');
+  waLinks.forEach(link => {
+    try {
+      const u = new URL(link.href);
+      const textParam = u.searchParams.get('text') || 'Merhaba, Compound Athletic hakkında bilgi almak istiyorum.';
+      link.href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(textParam)}`;
+    } catch {
+      link.href = `https://wa.me/${cleanPhone}`;
+    }
+  });
+
+  // Telefon arama linkleri
+  const telLinks = document.querySelectorAll('.gym-contact-tel, #studio-contact-tel');
+  telLinks.forEach(link => {
+    link.href = `tel:+${cleanPhone}`;
+  });
+
+  // Telefon metinleri
+  const phoneTexts = document.querySelectorAll('.gym-contact-phone-text, #studio-contact-phone');
+  phoneTexts.forEach(el => {
+    el.textContent = formattedPhone || ownerPhone;
+  });
+
+  // Salon Sahibi isim rozetleri
+  const ownerNames = document.querySelectorAll('.gym-owner-name-badge');
+  ownerNames.forEach(el => {
+    el.textContent = `👑 ${ownerName || 'Salon Sahibi'}`;
+  });
+}
+
+function renderStudioContactCardHtml(gym) {
+  const sName = gym?.studioName || 'Compound Athletic Stüdyosu';
+  const sAddr = gym?.address || 'İhsaniye, Erkal Sk. No:5A, 16600 Nilüfer / Bursa';
+  const sMaps = gym?.mapsUrl || 'https://maps.google.com/?q=%C4%B0hsaniye,+Erkal+Sk.+No:5A,+16600+Nil%C3%BCfer/Bursa';
+  const sHours = gym?.workingHours || 'Hafta İçi: 07:00 – 22:00 | Hafta Sonu: 09:00 – 18:00';
+  const sPhone = gym?.formattedPhone || gym?.ownerPhone || '+90 532 111 22 33';
+  const sClean = gym?.cleanPhone || '905321112233';
+  const sOwner = gym?.ownerName || 'Salon Sahibi';
+
+  return `
+      <!-- Studio Information & Contact Card (Salon Sahibi İletişimi) -->
+      <div class="v0-card" style="padding:20px; border-radius:16px; margin-bottom:16px;">
+        <h4 style="font-size:15px; font-weight:800; margin:0 0 12px 0; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+          <span>🏢</span> ${sName}
+        </h4>
+        <div style="display:flex; flex-direction:column; gap:10px; font-size:12.5px; color:var(--text-secondary);">
+          <div style="display:flex; gap:10px; align-items:flex-start;">
+            <span style="color:var(--volt-lime); font-size:16px;">📍</span>
+            <div>
+              <span style="font-weight:600; color:var(--text-primary); display:block;">${sAddr}</span>
+              <a href="${sMaps}" target="_blank" style="display:inline-block; font-size:11px; color:var(--volt-lime); margin-top:3px; text-decoration:underline; font-weight:700;">Haritada Aç (Google Maps) ↗</a>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <span style="color:var(--volt-lime);">⏰</span>
+            <span>${sHours}</span>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span style="color:var(--volt-lime);">📞</span>
+            <span class="gym-contact-phone-text" style="font-weight:700; color:var(--text-primary);">${sPhone}</span>
+            <span class="gym-owner-name-badge" style="font-size:11px; color:var(--volt-lime); background:var(--volt-lime-muted); padding:2px 8px; border-radius:999px; margin-left:6px; font-weight:600;">👑 ${sOwner}</span>
+          </div>
+        </div>
+        <div style="margin-top:14px; display:flex; gap:8px;">
+          <a class="gym-contact-wa" href="https://wa.me/${sClean}?text=Merhaba,%20Compound%20Athletic%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" style="flex:1; padding:9px 12px; border-radius:10px; background:#25D366; color:#fff; text-align:center; font-size:12px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+            <span>💬</span> WhatsApp
+          </a>
+          <a class="gym-contact-tel" href="tel:+${sClean}" style="flex:1; padding:9px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle); text-align:center; font-size:12px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+            <span>📞</span> Hemen Ara
+          </a>
+        </div>
+      </div>
+  `;
+}
 
 // Theme Management (Default to 'dark' for modern athletic feel)
 let currentTheme = localStorage.getItem('sportakip-theme') || 'dark';
@@ -2114,7 +2216,7 @@ async function renderSessionsList(containerId, dateStr) {
           <button type="button" onclick="openLeadModal('Seans Takvimi')" class="btn-primary" style="background:var(--bg-surface-elevated); color:var(--volt-lime); border:1px solid var(--volt-lime); padding:11px 16px; font-size:12.5px; font-weight:800; border-radius:12px; cursor:pointer;">
             📞 Üye Olmak İstiyorum / Bana Ulaşın
           </button>
-          <a href="https://wa.me/905321112233?text=Merhaba,%20Compound%20Athletic%20seanslar%C4%B1%20ve%20%C3%BCyelik%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" style="font-size:12px; color:#25D366; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px; margin-top:2px;">
+          <a id="unauth-schedule-wa" class="gym-contact-wa" href="https://wa.me/${currentGymInfo?.cleanPhone || '905321112233'}?text=Merhaba,%20Compound%20Athletic%20seanslar%C4%B1%20ve%20%C3%BCyelik%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" style="font-size:12px; color:#25D366; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px; margin-top:2px;">
             <span>💬</span> WhatsApp ile Bilgi Alın →
           </a>
         </div>
@@ -2174,7 +2276,7 @@ async function renderSessionsList(containerId, dateStr) {
         if (myRes) {
           myRes.forEach(r => {
             if (r.status === 'Confirmed' || r.status === 'Waitlisted') {
-              myReservationSlotIds.add(r.slotId);
+              myReservationSlotIds.add(r.sessionSlotId || r.slotId);
             }
           });
         }
@@ -2229,7 +2331,7 @@ async function renderSessionsList(containerId, dateStr) {
         `;
       } else if (isReservedByMe) {
         actionButtonHtml = `
-          <button type="button" class="v0-book-btn reserved" onclick="handleBookSession(${slot.id})">
+          <button type="button" class="v0-book-btn reserved" onclick="showToast('✓ Bu seansa zaten rezervasyonunuz bulunuyor. İptal veya detay için Profilim sekmesine bakabilirsiniz.', 'info')">
             ✓ Rezerve Edildi
           </button>
         `;
@@ -2597,6 +2699,7 @@ window.renderAthleteProfile = async function() {
   const container = document.getElementById('v0-profile-content');
   if (!container) return;
 
+  const gym = await getGymContactInfo();
   const user = Api.getUser();
   if (!user || !Api.getToken()) {
     container.innerHTML = `
@@ -2616,37 +2719,7 @@ window.renderAthleteProfile = async function() {
         </div>
       </div>
 
-      <!-- Studio Information & Contact Card -->
-      <div class="v0-card" style="padding:20px; border-radius:16px; margin-bottom:16px;">
-        <h4 style="font-size:15px; font-weight:800; margin:0 0 12px 0; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
-          <span>🏢</span> Compound Athletic Stüdyosu
-        </h4>
-        <div style="display:flex; flex-direction:column; gap:10px; font-size:12.5px; color:var(--text-secondary);">
-          <div style="display:flex; gap:10px; align-items:flex-start;">
-            <span style="color:var(--volt-lime); font-size:16px;">📍</span>
-            <div>
-              <span style="font-weight:600; color:var(--text-primary); display:block;">İhsaniye, Erkal Sk. No:5A, 16600 Nilüfer / Bursa</span>
-              <a href="https://maps.google.com/?q=%C4%B0hsaniye,+Erkal+Sk.+No:5A,+16600+Nil%C3%BCfer/Bursa" target="_blank" style="display:inline-block; font-size:11px; color:var(--volt-lime); margin-top:3px; text-decoration:underline; font-weight:700;">Haritada Aç (Google Maps) ↗</a>
-            </div>
-          </div>
-          <div style="display:flex; gap:10px;">
-            <span style="color:var(--volt-lime);">⏰</span>
-            <span>Hafta İçi: 07:00 – 22:00 | Hafta Sonu: 09:00 – 18:00</span>
-          </div>
-          <div style="display:flex; gap:10px;">
-            <span style="color:var(--volt-lime);">📞</span>
-            <span>+90 532 111 22 33</span>
-          </div>
-        </div>
-        <div style="margin-top:14px; display:flex; gap:8px;">
-          <a href="https://wa.me/905321112233?text=Merhaba,%20Compound%20Athletic%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" style="flex:1; padding:9px 12px; border-radius:10px; background:#25D366; color:#fff; text-align:center; font-size:12px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
-            <span>💬</span> WhatsApp
-          </a>
-          <a href="tel:+905321112233" style="flex:1; padding:9px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle); text-align:center; font-size:12px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
-            <span>📞</span> Hemen Ara
-          </a>
-        </div>
-      </div>
+      ${renderStudioContactCardHtml(gym)}
 
       <!-- PWA Card -->
       <div class="v0-card" style="padding:18px 20px; border-radius:16px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
@@ -2779,6 +2852,8 @@ window.renderAthleteProfile = async function() {
       <h4 style="font-size:13px; font-weight:700; color:var(--text-secondary); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.05em;">Rezervasyonlarım</h4>
       ${reservationsHtml}
     </div>
+
+    ${renderStudioContactCardHtml(gym)}
 
     <!-- 4. Uygulama & Mobil Cihaz Durumu (PWA) -->
     <div class="v0-card" style="${isAppInstalled() ? 'border:1px solid rgba(16,185,129,0.35); background:rgba(16,185,129,0.06);' : 'border:1px solid var(--volt-lime); background:linear-gradient(135deg, rgba(204,255,0,0.08), var(--bg-surface-elevated));'}">
@@ -4127,6 +4202,7 @@ window.handleSaveEditUser = async function(e) {
     closeModal('modal-edit-user');
     await loadSuperAdminView();
     await loadInitialData();
+    await getGymContactInfo(true);
   } catch (err) {
     showToast(`Güncelleme hatası: ${err.message}`, 'error');
   }
@@ -4142,6 +4218,7 @@ window.handleAssignRole = async function(userId, role, assign) {
     showToast(`✓ Kullanıcı yetkisi başarıyla güncellendi!`);
     await loadSuperAdminView();
     await loadInitialData();
+    await getGymContactInfo(true);
   } catch (err) {
     showToast(`Yetki güncelleme hatası: ${err.message}`, 'error');
   }
@@ -4172,6 +4249,7 @@ window.handleCreateGymOwnerSubmit = async function(event) {
     closeModal('modal-create-owner');
     await loadSuperAdminView();
     await loadInitialData();
+    await getGymContactInfo(true);
   } catch (err) {
     showToast(`Salon sahibi eklenemedi: ${err.message}`, 'error');
   }
@@ -4179,7 +4257,9 @@ window.handleCreateGymOwnerSubmit = async function(event) {
 
 document.addEventListener('DOMContentLoaded', () => {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      reg.update();
+    }).catch((err) => {
       console.warn('[PWA] ServiceWorker registration failed:', err);
     });
   }
@@ -4187,6 +4267,17 @@ document.addEventListener('DOMContentLoaded', () => {
   updateAppAvatars();
   updateNavForUserRole();
   initPwaInstallFlow();
+  getGymContactInfo().catch(() => {});
+
+  // Oturum açık ise profili ve güncel rolleri arka planda tazeleyelim
+  if (Api.getToken()) {
+    Api.getMe().then((freshUser) => {
+      if (freshUser) {
+        Api.setUser(freshUser);
+        updateNavForUserRole();
+      }
+    }).catch(() => {});
+  }
 
   const urlParams = new URLSearchParams(window.location.search);
   const requestedTab = urlParams.get('tab') || localStorage.getItem('sportakip_tab') || 'home';

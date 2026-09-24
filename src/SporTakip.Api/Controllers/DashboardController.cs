@@ -18,6 +18,16 @@ public class DashboardController(GymService gymService) : ControllerBase
     }
 
     /// <summary>
+    /// Stüdyo genel bilgilerini ve aktif Salon Sahibi'nin iletişim numarasını döner (Herkese açık).
+    /// </summary>
+    [HttpGet("gym-info")]
+    public async Task<ActionResult<GymInfoDto>> GetGymInfo(CancellationToken ct)
+    {
+        var info = await gymService.GetGymInfoAsync(ct);
+        return Ok(info);
+    }
+
+    /// <summary>
     /// Salon geneli hakediş ve ciro bordrosu (Yalnızca Salon Sahibi / Admin ve SuperAdmin).
     /// </summary>
     [Authorize(Roles = "SuperAdmin, Admin")]

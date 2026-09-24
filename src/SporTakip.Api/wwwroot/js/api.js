@@ -89,29 +89,66 @@ export const Api = {
     return data;
   },
 
-  async get(endpoint) {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+  // Central Request Handler with Automatic Silent Token Refresh on 401
+  async _request(method, endpoint, data = null) {
+    const options = {
+      method: method,
       headers: this.getHeaders()
-    });
+    };
+    if (data != null && (method === 'POST' || method === 'PUT')) {
+      options.body = JSON.stringify(data);
+    }
+
+    let res = await fetch(`${API_BASE}${endpoint}`, options);
+
+    // 401 Unauthorized aldığımızda ve endpoint /auth/ değilse, Refresh Token ile sessiz yenilemeyi dene!
+    if (res.status === 401 && !endpoint.startsWith('/auth/')) {
+      const refreshToken = this.getRefreshToken();
+      if (refreshToken) {
+        try {
+          const refreshRes = await fetch(`${API_BASE}/auth/refresh-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken })
+          });
+          if (refreshRes.ok) {
+            const authData = await refreshRes.json();
+            if (authData.accessToken) {
+              this.setToken(authData.accessToken);
+              if (authData.refreshToken) this.setRefreshToken(authData.refreshToken);
+              if (authData.user) this.setUser(authData.user);
+
+              // İsteği yeni token ile anında tekrar et!
+              options.headers = this.getHeaders();
+              res = await fetch(`${API_BASE}${endpoint}`, options);
+            }
+          } else {
+            // Refresh token da geçersiz ise temizle
+            this.clearAuth();
+          }
+        } catch {
+          this.clearAuth();
+        }
+      }
+    }
+
     return this._handleResponse(res);
+  },
+
+  async get(endpoint) {
+    return this._request('GET', endpoint);
   },
 
   async post(endpoint, data) {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(data)
-    });
-    return this._handleResponse(res);
+    return this._request('POST', endpoint, data);
   },
 
   async put(endpoint, data) {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      body: JSON.stringify(data)
-    });
-    return this._handleResponse(res);
+    return this._request('PUT', endpoint, data);
+  },
+
+  async delete(endpoint) {
+    return this._request('DELETE', endpoint);
   },
 
   // Auth (Faz 2)
@@ -229,6 +266,10 @@ export const Api = {
 
   getTrainers() {
     return this.get('/trainers');
+  },
+
+  getGymInfo() {
+    return this.get('/dashboard/gym-info');
   },
 
   createTrainer(data) {

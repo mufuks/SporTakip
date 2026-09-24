@@ -275,6 +275,22 @@ public class AuthService(
             await db.SaveChangesAsync(ct);
         }
 
+        // Eğitmen, Yönetici veya SuperAdmin ise otomatik olarak sporcu (Member) profili garantile
+        if (memberProfile == null && (user.Roles.HasFlag(UserRole.Coach) || user.Roles.HasFlag(UserRole.Admin) || user.Roles.HasFlag(UserRole.SuperAdmin)))
+        {
+            memberProfile = new Member
+            {
+                FullName = user.FullName,
+                Phone = normalizedPhone,
+                UserId = user.Id,
+                IsActive = true,
+                Notes = "Eğitmen / Personel Sporcu Profili"
+            };
+            db.Members.Add(memberProfile);
+            await db.SaveChangesAsync(ct);
+            user.MemberProfile = memberProfile;
+        }
+
         var trainerProfile = user.TrainerProfile
             ?? await db.Trainers.FirstOrDefaultAsync(t => t.UserId == user.Id || t.Phone == normalizedPhone, ct);
         if (trainerProfile != null && trainerProfile.UserId != user.Id)
@@ -349,6 +365,22 @@ public class AuthService(
         {
             memberProfile.UserId = user.Id;
             await db.SaveChangesAsync(ct);
+        }
+
+        // Eğitmen, Yönetici veya SuperAdmin ise otomatik olarak sporcu (Member) profili garantile
+        if (memberProfile == null && (user.Roles.HasFlag(UserRole.Coach) || user.Roles.HasFlag(UserRole.Admin) || user.Roles.HasFlag(UserRole.SuperAdmin)))
+        {
+            memberProfile = new Member
+            {
+                FullName = user.FullName,
+                Phone = user.PhoneNumber,
+                UserId = user.Id,
+                IsActive = true,
+                Notes = "Eğitmen / Personel Sporcu Profili"
+            };
+            db.Members.Add(memberProfile);
+            await db.SaveChangesAsync(ct);
+            user.MemberProfile = memberProfile;
         }
 
         var trainerProfile = user.TrainerProfile
@@ -484,8 +516,16 @@ public class AuthService(
             return list;
         }
         if (roles.HasFlag(UserRole.Athlete))    list.Add("Athlete");
-        if (roles.HasFlag(UserRole.Coach))      list.Add("Coach");
-        if (roles.HasFlag(UserRole.Admin))      list.Add("Admin");
+        if (roles.HasFlag(UserRole.Coach))
+        {
+            list.Add("Coach");
+            if (!list.Contains("Athlete")) list.Add("Athlete");
+        }
+        if (roles.HasFlag(UserRole.Admin))
+        {
+            list.Add("Admin");
+            if (!list.Contains("Athlete")) list.Add("Athlete");
+        }
         return list;
     }
 }
