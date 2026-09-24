@@ -31,6 +31,11 @@ function applyTheme(theme) {
   if (desktopIcon) desktopIcon.innerText = isLight ? '☀️' : '🌙';
   if (desktopLabel) desktopLabel.innerText = isLight ? 'Açık Tema' : 'Koyu Tema';
   if (mobileIcon) mobileIcon.innerText = isLight ? '☀️' : '🌙';
+
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  if (metaThemeColor) {
+    metaThemeColor.setAttribute('content', isLight ? '#f8fafc' : '#090b10');
+  }
 }
 
 window.toggleTheme = function() {
@@ -807,6 +812,18 @@ window.handleMemberSearch = function(text) {
 };
 
 
+function getRoleBadgeHtml(role) {
+  const r = (role || '').trim();
+  const lower = r.toLowerCase();
+  if (lower.includes('sahib') || lower.includes('sahip') || lower.includes('owner') || lower.includes('admin') || lower.includes('yönetici')) {
+    return `<span class="role-badge role-badge-owner">👑 ${escapeHtml(r)}</span>`;
+  }
+  if (lower === 'pt' || lower.includes('personal')) {
+    return `<span class="role-badge role-badge-pt">⚡ ${escapeHtml(r)}</span>`;
+  }
+  return `<span class="role-badge role-badge-coach">🏋️ ${escapeHtml(r || 'Eğitmen')}</span>`;
+}
+
 // ==================== 4. KASA & HAKEDİŞ ====================
 async function loadKasaView() {
   const container = document.getElementById('payroll-table-body');
@@ -825,12 +842,12 @@ async function loadKasaView() {
 
     container.innerHTML = payroll.map(p => `
       <tr>
-        <td><strong style="color:var(--text-primary); font-size:16px;">${escapeHtml(p.trainerName)}</strong></td>
-        <td><span style="font-size:12px; font-weight:700; color:var(--text-secondary); background:var(--bg-surface-elevated); padding:4px 8px; border-radius:4px; border:1px solid var(--border-subtle);">${escapeHtml(p.role)}</span></td>
-        <td><span class="lesson-badge badge-green">${p.totalLessonsGiven} DERS</span></td>
-        <td>${formatMoney(p.totalLessonEarnings)}</td>
-        <td><strong style="color:var(--cyber-cyan);">${formatMoney(p.totalPackageShare)}</strong></td>
-        <td><strong style="color:var(--volt-lime); font-size:17px;">${formatMoney(p.totalEarnings)}</strong></td>
+        <td style="white-space:nowrap;"><strong style="color:var(--text-primary); font-size:15px;">${escapeHtml(p.trainerName)}</strong></td>
+        <td>${getRoleBadgeHtml(p.role)}</td>
+        <td><span class="lesson-badge badge-green">${p.totalLessonsGiven} Ders</span></td>
+        <td style="white-space:nowrap; font-weight:600;">${formatMoney(p.totalLessonEarnings)}</td>
+        <td style="white-space:nowrap;"><strong style="color:var(--cyber-cyan);">${formatMoney(p.totalPackageShare)}</strong></td>
+        <td style="white-space:nowrap;"><strong style="color:var(--volt-lime); font-size:16px;">${formatMoney(p.totalEarnings)}</strong></td>
       </tr>
     `).join('');
   } catch (err) {
@@ -950,10 +967,10 @@ function renderTrainersTable(trainers) {
   }
   tbody.innerHTML = trainers.map(t => `
     <tr>
-      <td><strong style="color:var(--text-primary); font-size:15px;">${escapeHtml(t.fullName)}</strong></td>
-      <td><span style="font-size:12px; font-weight:700; color:var(--text-secondary); background:var(--bg-surface-elevated); padding:4px 8px; border-radius:4px; border:1px solid var(--border-subtle);">${escapeHtml(t.role)}</span></td>
-      <td>${t.phone ? escapeHtml(t.phone) : '<span style="color:var(--text-muted);">-</span>'}</td>
-      <td><strong style="color:var(--flame-orange);">%${Math.round(t.defaultShareRate * 100)}</strong></td>
+      <td style="white-space:nowrap;"><strong style="color:var(--text-primary); font-size:15px;">${escapeHtml(t.fullName)}</strong></td>
+      <td>${getRoleBadgeHtml(t.role)}</td>
+      <td style="white-space:nowrap;">${t.phone ? escapeHtml(t.phone) : '<span style="color:var(--text-muted);">-</span>'}</td>
+      <td style="white-space:nowrap;"><strong style="color:var(--flame-orange);">%${Math.round(t.defaultShareRate * 100)}</strong></td>
       <td><span class="lesson-badge badge-green">Aktif</span></td>
     </tr>
   `).join('');

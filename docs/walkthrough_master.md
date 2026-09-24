@@ -240,6 +240,29 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Üye Paket Tanımlamada Esnek Fiyat Bildirimi:**
     - `#modal-new-sub` içine `💡 Esnek Fiyat` bilgilendirme kutusu eklendi; varsayılan liste fiyatı seçildiğinde dahi her sporcu için fiyatın serbestçe değiştirilebileceği netleştirildi.
   - **Test Doğrulaması:** 56 birim ve entegrasyon testinin tamamı başarıyla geçti (56/56 passed). Versiyon `v2.9.0`.
+- **2026-09-24 (v2.9.1 - Sayfa Yenilemede Açık Tema Parlaması / FOUC Sorununun Giderilmesi):**
+  - **Kullanıcı Talebi:** *"yenile yapınca açık tema görünüyor bir süre sorunumuz ne olabilir"*
+  - **Kök Neden Analizi:**
+    - `app.css` dosyasında `:root` ile `[data-theme="light"]` birleşik tanımlandığı için tarayıcı henüz JS çalıştırmadan önce sayfayı varsayılan beyaz (`#f8fafc`) arka planla çizmekteydi.
+    - `app.js` modül (`<script type="module">`) olduğu için ertelenmiş (deferred) çalışıyordu; `document.documentElement.setAttribute('data-theme', 'dark')` satırı DOM render edildikten yüzlerce milisaniye sonra tetikleniyor ve anlık beyaz-siyah geçişi (FOUC - Flash of Unstyled Content) oluşturuyordu.
+  - **Uygulanan İki Kademeli Çözüm:**
+    1. **Senkronize Blocking `<script>` & HTML Varsayılanı (`index.html`):** `<html lang="tr" data-theme="dark">` varsayılan yapıldı. `<head>` içine CSS'lerden önce çalışan küçük ve senkronize bir inline script yerleştirilerek `localStorage.getItem('sportakip-theme')` değeri tarayıcı ilk pikseli çizmeden önce `<html>` etiketine aktarıldı.
+    2. **CSS Varsayılanının Tersine Çevrilmesi (`app.css`):** `:root, [data-theme="dark"]` ana atletik Obsidian Dark renkleri olarak belirlendi; `[data-theme="light"]` ise açık tema tercihi yapıldığında devreye giren stil bloğuna dönüştürüldü. Ayrıca `html { background-color: var(--bg-core); color-scheme: dark; }` ile sistem kaydırma çubukları ve natif kontroller de koyu temayla senkronize edildi.
+  - **Browser Alt Ajanı Doğrulaması:** Koyu ve açık tema durumlarında tarayıcı hard-refresh (F5) ve tema geçişleri test edildi; beyaz parlama %100 ortadan kalktı. Sürüm `v2.9.1`.
+- **2026-09-24 (v2.9.2 - Bordro & Kadro Tabloları Rol ve Seans Rozetleri Yenilemesi):**
+  - **Kullanıcı Talebi:** *"buradaki ss'te de gördüğün üzere rol ve ders badgeleri bölünüyor onları daha güzel yapalım"*
+  - **Kök Neden:** Dar mobil ekranlarda `white-space: nowrap` ve flex yapılandırması olmaması sebebiyle `Salon Sahibi` iki satıra bölünmekte (`Salon` / `Sahibi`), `1 DERS` ise dikey oval bir yumurta gibi ezilmekteydi (`1` / `DERS`).
+  - **Uygulanan Yenilikler:**
+    1. **Özel Rol Rozeti Bileşeni (`.role-badge`):**
+       - **Salon Sahibi:** Altın sarısı/amber ışıltılı rozet ve `👑 Salon Sahibi` simgesi (`.role-badge-owner`).
+       - **Eğitmen:** Atletik siber mavi ışıltılı rozet ve `🏋️ Eğitmen` simgesi (`.role-badge-coach`).
+       - **PT:** Neon Volt yeşili rozet ve `⚡ PT` simgesi (`.role-badge-pt`).
+       - Türkçe ses uyumu (ünsüz yumuşaması - "sahibi") destekli otomatik rol tanıyıcı `getRoleBadgeHtml()`.
+    2. **Yatay ve Kompakt Ders Rozeti (`.lesson-badge`):**
+       - `display: inline-flex; white-space: nowrap;` uygulanarak `1 Ders` ve `5 Ders` Volt Lime hap rozeti şeklinde tek satırda kusursuz oranlandı.
+    3. **Tablo Başlıkları ve Hücre Esnekliği (`custom-table`):**
+       - `th` ve `td` öğelerine `white-space: nowrap`, `vertical-align: middle` ve dengeli padding uygulandı; mobilde `.table-responsive table` genişliği 620px'e çıkarılarak sütunların birbirini ezmesi tamamen engellendi.
+  - **Doğrulama & Görsel Güncelleme:** Mobil görünümde test edildi, ekran görüntüsü yeniden alınarak `docs/screenshots/admin_payroll_view.png` güncellendi. Sürüm `v2.9.2`.
 
 
 

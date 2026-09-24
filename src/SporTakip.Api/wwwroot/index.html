@@ -1,22 +1,35 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>SporTakip | Compound Athletic</title>
   
+  <!-- Immediate Theme Initializer (Prevents FOUC / Light Flash on Refresh) -->
+  <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('sportakip-theme');
+        var theme = savedTheme === 'light' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+
   <!-- PWA & Mobile Web App Meta -->
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="/images/icon-dark-32x32.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
-  <meta name="theme-color" content="#ccff00">
+  <meta name="theme-color" content="#090b10">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SporTakip">
   
   <!-- CSS -->
-  <link rel="stylesheet" href="/css/app.css?v=2.8.1">
+  <link rel="stylesheet" href="/css/app.css?v=2.9.2">
 </head>
 <body>
 
@@ -598,7 +611,10 @@
 
       <!-- Salon Sahibi & Hoca Dağılım Kartı -->
       <div class="glass-card" style="margin-bottom:24px;">
-        <h3 style="margin-bottom:14px; font-size:17px; font-weight:800; letter-spacing:-0.01em;">Gelir Dağılımı</h3>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+          <h3 style="font-size:17px; font-weight:800; letter-spacing:-0.01em; margin:0;">Gelir Dağılımı</h3>
+          <button type="button" class="btn-secondary" style="font-size:12px; padding:5px 12px;" onclick="navigateTo('kasa')">📋 Bordrolar →</button>
+        </div>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
           <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px;">
             <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Salon Payı</div>
@@ -737,11 +753,12 @@
 
     <!-- ==================== 5. EĞİTMEN BORDROLARI ==================== -->
     <section id="view-kasa" class="v0-section animate-fade-in" style="display:none;">
-      <div class="page-header">
+      <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
         <div>
           <h2 class="page-title">EĞİTMEN <span class="text-volt">BORDROLARI</span></h2>
-          <p class="page-subtitle">Salondaki tüm hocaların girdiği seanslar, ikame ders primleri ve salon hakediş tablosu.</p>
+          <p class="page-subtitle">Salondaki tüm hocaların girdiği seanslar, ikame primleri ve hakediş tablosu.</p>
         </div>
+        <button type="button" class="btn-secondary" style="font-size:12px; padding:7px 14px;" onclick="navigateTo('dashboard')">← Finans Paneli</button>
       </div>
 
       <div class="glass-card table-responsive" style="margin-bottom:24px;">
@@ -873,7 +890,7 @@
   <div class="modal-backdrop" id="modal-new-trainer">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Yeni Eğitmen / Hoca Tanımla</h3>
+        <h3>Yeni Hoca Tanımla</h3>
         <button class="modal-close" onclick="closeModal('modal-new-trainer')">✕</button>
       </div>
       <form id="new-trainer-form" onsubmit="handleCreateTrainer(event)">
@@ -1557,6 +1574,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Javascript -->
-  <script type="module" src="/js/app.js?v=2.9.0"></script>
+  <script type="module" src="/js/app.js?v=2.9.2"></script>
 </body>
 </html>
