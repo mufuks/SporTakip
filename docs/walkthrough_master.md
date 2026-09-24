@@ -263,6 +263,29 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     3. **Tablo Başlıkları ve Hücre Esnekliği (`custom-table`):**
        - `th` ve `td` öğelerine `white-space: nowrap`, `vertical-align: middle` ve dengeli padding uygulandı; mobilde `.table-responsive table` genişliği 620px'e çıkarılarak sütunların birbirini ezmesi tamamen engellendi.
   - **Doğrulama & Görsel Güncelleme:** Mobil görünümde test edildi, ekran görüntüsü yeniden alınarak `docs/screenshots/admin_payroll_view.png` güncellendi. Sürüm `v2.9.2`.
+- **2026-09-24 (v2.9.3 - Platform SuperAdmin Mimarisi & Çok Katmanlı Yetkilendirme):**
+  - **Kullanıcı Talebi:** *"salon sahibi, hoca gibi kullanıcılar da canlıya alındığında bir admin tarafından oluşturulma ihtiyacımız olacak şimdiden bir superuser mı koyalım. superadmin mimarisine çekelim. salon sahibi olmasam da kodu yönetmem gerekir"*
+  - **Mimarî Tasarım & Ayrım:**
+    1. **Rol Seviyesi Ayrımı (`UserRole` Bitmask Flags):**
+       - `SuperAdmin = 8`: Platform / Kod Sahibi. Bütün sistem metriklerine, kullanıcı hesaplarına, rol atamalarına ve god-mode arayüz geçişlerine tam yetkili.
+       - `Admin = 4`: Salon Sahibi (Sinan). Kasa, bordro, antrenör yönetimi, paket fiyatlandırmalarını yönetir.
+       - `Coach = 2`: Eğitmen (Gülçin). Seans takvimi, yoklama alma, kendi hakedişini görüntüleme.
+       - `Athlete = 1`: Sporcular.
+    2. **Güvenli Konfigürasyon Tabanlı Bootstrap (`appsettings.json`):**
+       - `"SuperAdmin": { "Phone": "+905550000000", "FullName": "Platform Yöneticisi" }` tanımlandı. Canlı ortamda kod içerisine kimlik gömülmeden ortam değişkeni (`SuperAdmin__Phone`) ile dinamik beslenebilir yapı kuruldu.
+       - `DbSeeder.cs` ve `AuthService.cs`: SuperAdmin kullanıcısı seed edilerek hazırlandı; ayrıca `SendOtpAsync` sırasında tanımlı SuperAdmin telefonundan ilk kez giriş yapıldığında hesabı otomatik algılayıp SuperAdmin yetkisine yükselten idempotent bootstrap mekanizması eklendi.
+    3. **SuperAdmin API Controller (`/api/superadmin`):**
+       - `GET /api/superadmin/stats`: Toplam kayıtlı kullanıcı, SuperAdmin, Salon Sahibi, Eğitmen ve Sporcu sayıları ile aktif üyelik ve ciro metriklerini döner.
+       - `GET /api/superadmin/users`: Tüm kullanıcıları bağlı profilleri (Trainer/Member) ve atanmış rolleriyle birlikte döner.
+       - `POST /api/superadmin/assign-role`: Seçilen kullanıcıya anlık `Admin` veya `Coach` rolü atar / kaldırır; eğitmen profili yoksa otomatik senkronize eder.
+       - `POST /api/superadmin/create-gym-owner`: Tek tıkla yeni Salon Sahibi kullanıcısı ve işletme antrenör profilini oluşturur.
+    4. **Frontend Sistem Yönetim Masası (`#view-superadmin` & Workspace Switcher):**
+       - Header Mod Değiştirici: SuperAdmin için `🛡️ Yönetim` butonu eklendi; Sporcu, Salon Masası ve Sistem Yönetimi arasında 1 tıkla geçiş imkanı sağlandı.
+       - Özel Rol Rozetleri: Mor ışıltılı `.role-badge-superadmin` ve modern sporcu rozeti `.role-badge-athlete`.
+       - Kullanıcı ve Yetki Yönetim Tablosu: Canlı arama filtresi (`#sa-user-search`), anlık yetki atama/geri alma aksiyon butonları ve modal ile yeni salon sahibi başlatma akışı eklendi.
+  - **Doğrulama & Test:**
+    - 56 birim ve entegrasyon testinin tamamı başarıyla geçti (56/56 passed).
+    - Tarayıcı alt ajanı ile `+905550000000` SuperAdmin girişi, mod butonları ve sistem yönetim paneli ekran görüntüsüyle (`docs/screenshots/superadmin_panel_view.png`) doğrulandı. Sürüm `v2.9.3`.
 
 
 

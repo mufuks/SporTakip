@@ -1,4 +1,4 @@
-import { Api } from './api.js?v=2.9.0';
+import { Api } from './api.js?v=2.9.3';
 
 // State
 let currentTab = 'home';
@@ -53,7 +53,8 @@ const views = {
   dashboard: document.getElementById('view-dashboard'),
   uyeler: document.getElementById('view-uyeler'),
   kasa: document.getElementById('view-kasa'),
-  hakedisim: document.getElementById('view-hakedisim')
+  hakedisim: document.getElementById('view-hakedisim'),
+  superadmin: document.getElementById('view-superadmin')
 };
 
 // Toast notification helper
@@ -139,7 +140,8 @@ window.navigateTo = function(tabName) {
     dashboard: document.getElementById('view-dashboard'),
     uyeler: document.getElementById('view-uyeler'),
     kasa: document.getElementById('view-kasa'),
-    hakedisim: document.getElementById('view-hakedisim')
+    hakedisim: document.getElementById('view-hakedisim'),
+    superadmin: document.getElementById('view-superadmin')
   };
 
   Object.keys(allViews).forEach(key => {
@@ -164,6 +166,7 @@ window.navigateTo = function(tabName) {
   else if (tabName === 'uyeler') loadMembersView();
   else if (tabName === 'kasa') loadKasaView();
   else if (tabName === 'hakedisim') loadMyEarningsView();
+  else if (tabName === 'superadmin') loadSuperAdminView();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
@@ -176,9 +179,14 @@ window.setAppMode = function(mode) {
   const user = Api.getUser();
   const token = Api.getToken();
   const roles = user && user.roles ? user.roles : (user && user.role ? [user.role] : []);
-  const isCoach = roles.includes('Coach') || roles.includes('Admin');
+  const isSuperAdmin = roles.includes('SuperAdmin');
+  const isCoach = roles.includes('Coach') || roles.includes('Admin') || isSuperAdmin;
+  const isAdmin = roles.includes('Admin') || isSuperAdmin;
 
-  if (mode === 'staff' && (!token || !user || !isCoach)) {
+  if (mode === 'superadmin' && (!token || !user || !isSuperAdmin)) {
+    showToast('Platform yönetim paneline erişmek için SuperAdmin yetkisi gereklidir.', 'error');
+    mode = isCoach ? 'staff' : 'athlete';
+  } else if (mode === 'staff' && (!token || !user || !isCoach)) {
     showToast('Salon masasına erişmek için antrenör veya yönetici yetkisi gereklidir.', 'error');
     mode = 'athlete';
   }
@@ -191,15 +199,25 @@ window.setAppMode = function(mode) {
 
   // Navigate to appropriate view
   const staffTabs = ['yoklama', 'takvim', 'dashboard', 'uyeler', 'kasa', 'hakedisim'];
-  if (mode === 'athlete' && staffTabs.includes(currentTab)) {
+  if (mode === 'athlete' && (staffTabs.includes(currentTab) || currentTab === 'superadmin')) {
     window.navigateTo('home');
-  } else if (mode === 'staff' && !staffTabs.includes(currentTab)) {
+  } else if (mode === 'staff' && (!staffTabs.includes(currentTab) || currentTab === 'superadmin')) {
     window.navigateTo('yoklama');
+  } else if (mode === 'superadmin') {
+    window.navigateTo('superadmin');
   }
 };
 
 window.toggleAppMode = function() {
-  window.setAppMode(currentAppMode === 'athlete' ? 'staff' : 'athlete');
+  const user = Api.getUser();
+  const roles = user && user.roles ? user.roles : (user && user.role ? [user.role] : []);
+  if (roles.includes('SuperAdmin')) {
+    if (currentAppMode === 'athlete') window.setAppMode('staff');
+    else if (currentAppMode === 'staff') window.setAppMode('superadmin');
+    else window.setAppMode('athlete');
+  } else {
+    window.setAppMode(currentAppMode === 'athlete' ? 'staff' : 'athlete');
+  }
 };
 
 // Dynamic Role-Based UI Adjuster
@@ -207,10 +225,13 @@ window.updateNavForUserRole = function() {
   const user = Api.getUser();
   const token = Api.getToken();
   const roles = user && user.roles ? user.roles : (user && user.role ? [user.role] : []);
-  const isCoach = roles.includes('Coach') || roles.includes('Admin');
-  const isAdmin = roles.includes('Admin');
+  const isSuperAdmin = roles.includes('SuperAdmin');
+  const isAdmin = roles.includes('Admin') || isSuperAdmin;
+  const isCoach = roles.includes('Coach') || isAdmin;
 
-  if (!isCoach) {
+  if (!isSuperAdmin && currentAppMode === 'superadmin') {
+    currentAppMode = isCoach ? 'staff' : 'athlete';
+  } else if (!isCoach && currentAppMode === 'staff') {
     currentAppMode = 'athlete';
   }
 
@@ -218,11 +239,17 @@ window.updateNavForUserRole = function() {
   const modeSwitcher = document.getElementById('app-mode-switcher');
   const athleteBtn = document.getElementById('mode-btn-athlete');
   const staffBtn = document.getElementById('mode-btn-staff');
+  const superAdminBtn = document.getElementById('mode-btn-superadmin');
   if (modeSwitcher) {
-    modeSwitcher.style.setProperty('display', isCoach ? 'inline-flex' : 'none', 'important');
-    modeSwitcher.classList.toggle('hidden-switcher', !isCoach);
+    const showSwitcher = isCoach || isSuperAdmin;
+    modeSwitcher.style.setProperty('display', showSwitcher ? 'inline-flex' : 'none', 'important');
+    modeSwitcher.classList.toggle('hidden-switcher', !showSwitcher);
     if (athleteBtn) athleteBtn.classList.toggle('active', currentAppMode === 'athlete');
     if (staffBtn) staffBtn.classList.toggle('active', currentAppMode === 'staff');
+    if (superAdminBtn) {
+      superAdminBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
+      superAdminBtn.classList.toggle('active', currentAppMode === 'superadmin');
+    }
   }
 
   // 2. Navigation buttons visibility (Desktop & Mobile Bottom Nav)
@@ -250,6 +277,18 @@ window.updateNavForUserRole = function() {
     }
   });
 
+  // SuperAdmin Desktop & Mobile Navigation Items
+  const navSuperAdminBtn = document.getElementById('nav-btn-superadmin');
+  const mobSuperAdminBtn = document.getElementById('mob-btn-superadmin');
+  if (navSuperAdminBtn) {
+    navSuperAdminBtn.style.display = (currentAppMode === 'superadmin' && isSuperAdmin) ? 'inline-flex' : 'none';
+    navSuperAdminBtn.classList.toggle('active', currentTab === 'superadmin');
+  }
+  if (mobSuperAdminBtn) {
+    mobSuperAdminBtn.style.display = (currentAppMode === 'superadmin' && isSuperAdmin) ? 'flex' : 'none';
+    mobSuperAdminBtn.classList.toggle('active', currentTab === 'superadmin');
+  }
+
   // 3. Header user pill & actions
   const loginHeaderBtn = document.getElementById('v0-login-header-btn');
   const headerUserPill = document.getElementById('header-user-pill');
@@ -261,9 +300,11 @@ window.updateNavForUserRole = function() {
     if (loginHeaderBtn) loginHeaderBtn.style.display = 'none';
     if (headerUserPill) headerUserPill.style.display = 'inline-flex';
     if (greetingName) greetingName.innerText = user.fullName || user.phoneNumber || 'Sporcu';
-    if (badgeDot) badgeDot.style.background = '#CCFF00';
+    if (badgeDot) {
+      badgeDot.style.background = isSuperAdmin ? '#c084fc' : (roles.includes('Admin') ? '#f59e0b' : '#CCFF00');
+    }
     if (roleEl) {
-      roleEl.innerText = isAdmin ? 'Yönetici' : isCoach ? 'Antrenör' : 'Sporcu';
+      roleEl.innerText = isSuperAdmin ? '🛡️ SuperAdmin' : (roles.includes('Admin') ? 'Yönetici' : isCoach ? 'Antrenör' : 'Sporcu');
     }
   } else {
     if (loginHeaderBtn) loginHeaderBtn.style.display = 'inline-flex';
@@ -3082,10 +3123,12 @@ window.submitVerifyOtp = async function() {
     updateAppAvatars();
 
     const roles = res.user && res.user.roles ? res.user.roles : (res.user && res.user.role ? [res.user.role] : []);
-    if (roles.includes('Coach') || roles.includes('Admin')) {
-      navigateTo('yoklama');
+    if (roles.includes('SuperAdmin')) {
+      setAppMode('superadmin');
+    } else if (roles.includes('Coach') || roles.includes('Admin')) {
+      setAppMode('staff');
     } else {
-      navigateTo('home');
+      setAppMode('athlete');
     }
   } catch (err) {
     showToast(`Doğrulama Hatası: ${err.message}`, 'error');
@@ -3698,6 +3741,174 @@ window.handleLeadSubmit = function(event) {
 
   const form = document.getElementById('form-lead-contact');
   if (form) form.reset();
+};
+
+// ==================== 14. SUPERADMIN PLATFORM YÖNETİMİ ====================
+let superAdminUsers = [];
+
+window.loadSuperAdminView = async function() {
+  const statsUsers = document.getElementById('sa-stat-total-users');
+  const statsMeta = document.getElementById('sa-stat-users-meta');
+  const statsCoachesAthletes = document.getElementById('sa-stat-coaches-athletes');
+  const statsRevenue = document.getElementById('sa-stat-revenue');
+  const statsSubsMeta = document.getElementById('sa-stat-subs-meta');
+  const tbody = document.getElementById('sa-users-table-body');
+
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:var(--text-muted);">Sistem verileri yükleniyor...</td></tr>`;
+  }
+
+  try {
+    const [stats, users] = await Promise.all([
+      Api.getSuperAdminStats(),
+      Api.getSuperAdminUsers()
+    ]);
+
+    if (statsUsers) statsUsers.innerText = stats.totalUsers || 0;
+    if (statsMeta) statsMeta.innerText = `${stats.superAdminsCount || 0} SuperAdmin · ${stats.gymOwnersCount || 0} Salon Sahibi`;
+    if (statsCoachesAthletes) statsCoachesAthletes.innerText = `${stats.coachesCount || 0} / ${stats.athletesCount || 0}`;
+    if (statsRevenue) statsRevenue.innerText = formatMoney(stats.totalRevenue || 0);
+    if (statsSubsMeta) statsSubsMeta.innerText = `${stats.activeSubscriptions || 0} Aktif Üyelik (${stats.totalSubscriptions || 0} Toplam)`;
+
+    superAdminUsers = users || [];
+    renderSuperAdminUsersTable(superAdminUsers);
+  } catch (err) {
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:var(--pulse-rose);">Veri yüklenemedi: ${escapeHtml(err.message)}</td></tr>`;
+    }
+    showToast(`SuperAdmin verileri alınamadı: ${err.message}`, 'error');
+  }
+};
+
+window.renderSuperAdminUsersTable = function(usersList) {
+  const tbody = document.getElementById('sa-users-table-body');
+  if (!tbody) return;
+
+  if (!usersList || usersList.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:var(--text-muted);">Kayıtlı kullanıcı bulunamadı.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = usersList.map(u => {
+    const roles = Array.isArray(u.roles) ? u.roles : [];
+    const isSA = roles.includes('SuperAdmin');
+    const isAdmin = roles.includes('Admin');
+    const isCoach = roles.includes('Coach');
+    const isAthlete = roles.includes('Athlete');
+
+    const badges = [];
+    if (isSA) badges.push(`<span class="lesson-badge role-badge-superadmin" style="font-size:11px;">🛡️ SuperAdmin</span>`);
+    if (isAdmin) badges.push(`<span class="lesson-badge badge-amber" style="font-size:11px;">👑 Salon Sahibi</span>`);
+    if (isCoach) badges.push(`<span class="lesson-badge badge-green" style="font-size:11px;">🥊 Eğitmen</span>`);
+    if (isAthlete || badges.length === 0) badges.push(`<span class="lesson-badge role-badge-athlete" style="font-size:11px;">🏃 Sporcu</span>`);
+
+    const profileHtml = u.linkedProfile 
+      ? `<span style="color:var(--cyber-cyan); font-weight:600;">${escapeHtml(u.linkedProfile)}</span>` 
+      : '<span style="color:var(--text-muted);">-</span>';
+
+    const regDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString('tr-TR', { day:'numeric', month:'short', year:'numeric' }) : '-';
+
+    return `
+      <tr>
+        <td>
+          <div style="font-weight:700; color:var(--text-primary); font-size:13.5px;">${escapeHtml(u.fullName || 'İsimsiz Kullanıcı')}</div>
+          <div style="font-size:11px; color:var(--text-muted);">ID: ${escapeHtml(u.id)}</div>
+        </td>
+        <td>
+          <code style="font-size:12.5px; color:var(--text-primary); background:rgba(255,255,255,0.04); padding:2px 6px; border-radius:4px;">${escapeHtml(u.phoneNumber)}</code>
+        </td>
+        <td>
+          <div style="display:flex; gap:4px; flex-wrap:wrap;">
+            ${badges.join(' ')}
+          </div>
+        </td>
+        <td>
+          <div style="font-size:12px;">${profileHtml}</div>
+        </td>
+        <td>
+          <span style="font-size:12px; color:var(--text-muted);">${regDate}</span>
+        </td>
+        <td style="text-align:right;">
+          <div style="display:inline-flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+            ${isAdmin ? `
+              <button class="btn-secondary" style="padding:4px 9px; font-size:11px; color:var(--pulse-rose); border-color:rgba(244,63,94,0.3);" onclick="handleAssignRole('${escapeJsString(u.id)}', 'Admin', false)">
+                ✕ Salon Sahibini Al
+              </button>
+            ` : `
+              <button class="btn-secondary" style="padding:4px 9px; font-size:11px; color:#f59e0b; border-color:rgba(245,158,11,0.3);" onclick="handleAssignRole('${escapeJsString(u.id)}', 'Admin', true)">
+                👑 Salon Sahibi Yap
+              </button>
+            `}
+            ${isCoach ? `
+              <button class="btn-secondary" style="padding:4px 9px; font-size:11px; color:var(--pulse-rose); border-color:rgba(244,63,94,0.3);" onclick="handleAssignRole('${escapeJsString(u.id)}', 'Coach', false)">
+                ✕ Eğitmenliği Al
+              </button>
+            ` : `
+              <button class="btn-secondary" style="padding:4px 9px; font-size:11px; color:var(--cyber-cyan); border-color:rgba(0,242,254,0.3);" onclick="handleAssignRole('${escapeJsString(u.id)}', 'Coach', true)">
+                🥊 Eğitmen Yap
+              </button>
+            `}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+};
+
+window.filterSuperAdminUsers = function(query) {
+  const q = (query || '').toLowerCase().trim();
+  if (!q) {
+    renderSuperAdminUsersTable(superAdminUsers);
+    return;
+  }
+  const filtered = superAdminUsers.filter(u => 
+    (u.fullName && u.fullName.toLowerCase().includes(q)) ||
+    (u.phoneNumber && u.phoneNumber.toLowerCase().includes(q))
+  );
+  renderSuperAdminUsersTable(filtered);
+};
+
+window.handleAssignRole = async function(userId, role, assign) {
+  const actionText = assign ? 'atamak' : 'kaldırmak';
+  const roleTitle = role === 'Admin' ? 'Salon Sahibi' : (role === 'Coach' ? 'Eğitmen' : role);
+  if (!confirm(`Bu kullanıcıya ${roleTitle} yetkisini ${actionText} istediğinize emin misiniz?`)) return;
+
+  try {
+    await Api.assignSuperAdminRole(userId, role, assign);
+    showToast(`✓ Kullanıcı yetkisi başarıyla güncellendi!`);
+    await loadSuperAdminView();
+  } catch (err) {
+    showToast(`Yetki güncelleme hatası: ${err.message}`, 'error');
+  }
+};
+
+window.openCreateGymOwnerModal = function() {
+  const form = document.getElementById('form-create-owner');
+  if (form) form.reset();
+  const shareInput = document.getElementById('owner-share-rate');
+  if (shareInput) shareInput.value = '30';
+  openModal('modal-create-owner');
+};
+
+window.handleCreateGymOwnerSubmit = async function(event) {
+  event.preventDefault();
+  const fullName = document.getElementById('owner-name')?.value?.trim();
+  const phoneNumber = document.getElementById('owner-phone')?.value?.trim();
+  const shareRate = parseFloat(document.getElementById('owner-share-rate')?.value || '30');
+
+  if (!fullName || !phoneNumber) {
+    showToast('Lütfen ad soyad ve telefon numarasını eksiksiz girin.', 'error');
+    return;
+  }
+
+  try {
+    await Api.createGymOwner(fullName, phoneNumber, shareRate);
+    showToast(`👑 Salon Sahibi "${fullName}" başarıyla tanımlandı!`);
+    closeModal('modal-create-owner');
+    await loadSuperAdminView();
+  } catch (err) {
+    showToast(`Salon sahibi eklenemedi: ${err.message}`, 'error');
+  }
 };
 
 document.addEventListener('DOMContentLoaded', () => {

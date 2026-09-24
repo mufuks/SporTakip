@@ -35,13 +35,14 @@ public class AppUser
 }
 
 /// <summary>
-/// Flag enum: Bir kullanıcı hem Coach hem Athlete olabilir.
+/// Flag enum: Bir kullanıcı hem Coach hem Athlete hem Admin/SuperAdmin olabilir.
 /// Veritabanında int olarak saklanır (bitmask).
 /// </summary>
 [Flags]
 public enum UserRole
 {
-    Athlete = 1,
-    Coach   = 2,
-    Admin   = 4
+    Athlete    = 1,
+    Coach      = 2,
+    Admin      = 4,
+    SuperAdmin = 8
 }

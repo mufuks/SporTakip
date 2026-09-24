@@ -765,10 +765,22 @@ h1, h2, h3, h4, .brand-title {
   border: 1px solid rgba(204, 255, 0, 0.28);
 }
 
-[data-theme="light"] .role-badge-pt {
-  background: #ecfdf5;
-  color: #047857;
-  border-color: #a7f3d0;
+.role-badge-superadmin {
+  background: rgba(124, 58, 237, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(124, 58, 237, 0.35);
+}
+
+[data-theme="light"] .role-badge-superadmin {
+  background: #f3e8ff;
+  color: #7e22ce;
+  border-color: #d8b4fe;
+}
+
+.role-badge-athlete {
+  background: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
 }
 
 /* Badge Pill */

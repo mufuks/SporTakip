@@ -116,7 +116,7 @@ public class ReservationService(
         if (reservation.Member.UserId != requestingUserId && reservation.MemberId != requestingUserId)
         {
             var isStaff = await db.Users.AnyAsync(u => u.Id == requestingUserId && 
-                (u.Roles.HasFlag(UserRole.Coach) || u.Roles.HasFlag(UserRole.Admin)), ct);
+                (u.Roles.HasFlag(UserRole.Coach) || u.Roles.HasFlag(UserRole.Admin) || u.Roles.HasFlag(UserRole.SuperAdmin)), ct);
 
             if (!isStaff)
             {

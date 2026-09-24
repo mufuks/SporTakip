@@ -3,11 +3,13 @@ using SporTakip.Api.Models;
 using SporTakip.Api.Models.Identity;
 using SporTakip.Api.Models.Workout;
 
+using Microsoft.Extensions.Configuration;
+
 namespace SporTakip.Api.Data;
 
 public static class DbSeeder
 {
-    public static async Task SeedAsync(ApplicationDbContext db)
+    public static async Task SeedAsync(ApplicationDbContext db, IConfiguration? configuration = null)
     {
         await db.Database.EnsureCreatedAsync();
 
@@ -16,6 +18,28 @@ public static class DbSeeder
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN WeightKg TEXT NULL;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN Age INTEGER NULL;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN Gender TEXT NULL;"); } catch { }
+
+        // 0. Platform SuperAdmin Tohumlama (Platform Yöneticisi)
+        var superAdminPhone = configuration?["SuperAdmin:Phone"] ?? "+905550000000";
+        var superAdminName = configuration?["SuperAdmin:FullName"] ?? "Platform Yöneticisi";
+        var superAdmin = await db.Users.FirstOrDefaultAsync(u => u.PhoneNumber == superAdminPhone);
+        if (superAdmin == null)
+        {
+            superAdmin = new AppUser
+            {
+                PhoneNumber = superAdminPhone,
+                FullName = superAdminName,
+                Roles = UserRole.SuperAdmin,
+                PhoneVerified = true
+            };
+            db.Users.Add(superAdmin);
+            await db.SaveChangesAsync();
+        }
+        else if (!superAdmin.Roles.HasFlag(UserRole.SuperAdmin))
+        {
+            superAdmin.Roles |= UserRole.SuperAdmin;
+            await db.SaveChangesAsync();
+        }
 
         // 1. Antrenörler
         if (!await db.Trainers.AnyAsync())

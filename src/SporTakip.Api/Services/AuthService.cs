@@ -30,9 +30,38 @@ public class AuthService(
             .Include(u => u.TrainerProfile)
             .FirstOrDefaultAsync(u => u.PhoneNumber == normalizedPhone, ct);
 
+        // SuperAdmin Bootstrap kontrolü
+        var superAdminPhone = config["SuperAdmin:Phone"];
+        var isSuperAdminPhone = !string.IsNullOrWhiteSpace(superAdminPhone) && 
+                               (NormalizePhoneNumber(superAdminPhone) == normalizedPhone || superAdminPhone == request.Phone);
+
+        if (user != null && isSuperAdminPhone && !user.Roles.HasFlag(UserRole.SuperAdmin))
+        {
+            user.Roles |= UserRole.SuperAdmin;
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("🛡️ [SUPERADMIN UPGRADE] AppUser #{UserId} ({Name}) SuperAdmin rolüne yükseltildi.", user.Id, user.FullName);
+        }
+
         if (user == null)
         {
-            // 2. V1 Legacy Trainer veya Member kontrolü
+            if (isSuperAdminPhone)
+            {
+                var superAdminName = config["SuperAdmin:FullName"] ?? "Platform Yöneticisi";
+                user = new AppUser
+                {
+                    PhoneNumber = normalizedPhone,
+                    FullName = superAdminName,
+                    Roles = UserRole.SuperAdmin,
+                    PhoneVerified = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                db.Users.Add(user);
+                await db.SaveChangesAsync(ct);
+                logger.LogInformation("🛡️ [SUPERADMIN AUTO-PROVISION] AppUser #{UserId} ({Name}) oluşturuldu.", user.Id, user.FullName);
+            }
+            else
+            {
+                // 2. V1 Legacy Trainer veya Member kontrolü
             var trainer = await db.Trainers
                 .FirstOrDefaultAsync(t => t.Phone != null && 
                     (t.Phone == normalizedPhone || t.Phone == request.Phone), ct);
@@ -138,6 +167,7 @@ public class AuthService(
                         user.Id, newMember.Id);
                 }
             }
+        }
         }
 
         // 4. Önceki aktif OTP kodlarını geçersiz kıl
@@ -445,9 +475,10 @@ public class AuthService(
     private static List<string> GetRoleNames(UserRole roles)
     {
         var list = new List<string>();
-        if (roles.HasFlag(UserRole.Athlete)) list.Add("Athlete");
-        if (roles.HasFlag(UserRole.Coach))   list.Add("Coach");
-        if (roles.HasFlag(UserRole.Admin))   list.Add("Admin");
+        if (roles.HasFlag(UserRole.Athlete))    list.Add("Athlete");
+        if (roles.HasFlag(UserRole.Coach))      list.Add("Coach");
+        if (roles.HasFlag(UserRole.Admin))      list.Add("Admin");
+        if (roles.HasFlag(UserRole.SuperAdmin)) list.Add("SuperAdmin");
         return list;
     }
 }

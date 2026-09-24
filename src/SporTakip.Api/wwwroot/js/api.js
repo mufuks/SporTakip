@@ -314,6 +314,23 @@ export const Api = {
 
   getExerciseProgress(exerciseId) {
     return this.get(`/workouts/progress/exercises/${exerciseId}`);
+  },
+
+  // SuperAdmin APIs
+  getSuperAdminStats() {
+    return this.get('/superadmin/stats');
+  },
+
+  getSuperAdminUsers() {
+    return this.get('/superadmin/users');
+  },
+
+  assignSuperAdminRole(userId, role, assign) {
+    return this.post('/superadmin/assign-role', { userId, role, assign });
+  },
+
+  createGymOwner(fullName, phoneNumber, defaultShareRate = 0.30) {
+    return this.post('/superadmin/create-gym-owner', { fullName, phoneNumber, defaultShareRate });
   }
 };
 

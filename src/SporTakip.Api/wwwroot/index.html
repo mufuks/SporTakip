@@ -51,13 +51,16 @@
         </div>
       </div>
 
-      <!-- Mode / Workspace Switcher (Sadece Coach / Admin'e görünür) -->
+      <!-- Mode / Workspace Switcher (Coach, Admin ve SuperAdmin'e dinamik görünür) -->
       <div class="v0-mode-switcher" id="app-mode-switcher" style="display:none;" title="Çalışma Alanı Değiştir">
         <button type="button" class="v0-mode-btn active" id="mode-btn-athlete" onclick="setAppMode('athlete')">
           <span>🏃</span> Sporcu
         </button>
         <button type="button" class="v0-mode-btn" id="mode-btn-staff" onclick="setAppMode('staff')">
           <span>🏢</span> Salon
+        </button>
+        <button type="button" class="v0-mode-btn" id="mode-btn-superadmin" style="display:none;" onclick="setAppMode('superadmin')">
+          <span>🛡️</span> Yönetim
         </button>
       </div>
 
@@ -92,6 +95,11 @@
         </button>
         <button type="button" class="v0-desk-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="kasa" id="nav-btn-kasa" style="display:none;" onclick="navigateTo('kasa')">
           <span>📋</span> Bordrolar
+        </button>
+
+        <!-- 3. SuperAdmin Sekmesi (Sadece superadmin modunda görünür) -->
+        <button type="button" class="v0-desk-nav-btn nav-superadmin-item" data-mode="superadmin" data-tab="superadmin" id="nav-btn-superadmin" style="display:none; color:#c084fc;" onclick="navigateTo('superadmin')">
+          <span>🛡️</span> Sistem & Kullanıcılar
         </button>
       </nav>
 
@@ -840,6 +848,75 @@
       </div>
     </section>
 
+    <!-- ==================== 5.2 PLATFORM SUPERADMIN YÖNETİM PANELİ ==================== -->
+    <section id="view-superadmin" class="v0-section animate-fade-in" style="display:none;">
+      <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div style="display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; color:#c084fc; background:rgba(124,58,237,0.14); border:1px solid rgba(124,58,237,0.3); padding:3px 10px; border-radius:999px; margin-bottom:6px;">
+            <span>🛡️</span> PLATFORM SUPERADMIN
+          </div>
+          <h2 class="page-title">SİSTEM & <span class="text-volt">YÖNETİM</span></h2>
+          <p class="page-subtitle">Sistem kullanıcıları, salon sahipleri, eğitmen yetkilendirmeleri ve platform özeti.</p>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn-primary" style="background:var(--volt-lime-accent); color:#000; font-size:12.5px; padding:8px 16px; font-weight:800;" onclick="openCreateGymOwnerModal()">
+            + Yeni Salon Sahibi
+          </button>
+          <button type="button" class="btn-secondary" style="font-size:12px; padding:8px 14px;" onclick="loadSuperAdminView()">
+            🔄 Yenile
+          </button>
+        </div>
+      </div>
+
+      <!-- Platform Özet Metrikleri -->
+      <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom:24px;">
+        <div class="stat-card">
+          <div class="stat-label">Toplam Kayıtlı Kullanıcı</div>
+          <div class="stat-value text-volt" id="sa-stat-total-users">0</div>
+          <div class="stat-meta" id="sa-stat-users-meta">0 SuperAdmin · 0 Salon Sahibi</div>
+        </div>
+        <div class="stat-card cyan">
+          <div class="stat-label">Kadro & Sporcular</div>
+          <div class="stat-value text-cyan" id="sa-stat-coaches-athletes">0 / 0</div>
+          <div class="stat-meta">Eğitmen / Aktif Sporcu</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">Paketler & Brüt Ciro</div>
+          <div class="stat-value text-orange" id="sa-stat-revenue">₺0</div>
+          <div class="stat-meta" id="sa-stat-subs-meta">0 Aktif Paket</div>
+        </div>
+      </div>
+
+      <!-- Kullanıcı & Yetki Yönetim Tablosu -->
+      <div class="glass-card table-responsive" style="margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+          <div>
+            <h3 style="font-size:17px; font-weight:800; color:var(--text-primary); margin:0;">👥 Kayıtlı Kullanıcılar ve Roller</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin:2px 0 0 0;">Kullanıcılara doğrudan Salon Sahibi (Admin) veya Eğitmen (Coach) yetkisi atayın.</p>
+          </div>
+          <div class="search-box" style="max-width:280px; width:100%;">
+            <input type="text" id="sa-user-search" class="search-input" placeholder="İsim veya telefon ara..." oninput="filterSuperAdminUsers(this.value)">
+          </div>
+        </div>
+
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Kullanıcı</th>
+              <th>Telefon</th>
+              <th>Mevcut Roller</th>
+              <th>Bağlı Profil</th>
+              <th>Kayıt Tarihi</th>
+              <th style="text-align:right;">Yetki Yönetimi</th>
+            </tr>
+          </thead>
+          <tbody id="sa-users-table-body">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- Unified Glassmorphic Bottom Navigation -->
     <nav class="v0-bottom-nav">
       <div class="v0-bottom-nav-inner" id="v0-bottom-nav-inner">
@@ -862,7 +939,7 @@
           <span class="v0-nav-label">Profilim</span>
         </button>
 
-        <!-- 2. Salon Masası Butonları (Sadece staff modunda aktifken görünür - Maksimum 4 Buton) -->
+        <!-- 2. Salon Masası Butonları (Sadece staff modunda aktifken görünür) -->
         <button type="button" class="v0-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="yoklama" id="mob-btn-yoklama" style="display:none;" onclick="navigateTo('yoklama')">
           <span class="v0-nav-icon">📋</span>
           <span class="v0-nav-label">Yoklama</span>
@@ -878,6 +955,12 @@
         <button type="button" class="v0-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="dashboard" id="mob-btn-dashboard" style="display:none;" onclick="navigateTo('dashboard')">
           <span class="v0-nav-icon">📊</span>
           <span class="v0-nav-label">Finans</span>
+        </button>
+
+        <!-- 3. SuperAdmin Butonu (Sadece SuperAdmin aktifken görünür) -->
+        <button type="button" class="v0-nav-btn nav-superadmin-item" data-mode="superadmin" data-tab="superadmin" id="mob-btn-superadmin" style="display:none;" onclick="navigateTo('superadmin')">
+          <span class="v0-nav-icon">🛡️</span>
+          <span class="v0-nav-label">Yönetim</span>
         </button>
       </div>
     </nav>
@@ -1570,10 +1653,47 @@
     </div>
   </div>
 
+  <!-- Modal: Yeni Salon Sahibi Tanımla (SuperAdmin) -->
+  <div class="modal-backdrop" id="modal-create-owner">
+    <div class="modal-content" style="max-width:460px;">
+      <div class="modal-header">
+        <div>
+          <div style="font-size:11px; font-weight:800; color:#c084fc; margin-bottom:2px;">🛡️ SUPERADMIN İŞLEMİ</div>
+          <h3 style="margin:0;">Yeni Salon Sahibi Tanımla</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-create-owner')">✕</button>
+      </div>
+      <form id="form-create-owner" onsubmit="handleCreateGymOwnerSubmit(event)" style="margin-top:14px;">
+        <div class="form-group">
+          <label>Salon Sahibi Adı Soyadı *</label>
+          <input type="text" id="owner-name" class="form-control" placeholder="Örn: Sinan Hoca" required>
+        </div>
+        <div class="form-group">
+          <label>Telefon Numarası (Giriş İçin) *</label>
+          <input type="tel" id="owner-phone" class="form-control" placeholder="+905XXXXXXXXX" required>
+          <small style="color:var(--text-muted); font-size:11.5px; margin-top:4px; display:block;">
+            💡 Salon Sahibi bu telefon numarasıyla SMS OTP doğrulayarak giriş yapacak ve Admin haklarına sahip olacaktır.
+          </small>
+        </div>
+        <div class="form-group">
+          <label>Varsayılan İşletme Payı Kesinti Oranı (%)</label>
+          <input type="number" id="owner-share-rate" class="form-control" value="30" min="0" max="100" step="1">
+          <small style="color:var(--text-muted); font-size:11px; margin-top:4px; display:block;">Örn: %30 (Salonun paket başına aldığı varsayılan pay)</small>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-create-owner')">İptal</button>
+          <button type="submit" class="btn-primary" style="background:var(--volt-lime-accent); color:#000;">
+            👑 Salon Sahibini Başlat
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Javascript -->
-  <script type="module" src="/js/app.js?v=2.9.2"></script>
+  <script type="module" src="/js/app.js?v=2.9.3"></script>
 </body>
 </html>
