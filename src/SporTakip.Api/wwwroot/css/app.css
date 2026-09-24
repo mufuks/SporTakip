@@ -2436,9 +2436,6 @@ table.custom-table tr:hover td {
   .v0-greeting-sub {
     font-size: 12px;
   }
-  .v0-header-actions {
-    gap: 6px;
-  }
   .v0-bell-btn {
     width: 36px;
     height: 36px;

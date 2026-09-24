@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SporTakip.Api.Models;
 using SporTakip.Api.Services;
@@ -6,6 +7,7 @@ namespace SporTakip.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "SuperAdmin,Admin")]
 public class PaymentsController(GymService gymService) : ControllerBase
 {
     [HttpPost]

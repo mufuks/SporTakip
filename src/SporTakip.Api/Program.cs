@@ -35,14 +35,10 @@ if (usePostgres && !string.IsNullOrEmpty(postgresConn))
 {
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseNpgsql(postgresConn));
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(postgresConn));
 }
 else
 {
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseSqlite(sqliteConn));
-    builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseSqlite(sqliteConn));
 }
 

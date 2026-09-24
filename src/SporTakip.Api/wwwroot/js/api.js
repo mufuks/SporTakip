@@ -255,6 +255,10 @@ export const Api = {
     return this.post('/attendance/mark', data);
   },
 
+  markAllSlotAttendance(data) {
+    return this.post('/attendance/mark-all-slot', data);
+  },
+
   getCapacity(date) {
     const q = date ? `?date=${encodeURIComponent(date)}` : '';
     return this.get(`/attendance/capacity${q}`);

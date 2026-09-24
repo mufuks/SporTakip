@@ -10,6 +10,7 @@ namespace SporTakip.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "SuperAdmin,Admin")]
 public class SuperAdminController(ApplicationDbContext db, ILogger<SuperAdminController> logger) : ControllerBase
 {
     public record SuperAdminUserDto(
@@ -275,6 +276,10 @@ public class SuperAdminController(ApplicationDbContext db, ILogger<SuperAdminCon
         if (!Enum.TryParse<UserRole>(req.Role, true, out var targetRole))
             return BadRequest(new { error = $"Geçersiz rol: {req.Role}. Geçerli roller: SuperAdmin, Admin, Coach, Athlete" });
 
+        // SuperAdmin yetkisi yalnızca mevcut bir SuperAdmin tarafından atanabilir/kaldırılabilir
+        if (targetRole == UserRole.SuperAdmin && !User.IsInRole("SuperAdmin"))
+            return Forbid();
+
         if (req.Assign)
         {
             user.Roles |= targetRole;
@@ -313,6 +318,7 @@ public class SuperAdminController(ApplicationDbContext db, ILogger<SuperAdminCon
     /// Tek adımda yeni bir Salon Sahibi (Admin) tanımlar.
     /// </summary>
     [HttpPost("create-gym-owner")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<IActionResult> CreateGymOwner([FromBody] CreateGymOwnerRequest req, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.FullName) || string.IsNullOrWhiteSpace(req.PhoneNumber))

@@ -59,9 +59,14 @@
             <span class="v0-cal-dot-indicator"></span>
             <span id="slot-details-text">Saat 19:00 için kayıtlı sporcular filtrelendi.</span>
           </div>
-          <button type="button" class="v0-cal-today-shortcut" onclick="clearSlotFilter()" title="Tüm saatleri göster">
-            ✕ Tümü
-          </button>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button type="button" id="btn-mark-all-attended" class="btn-primary" style="padding:4px 10px; font-size:11.5px; height:28px; border-radius:8px; font-weight:800; display:inline-flex; align-items:center; gap:4px;" onclick="handleMarkAllAttendedForSlot()" title="Bu saatteki tüm sporcuları tek tıkla 'Geldi' say">
+              <span>✓</span> Tümünü Katıldı Say
+            </button>
+            <button type="button" class="v0-cal-today-shortcut" onclick="clearSlotFilter()" title="Tüm saatleri göster">
+              ✕ Tümü
+            </button>
+          </div>
         </div>
       </div>
 

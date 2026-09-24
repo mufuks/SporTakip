@@ -5,7 +5,7 @@ using SporTakip.Api.Models.Identity;
 
 namespace SporTakip.Api.Services;
 
-public class GymService(AppDbContext db)
+public class GymService(ApplicationDbContext db)
 {
     public async Task<DashboardStatsDto> GetDashboardStatsAsync(CancellationToken cancellationToken = default)
     {
@@ -15,6 +15,7 @@ public class GymService(AppDbContext db)
 
         var activeMembersCount = await db.Members.CountAsync(m => m.IsActive, cancellationToken);
         var activeSubscriptions = await db.Subscriptions
+            .AsNoTracking()
             .Include(s => s.Member)
             .Include(s => s.Package)
             .Include(s => s.Payments)
@@ -33,6 +34,7 @@ public class GymService(AppDbContext db)
 
         // Bu ayki ödemeler
         var paymentsThisMonth = await db.Payments
+            .AsNoTracking()
             .Where(p => p.PaymentDate >= startOfMonth && p.PaymentDate <= endOfMonth)
             .ToListAsync(cancellationToken);
 
@@ -40,6 +42,7 @@ public class GymService(AppDbContext db)
 
         // Bu ay başlayan paketlerin toplam cirosu ve Salon / Hoca payı
         var subscriptionsThisMonth = await db.Subscriptions
+            .AsNoTracking()
             .Where(s => s.StartDate >= startOfMonth && s.StartDate <= endOfMonth)
             .ToListAsync(cancellationToken);
 
@@ -184,6 +187,7 @@ public class GymService(AppDbContext db)
     public async Task<MemberDto?> GetMemberByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         var m = await db.Members
+            .AsNoTracking()
             .Include(m => m.Subscriptions)
                 .ThenInclude(s => s.Package)
             .Include(m => m.Subscriptions)
@@ -387,6 +391,7 @@ public class GymService(AppDbContext db)
     public async Task<List<SubscriptionSummaryDto>> GetActiveSubscriptionsAsync(CancellationToken cancellationToken = default)
     {
         var subs = await db.Subscriptions
+            .AsNoTracking()
             .Include(s => s.Member)
             .Include(s => s.Package)
             .Include(s => s.Payments)
@@ -627,6 +632,99 @@ public class GymService(AppDbContext db)
         );
     }
 
+    public async Task<MarkAllSlotResultDto> MarkAllAttendedForSlotAsync(MarkAllSlotAttendanceDto dto, CancellationToken cancellationToken = default)
+    {
+        var targetDate = (dto.Date ?? DateTime.UtcNow).Date;
+        var hour = dto.Hour;
+
+        // İlgili saat dilimindeki tüm yoklama/seans kayıtlarını çek
+        var records = await db.AttendanceRecords
+            .Include(a => a.Subscription)
+                .ThenInclude(s => s.Member)
+            .Include(a => a.Trainer)
+            .Where(a => a.LessonDate.Date == targetDate && a.LessonDate.Hour == hour)
+            .ToListAsync(cancellationToken);
+
+        if (records.Count == 0)
+        {
+            return new MarkAllSlotResultDto(0, 0, $"Saat {hour:D2}:00 için kayıtlı sporcu bulunamadı.");
+        }
+
+        Trainer? fallbackTrainer = null;
+        if (dto.TrainerId.HasValue)
+        {
+            fallbackTrainer = await db.Trainers.FindAsync([dto.TrainerId.Value], cancellationToken);
+        }
+        fallbackTrainer ??= await db.Trainers.FirstOrDefaultAsync(t => t.Role == "Eğitmen", cancellationToken);
+
+        int updatedCount = 0;
+
+        foreach (var record in records)
+        {
+            if (record.Status == "Attended")
+                continue;
+
+            var subscription = record.Subscription;
+            if (subscription == null)
+                continue;
+
+            var trainer = record.Trainer ?? fallbackTrainer;
+            var unitPrice = subscription.TotalLessons > 0 ? (subscription.Price / subscription.TotalLessons) : 0m;
+
+            bool isSubstitute = false;
+            decimal substituteShare = 0m;
+            decimal trainerShare = 0m;
+
+            if (trainer != null && subscription.PrimaryTrainerId.HasValue && trainer.Id != subscription.PrimaryTrainerId)
+            {
+                isSubstitute = true;
+                substituteShare = unitPrice * 0.40m;
+                trainerShare = substituteShare;
+            }
+            else
+            {
+                trainerShare = unitPrice * (trainer?.DefaultShareRate ?? 0.40m);
+            }
+
+            if (record.Status == "Scheduled" || record.Status == "Excused")
+            {
+                if (subscription.RemainingLessons > 0)
+                {
+                    subscription.CompletedLessons++;
+                    if (subscription.CompletedLessons >= subscription.TotalLessons)
+                    {
+                        subscription.Status = "Completed";
+                    }
+                }
+            }
+
+            record.Status = "Attended";
+            record.UnitLessonPrice = unitPrice;
+            record.TrainerShareAmount = trainerShare;
+            record.SubstituteShareAmount = substituteShare;
+            record.IsSubstitute = isSubstitute;
+            if (record.TrainerId == null && trainer != null)
+            {
+                record.TrainerId = trainer.Id;
+            }
+
+            updatedCount++;
+        }
+
+        if (updatedCount > 0)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        return new MarkAllSlotResultDto(
+            UpdatedCount: updatedCount,
+            TotalCount: records.Count,
+            Message: updatedCount > 0 
+                ? $"Saat {hour:D2}:00 seansında {updatedCount} sporcu için yoklama 'Geldi' olarak kaydedildi."
+                : $"Saat {hour:D2}:00 seansındaki tüm sporcular zaten 'Geldi' olarak işlenmiş."
+        );
+    }
+
     public async Task<PaymentDto> AddPaymentAsync(CreatePaymentDto dto, CancellationToken cancellationToken = default)
     {
         var sub = await db.Subscriptions
@@ -662,14 +760,16 @@ public class GymService(AppDbContext db)
         var startOfMonth = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
         var endOfMonth = startOfMonth.AddMonths(1).AddTicks(-1);
 
-        var trainers = await db.Trainers.Where(t => t.IsActive).ToListAsync(cancellationToken);
+        var trainers = await db.Trainers.AsNoTracking().Where(t => t.IsActive).ToListAsync(cancellationToken);
         var list = new List<TrainerShareSummaryDto>();
 
         var subsThisMonth = await db.Subscriptions
+            .AsNoTracking()
             .Where(s => s.StartDate >= startOfMonth && s.StartDate <= endOfMonth)
             .ToListAsync(cancellationToken);
 
         var allAttendances = await db.AttendanceRecords
+            .AsNoTracking()
             .Where(a => a.LessonDate >= startOfMonth && a.LessonDate <= endOfMonth && (a.Status == "Attended" || a.Status == "Missed"))
             .ToListAsync(cancellationToken);
 
@@ -739,6 +839,7 @@ public class GymService(AppDbContext db)
         var endOfMonth = startOfMonth.AddMonths(1).AddTicks(-1);
 
         var attendances = await db.AttendanceRecords
+            .AsNoTracking()
             .Include(a => a.Subscription)
                 .ThenInclude(s => s.Member)
             .Include(a => a.Subscription)
@@ -757,6 +858,7 @@ public class GymService(AppDbContext db)
         if (trainer.Role == "Salon Sahibi")
         {
             var subsThisMonth = await db.Subscriptions
+                .AsNoTracking()
                 .Where(s => s.StartDate >= startOfMonth && s.StartDate <= endOfMonth)
                 .ToListAsync(cancellationToken);
             packageShare = subsThisMonth.Sum(s => s.SalonShareAmount);
@@ -764,6 +866,7 @@ public class GymService(AppDbContext db)
         else
         {
             var myPrimarySubs = await db.Subscriptions
+                .AsNoTracking()
                 .Where(s => s.PrimaryTrainerId == trainer.Id && s.StartDate >= startOfMonth && s.StartDate <= endOfMonth)
                 .ToListAsync(cancellationToken);
             packageShare = myPrimarySubs.Sum(s => s.TrainerShareAmount);
@@ -801,6 +904,7 @@ public class GymService(AppDbContext db)
     public async Task<List<TrainerDto>> GetTrainersAsync(CancellationToken cancellationToken = default)
     {
         return await db.Trainers
+            .AsNoTracking()
             .Where(t => t.IsActive)
             .OrderBy(t => t.Role == "Salon Sahibi" ? 0 : 1)
             .Select(t => new TrainerDto(t.Id, t.FullName, t.Role, t.Phone, t.DefaultShareRate, t.IsActive))
@@ -809,7 +913,7 @@ public class GymService(AppDbContext db)
 
     public async Task<TrainerDto?> GetTrainerByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        var t = await db.Trainers.FirstOrDefaultAsync(tr => tr.Id == id && tr.IsActive, cancellationToken);
+        var t = await db.Trainers.AsNoTracking().FirstOrDefaultAsync(tr => tr.Id == id && tr.IsActive, cancellationToken);
         if (t == null) return null;
         return new TrainerDto(t.Id, t.FullName, t.Role, t.Phone, t.DefaultShareRate, t.IsActive);
     }
@@ -923,6 +1027,7 @@ public class GymService(AppDbContext db)
     {
         var date = targetDate.Date;
         var records = await db.AttendanceRecords
+            .AsNoTracking()
             .Include(a => a.Trainer)
             .Include(a => a.Subscription)
                 .ThenInclude(s => s.Member)
@@ -1001,6 +1106,7 @@ public class GymService(AppDbContext db)
         var gridEndDate = gridStartDate.AddDays(totalCells - 1);
 
         var records = await db.AttendanceRecords
+            .AsNoTracking()
             .Include(a => a.Trainer)
             .Include(a => a.Subscription)
                 .ThenInclude(s => s.Member)
@@ -1106,6 +1212,7 @@ public class GymService(AppDbContext db)
     {
         // 1. Rolü "Salon Sahibi" olan aktif antrenörü bul
         var ownerTrainer = await db.Trainers
+            .AsNoTracking()
             .Where(t => t.IsActive && (t.Role == "Salon Sahibi" || t.Role.Contains("Sahip")))
             .OrderBy(t => t.Id)
             .FirstOrDefaultAsync(cancellationToken);
@@ -1128,10 +1235,11 @@ public class GymService(AppDbContext db)
         if (string.IsNullOrWhiteSpace(ownerPhone))
         {
             var adminUser = await db.Users
+                .AsNoTracking()
                 .Where(u => u.IsActive && u.Roles.HasFlag(UserRole.Admin) && !u.Roles.HasFlag(UserRole.SuperAdmin))
                 .OrderBy(u => u.Id)
                 .FirstOrDefaultAsync(cancellationToken)
-                ?? await db.Users.Where(u => u.IsActive && u.Roles.HasFlag(UserRole.Admin)).FirstOrDefaultAsync(cancellationToken);
+                ?? await db.Users.AsNoTracking().Where(u => u.IsActive && u.Roles.HasFlag(UserRole.Admin)).FirstOrDefaultAsync(cancellationToken);
 
             if (adminUser != null)
             {

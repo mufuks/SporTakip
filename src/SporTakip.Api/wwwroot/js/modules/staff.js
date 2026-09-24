@@ -171,15 +171,78 @@ window.selectSlotHour = function(hour) {
   const slot = capacitySlotsData.find(s => s.hour === hour);
   const detailsBox = document.getElementById('slot-details-box');
   const detailsText = document.getElementById('slot-details-text');
+  const markAllBtn = document.getElementById('btn-mark-all-attended');
 
   if (slot && detailsBox && detailsText) {
     const athletes = slot.members.map(m => `${m.memberName} (${m.status === 'Attended' ? 'Geldi' : 'Planlı'})`).join(', ');
     detailsText.innerHTML = `<strong>Saat ${slot.timeSlot}:</strong> Toplam ${slot.totalMembers} kişi ${athletes ? `— ${escapeHtml(athletes)}` : '(Henüz kayıt yok)'}`;
+
+    if (markAllBtn) {
+      const pendingMembers = slot.members.filter(m => m.status !== 'Attended');
+      if (pendingMembers.length === 0 && slot.members.length > 0) {
+        markAllBtn.disabled = true;
+        markAllBtn.style.opacity = '0.6';
+        markAllBtn.title = 'Tüm sporcular zaten katıldı olarak işlenmiş';
+      } else if (slot.members.length === 0) {
+        markAllBtn.disabled = true;
+        markAllBtn.style.opacity = '0.4';
+        markAllBtn.title = 'Kayıtlı sporcu yok';
+      } else {
+        markAllBtn.disabled = false;
+        markAllBtn.style.opacity = '1';
+        markAllBtn.title = `Kayıtlı ${pendingMembers.length} sporcunun yoklamasını 'Geldi' olarak kaydet`;
+      }
+    }
+
     detailsBox.style.display = 'flex';
   }
 
   renderCapacitySlots(capacitySlotsData);
   applyAttendanceFilter(currentFilter);
+};
+
+window.handleMarkAllAttendedForSlot = async function() {
+  if (selectedSlotHour === null) return;
+  const slot = capacitySlotsData?.find(s => s.hour === selectedSlotHour);
+  if (!slot || !slot.members || slot.members.length === 0) {
+    showToast('Bu saatte kayıtlı sporcu bulunmuyor.', 'info');
+    return;
+  }
+
+  const pendingMembers = slot.members.filter(m => m.status !== 'Attended');
+  if (pendingMembers.length === 0) {
+    showToast(`Saat ${slot.timeSlot} seansındaki tüm sporcular zaten 'Geldi' olarak işlenmiş.`, 'info');
+    return;
+  }
+
+  const confirmed = confirm(`Saat ${slot.timeSlot} seansındaki ${pendingMembers.length} sporcunun yoklaması 'Geldi' olarak kaydedilsin mi?`);
+  if (!confirmed) return;
+
+  const btn = document.getElementById('btn-mark-all-attended');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> Kaydediliyor...';
+  }
+
+  try {
+    const res = await Api.markAllSlotAttendance({
+      date: currentCapacityDate ? new Date(currentCapacityDate + 'T00:00:00Z').toISOString() : new Date().toISOString(),
+      hour: selectedSlotHour
+    });
+
+    showToast(res.message || `${res.updatedCount} sporcunun yoklaması kaydedildi!`, 'success');
+
+    // Kapasite ve yoklama listesini yenile
+    await loadAttendanceView();
+  } catch (err) {
+    console.error('Toplu yoklama hatası:', err);
+    showToast(err.message || 'Toplu yoklama kaydedilirken bir hata oluştu.', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span>✓</span> Tümünü Katıldı Say';
+    }
+  }
 };
 
 window.clearSlotFilter = function() {

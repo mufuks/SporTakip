@@ -10,7 +10,7 @@ namespace SporTakip.Tests;
 public class GymServiceTests : IDisposable
 {
     private readonly SqliteConnection _connection;
-    private readonly AppDbContext _db;
+    private readonly ApplicationDbContext _db;
     private readonly GymService _service;
 
     public GymServiceTests()
@@ -18,11 +18,11 @@ public class GymServiceTests : IDisposable
         _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
 
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseSqlite(_connection)
             .Options;
 
-        _db = new AppDbContext(options);
+        _db = new ApplicationDbContext(options);
         _db.Database.EnsureCreated();
 
         _service = new GymService(_db);
@@ -802,6 +802,48 @@ public class GymServiceTests : IDisposable
         Assert.Equal("+90 532 999 00 11", gymInfo.FormattedPhone);
         Assert.Equal("905329990011", gymInfo.CleanPhone);
         Assert.Equal("SalonSahibi_Test", gymInfo.OwnerName);
+    }
+
+    [Fact]
+    public async Task MarkAllAttendedForSlotAsync_MarksAllScheduledRecordsInSlotAsAttended()
+    {
+        // Arrange
+        var trainer = new Trainer { FullName = "Slot_Hoca", Role = "Eğitmen", DefaultShareRate = 0.40m, IsActive = true };
+        _db.Trainers.Add(trainer);
+        var pkg = new Package { Name = "Grup", PackageType = "GRUP", LessonCount = 8, DefaultPrice = 8000, ValidityDays = 30, IsActive = true };
+        _db.Packages.Add(pkg);
+        var m1 = new Member { FullName = "Sporcu_1", IsActive = true, CreatedAt = DateTime.UtcNow };
+        var m2 = new Member { FullName = "Sporcu_2", IsActive = true, CreatedAt = DateTime.UtcNow };
+        _db.Members.AddRange(m1, m2);
+        await _db.SaveChangesAsync();
+
+        var sub1 = new Subscription { MemberId = m1.Id, PackageId = pkg.Id, TotalLessons = 8, CompletedLessons = 0, Price = 8000, Status = "Active", StartDate = DateTime.UtcNow };
+        var sub2 = new Subscription { MemberId = m2.Id, PackageId = pkg.Id, TotalLessons = 8, CompletedLessons = 2, Price = 8000, Status = "Active", StartDate = DateTime.UtcNow };
+        _db.Subscriptions.AddRange(sub1, sub2);
+        await _db.SaveChangesAsync();
+
+        var slotDate = new DateTime(2026, 9, 24, 15, 0, 0, DateTimeKind.Utc);
+        var rec1 = new AttendanceRecord { SubscriptionId = sub1.Id, LessonNumber = 1, LessonDate = slotDate, TrainerId = trainer.Id, Status = "Scheduled" };
+        var rec2 = new AttendanceRecord { SubscriptionId = sub2.Id, LessonNumber = 3, LessonDate = slotDate, TrainerId = trainer.Id, Status = "Scheduled" };
+        _db.AttendanceRecords.AddRange(rec1, rec2);
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = await _service.MarkAllAttendedForSlotAsync(new MarkAllSlotAttendanceDto(slotDate, 15, trainer.Id));
+
+        // Assert
+        Assert.Equal(2, result.UpdatedCount);
+        Assert.Equal(2, result.TotalCount);
+
+        var updatedRec1 = await _db.AttendanceRecords.FindAsync(rec1.Id);
+        var updatedRec2 = await _db.AttendanceRecords.FindAsync(rec2.Id);
+        Assert.Equal("Attended", updatedRec1!.Status);
+        Assert.Equal("Attended", updatedRec2!.Status);
+
+        var updatedSub1 = await _db.Subscriptions.FindAsync(sub1.Id);
+        var updatedSub2 = await _db.Subscriptions.FindAsync(sub2.Id);
+        Assert.Equal(1, updatedSub1!.CompletedLessons);
+        Assert.Equal(3, updatedSub2!.CompletedLessons);
     }
 }
 

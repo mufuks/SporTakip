@@ -139,6 +139,18 @@ public record MarkAttendanceDto(
     string? Notes = null
 );
 
+public record MarkAllSlotAttendanceDto(
+    DateTime? Date,
+    int Hour,
+    int? TrainerId = null
+);
+
+public record MarkAllSlotResultDto(
+    int UpdatedCount,
+    int TotalCount,
+    string Message
+);
+
 public record PaymentDto(
     int Id,
     int SubscriptionId,

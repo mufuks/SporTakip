@@ -388,6 +388,22 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - **PWA & Doğrulama:**
       - `sw.js` ve `index.html` sürümü `v3.1.0` olarak güncellendi, tüm 18 partial dosyası Service Worker `PRECACHE_ASSETS` listesine eklendi.
       - Kural 18'e tam uyumlu hafif tarayıcı testi yapıldı: Konsolda 0 hata, anlık sekme geçişleri ve ekran görüntüsü ile doğrulandı.
+- **2026-09-24 (v3.2.0 - Güvenlik Sertleştirmesi, Tekil DbContext, AsNoTracking & Toplu Yoklama UX):**
+  - **Güvenlik Sertleştirmesi (SEC-01, SEC-02, SEC-03):**
+    - `SuperAdminController`, `PaymentsController`, `SubscriptionsController`, `AttendanceController`, `TrainersController` sınıflarına eksiksiz `[Authorize]` ve rol kontrolleri (`SuperAdmin`, `Admin`, `Coach`) uygulandı.
+    - `Microsoft.AspNetCore.OpenApi` paketi `10.0.12` sürümüne yükseltilerek bilinen `NU1903` güvenlik açığı ve tüm NuGet uyarıları tamamen giderildi (0 uyarı, 0 hata).
+  - **Veritabanı Katmanı & AsNoTracking (DB-01, DB-02):**
+    - `Program.cs`'ten çift DbContext kaydı (`AppDbContext`) temizlendi, `GymService` ve testler tekil `ApplicationDbContext` standardına bağlandı, `AppDbContext.cs` dosyası silindi. SQLite çift bağlantı ve kilitlenme riski sonlandırıldı.
+    - `GymService.cs` içerisindeki tüm salt okunur sorgularda `.AsNoTracking()` devreye alınarak Change Tracker bellek yükü ortadan kaldırıldı, sorgu yanıt süreleri optimize edildi.
+  - **Kod Tabanı Temizliği (CLN-01, CLN-02):**
+    - Kök dizindeki kullanılmayan `neon.ts` yapılandırma dosyası silindi.
+    - `app.css` içerisindeki mükerrer responsive medya sorgusu tanımları normalize edildi.
+  - **Toplu Yoklama Kullanıcı Deneyimi (UX-01):**
+    - Antrenörlerin salonda yoğun saatlerde tüm seans katılımcılarını tek dokunuşla "Geldi" durumuna geçirebilmesi için `GymService.MarkAllAttendedForSlotAsync` metodu ve `AttendanceController.MarkAllSlotAttendance` (`POST /api/attendance/mark-all-slot`) endpoint'i geliştirildi.
+    - `views/staff/yoklama.html` ve `staff.js` dosyalarına **"✓ Tümünü Katıldı Say"** aksiyonu, dinamik durum kontrolleri ve anlık yenileme mantığı entegre edildi.
+  - **Test & Doğrulama:**
+    - Toplu yoklama için yeni birim test eklendi. 64/64 test (%100 Başarı) ile tamamlandı.
+    - Proje `0 Uyarı, 0 Hata` ile derlendi; Kural 18'e uygun hafif tarayıcı doğrulamasında konsolda 0 hata teyit edildi.
 
 
 

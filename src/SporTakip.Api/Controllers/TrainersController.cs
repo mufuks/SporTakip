@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SporTakip.Api.Models;
 using SporTakip.Api.Services;
@@ -6,6 +7,7 @@ namespace SporTakip.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class TrainersController(GymService gymService) : ControllerBase
 {
     [HttpGet]
@@ -24,6 +26,7 @@ public class TrainersController(GymService gymService) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "SuperAdmin,Admin")]
     public async Task<ActionResult<TrainerDto>> CreateTrainer([FromBody] CreateTrainerDto dto, CancellationToken ct)
     {
         try
@@ -38,6 +41,7 @@ public class TrainersController(GymService gymService) : ControllerBase
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Roles = "SuperAdmin,Admin")]
     public async Task<ActionResult<TrainerDto>> UpdateTrainer(int id, [FromBody] UpdateTrainerDto dto, CancellationToken ct)
     {
         try
