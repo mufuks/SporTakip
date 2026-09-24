@@ -16,7 +16,7 @@
   <meta name="apple-mobile-web-app-title" content="SporTakip">
   
   <!-- CSS -->
-  <link rel="stylesheet" href="/css/app.css?v=2.7.5">
+  <link rel="stylesheet" href="/css/app.css?v=2.8.1">
 </head>
 <body>
 
@@ -126,11 +126,16 @@
             </div>
             <h3 style="font-size:18px; font-weight:800; color:var(--text-primary); margin:0 0 8px 0;">Compound Athletic</h3>
             <p style="font-size:13px; color:var(--text-secondary); margin:0 0 20px 0; line-height:1.5;">
-              Ders haklarınızı, aktif paketinizi ve antrenman takviminizi görüntülemek için telefon numaranızla giriş yapın.
+              Kişiye özel antrenman programları, birebir koçluk ve performans hedefleriniz için profesyonel spor stüdyosu.
             </p>
-            <button type="button" class="v0-btn-submit" onclick="openOtpDrawer()" style="margin:0 auto; max-width:240px; padding:12px; font-size:13px;">
-              <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:4px;"> SMS ile Giriş Yap
-            </button>
+            <div style="display:flex; flex-direction:column; gap:10px; max-width:280px; margin:0 auto;">
+              <button type="button" class="v0-btn-submit" onclick="openOtpDrawer()" style="padding:12px; font-size:13px; width:100%; margin:0;">
+                <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:4px;"> Kayıtlı Üye Girişi (SMS)
+              </button>
+              <button type="button" onclick="openLeadModal('Üyelik / PT Bilgi')" style="background:var(--bg-surface-elevated); color:var(--volt-lime); border:1px solid var(--volt-lime); padding:10px 14px; font-size:12.5px; font-weight:800; border-radius:12px; cursor:pointer;">
+                📞 Üye Olmak İstiyorum / Bana Ulaşın
+              </button>
+            </div>
           </div>
 
           <!-- LOGGED-IN WRAPPER (Shown ONLY when logged in) -->
@@ -191,9 +196,10 @@
           </div>
         </div>
 
-        <!-- Right Main Column: Günün Seansları -->
+        <!-- Right Main Column -->
         <div class="v0-home-main">
-          <div class="v0-section">
+          <!-- Member Logged-in View: Günün Seansları -->
+          <div class="v0-section" id="athlete-member-sessions-wrap" style="display:none;">
             <div class="v0-section-header">
               <h2 class="v0-section-title">Günün Seansları</h2>
               <span class="v0-section-date" id="v0-sessions-date-label">Bugün</span>
@@ -206,18 +212,116 @@
               </div>
             </div>
           </div>
+
+          <!-- Guest View: Studio Information & Privacy Shield & Lead Actions -->
+          <div class="v0-section" id="athlete-guest-home-wrap">
+            <div class="v0-section-header">
+              <h2 class="v0-section-title">Stüdyo & Ayrıcalıklar</h2>
+              <span class="v0-section-date" style="color:var(--volt-lime); font-weight:700;">📍 Nilüfer / Bursa</span>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div class="v0-card" style="padding:16px 18px; border-radius:16px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <span style="font-size:24px;">🎯</span>
+                  <div>
+                    <h4 style="font-size:15px; font-weight:800; margin:0; color:var(--text-primary);">Birebir Personal Training (PT)</h4>
+                    <p style="font-size:12px; color:var(--text-secondary); margin:2px 0 0 0;">Kişiye özel postür analizi, kuvvet ve kondisyon koçluğu</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="v0-card" style="padding:16px 18px; border-radius:16px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <span style="font-size:24px;">👥</span>
+                  <div>
+                    <h4 style="font-size:15px; font-weight:800; margin:0; color:var(--text-primary);">Butik Fonksiyonel Seanslar</h4>
+                    <p style="font-size:12px; color:var(--text-secondary); margin:2px 0 0 0;">Maksimum 6 kişilik özel gruplarla yüksek enerjili istasyon antrenmanları</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Privacy Lock & Lead Conversion Card -->
+              <div class="v0-card" style="padding:18px; border-radius:16px; border:1px dashed rgba(204,255,0,0.3); background:linear-gradient(135deg, rgba(204,255,0,0.05), var(--bg-surface-elevated));">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                  <span style="font-size:20px;">🔒</span>
+                  <h4 style="font-size:14.5px; font-weight:800; margin:0; color:var(--text-primary);">Stüdyo Doluluğu ve Seans Takvimi</h4>
+                </div>
+                <p style="font-size:12px; color:var(--text-secondary); margin:0 0 14px 0; line-height:1.5;">
+                  Salonumuzda seanslar randevuludur. Eğitmen müsaitlikleri ve anlık stüdyo dolulukları üyelerimizin gizliliği gereği sadece kayıtlı atletlerimize açıktır.
+                </p>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <button type="button" onclick="openLeadModal('Üyelik / PT Bilgi')" class="btn-primary" style="flex:1; min-width:130px; padding:10px 14px; font-size:12px; font-weight:800; text-align:center;">
+                    📞 Bana Ulaşın
+                  </button>
+                  <a href="https://wa.me/905321112233?text=Merhaba,%20Compound%20Athletic%20üyelik%20ve%20PT%20hakkında%20bilgi%20almak%20istiyorum." target="_blank" class="v0-btn-submit" style="flex:1; min-width:130px; padding:10px 14px; font-size:12px; font-weight:800; text-align:center; text-decoration:none; background:#25D366; color:#fff; border:none; display:inline-flex; align-items:center; justify-content:center; gap:6px; margin:0;">
+                    <span>💬</span> WhatsApp
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- 2. ATHLETE SESSIONS VIEW -->
     <section id="v0-view-sessions" class="v0-section animate-fade-in" style="display:none;">
-      <div class="v0-section-header">
-        <h2 class="v0-section-title">Tüm Seanslar & Rezervasyon</h2>
+      <div class="v0-section-header" style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <h2 class="v0-section-title">Seanslar</h2>
+        <span class="v0-section-date" id="v0-sessions-selected-date-badge" style="color:var(--volt-lime); font-weight:700; font-size:12.5px;">Bugün</span>
       </div>
-      <div style="display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px;" id="v0-day-filter-chips">
-        <!-- Date filter chips injected by JS -->
+
+      <!-- TAKVİM GÖRÜNÜMÜ (14 Günlük Kesintisiz Takvim Grid) -->
+      <div class="v0-calendar-container" id="v0-calendar-wrapper">
+        <!-- Calendar Header -->
+        <div class="v0-cal-header" style="margin-bottom: 8px;">
+          <div class="v0-cal-month-title" id="v0-cal-month-label">
+            <span id="v0-cal-month-text">Eylül 2026</span>
+          </div>
+        </div>
+
+        <!-- Weekday Headers (Pzt, Sal, Çar, Per, Cum, Cmt, Paz) -->
+        <div class="v0-cal-weekday-grid">
+          <div class="v0-cal-weekday-col">PZT</div>
+          <div class="v0-cal-weekday-col">SAL</div>
+          <div class="v0-cal-weekday-col">ÇAR</div>
+          <div class="v0-cal-weekday-col">PER</div>
+          <div class="v0-cal-weekday-col">CUM</div>
+          <div class="v0-cal-weekday-col weekend">CMT</div>
+          <div class="v0-cal-weekday-col weekend">PAZ</div>
+        </div>
+
+        <!-- Week 1 (Bulunduğu Hafta) -->
+        <div class="v0-cal-week-row" id="v0-cal-week-row-1">
+          <div class="v0-cal-days-grid" id="v0-cal-days-w1">
+            <!-- 7 day cells injected by JS -->
+          </div>
+        </div>
+
+        <!-- Week 2 (Sonraki Hafta) -->
+        <div class="v0-cal-week-row" id="v0-cal-week-row-2">
+          <div class="v0-cal-days-grid" id="v0-cal-days-w2">
+            <!-- 7 day cells injected by JS -->
+          </div>
+        </div>
+
+        <!-- Selected Date Info Bar -->
+        <div class="v0-cal-selected-bar" id="v0-cal-selected-bar">
+          <div class="v0-cal-selected-text">
+            <span class="v0-cal-dot-indicator"></span>
+            <strong id="v0-cal-selected-date-text">23 Eylül Çarşamba</strong>
+            <span class="v0-cal-selected-sessions-count" id="v0-cal-selected-count">· Seanslar Listeleniyor</span>
+          </div>
+          <button type="button" class="v0-cal-today-shortcut" onclick="selectCalendarToday()" title="Bugünün seanslarına dön">
+            Bugün
+          </button>
+        </div>
       </div>
+
+      <!-- Backward compatibility hidden container if any legacy code queries v0-day-filter-chips -->
+      <div id="v0-day-filter-chips" style="display:none;"></div>
+
       <div class="v0-sessions-list" id="v0-all-sessions-container">
         <!-- Injected -->
       </div>
@@ -226,7 +330,7 @@
     <!-- 3. ATHLETE WORKOUT VIEW (FAZ 4: HEVY / NIKE TRAINING ENGINE) -->
     <section id="v0-view-workout" class="v0-section animate-fade-in" style="display:none;">
       <div class="v0-section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-        <h2 class="v0-section-title">Antrenman & Egzersiz</h2>
+        <h2 class="v0-section-title">Antrenman</h2>
         <div class="v0-workout-subnav" style="display:flex; gap:6px;">
           <button type="button" class="v0-subtab-btn active" id="btn-wsub-templates" onclick="switchWorkoutSubTab('templates')">Programlar</button>
           <button type="button" class="v0-subtab-btn" id="btn-wsub-live" onclick="switchWorkoutSubTab('live')">Canlı İdman <span id="v0-live-pulse-dot" style="display:none; width:8px; height:8px; background:#CCFF00; border-radius:50%; display:inline-block; margin-left:4px;"></span></button>
@@ -247,9 +351,7 @@
           </button>
         </div>
 
-        <h3 style="font-size:15px; font-weight:800; color:var(--text-primary); margin-bottom:14px; display:flex; align-items:center; gap:8px;">
-          <span>📋</span> Antrenör Programları
-        </h3>
+        <h3 style="font-size:15px; font-weight:800; color:var(--text-primary); margin-bottom:14px;">Programlar</h3>
         <div id="v0-workout-templates-list" class="v0-templates-grid">
           <!-- Dynamically populated -->
         </div>
@@ -305,7 +407,7 @@
     <!-- 4. ATHLETE PROFILE VIEW -->
     <section id="v0-view-profile" class="v0-section animate-fade-in" style="display:none;">
       <div class="v0-section-header">
-        <h2 class="v0-section-title">Profilim & Rezervasyonlarım</h2>
+        <h2 class="v0-section-title">Profilim</h2>
       </div>
       <div id="v0-profile-content">
         <!-- Injected by JS -->
@@ -332,34 +434,51 @@
         <button class="filter-chip" data-filter="unpaid" onclick="setAttendanceFilter('unpaid')">💳 Borçlu Üyeler</button>
       </div>
 
-      <!-- Saatlik Stüdyo Doluluk & Kapasite Paneli (BR-03) -->
-      <div class="glass-card capacity-panel" style="margin-bottom:24px; padding:18px 20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
-          <div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size:20px;">🏢</span>
-              <h3 style="font-size:16px; font-weight:800; letter-spacing:-0.01em;">CANLI STÜDYO DOLULUK & SAATLİK KAPASİTE</h3>
-              <span class="lesson-badge badge-green" style="font-size:11px; padding:3px 8px;">Maks: 6 Kişi/Saat</span>
-            </div>
-            <p style="font-size:12px; color:var(--text-secondary); margin-top:3px;">
-              <span style="color:var(--text-muted); font-weight:600;">○ Boş Saat</span> | <span style="color:var(--volt-lime); font-weight:700;">● Rahat (1-3)</span> | <span style="color:var(--flame-orange); font-weight:700;">● Doluyor (4-5)</span> | <span style="color:var(--pulse-rose); font-weight:700;">● Kritik Dolu (6+)</span>
-            </p>
+      <!-- Saatlik Stüdyo Doluluk (Seans Takvimi Estetiğinde) -->
+      <div class="v0-calendar-container capacity-panel" style="margin-bottom:20px;">
+        <!-- Header: Başlık, İleri/Geri Tarih Navigasyonu ve Seans Planla -->
+        <div class="v0-cal-header" style="margin-bottom:12px; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center;">
+          <div class="v0-cal-month-title" style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:15px; font-weight:800;">Saatlik Doluluk</span>
+            <span class="v0-cal-badge-current" style="font-size:10px; padding:2px 8px; font-weight:800;">Kapasite: 6</span>
           </div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <input type="date" id="capacity-date-picker" class="form-control" style="padding:6px 10px; font-size:13px; width:auto;" onchange="handleCapacityDateChange(this.value)">
-            <button class="btn-primary" style="padding:8px 14px; font-size:12px;" onclick="openScheduleSessionModal()">+ Seans Planla</button>
+
+          <!-- Tarih Hızlı Navigasyon Barı (◀ Tarih ▶ [Bugün] [Tarih Seçici] [+ Seans Planla]) -->
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <div class="cal-nav-bar" style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:2px 4px; display:inline-flex; align-items:center; gap:4px;">
+              <button type="button" class="cal-nav-btn" style="width:28px; height:28px; font-size:11px;" onclick="changeCapacityDay(-1)" title="Önceki Gün">◀</button>
+              <span id="capacity-current-date-label" style="font-size:12px; font-weight:700; color:var(--text-primary); padding:0 6px; white-space:nowrap;">Bugün</span>
+              <button type="button" class="cal-nav-btn" style="width:28px; height:28px; font-size:11px;" onclick="changeCapacityDay(1)" title="Sonraki Gün">▶</button>
+            </div>
+            <button type="button" class="btn-secondary" style="padding:5px 10px; font-size:11.5px; height:32px; border-radius:10px; font-weight:700;" onclick="jumpCapacityToday()" title="Bugüne Dön">Bugün</button>
+            <input type="date" id="capacity-date-picker" class="form-control" style="padding:4px 8px; font-size:12px; height:32px; width:auto; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:var(--text-primary);" onchange="handleCapacityDateChange(this.value)" title="Takvimden Tarih Seç">
+            <button type="button" class="btn-primary" style="padding:6px 12px; font-size:11.5px; height:32px; border-radius:10px; font-weight:800; display:inline-flex; align-items:center; gap:4px;" onclick="openScheduleSessionModal()">
+              <span>+</span> Seans Planla
+            </button>
           </div>
         </div>
 
-        <!-- Scrollable Hourly Slots Strip -->
+        <!-- Haftalık Tarih Seçim Şeridi (Sporcu Seans Takvimi Estetiğinde 7 Günlük Grid) -->
+        <div style="margin-bottom:12px;">
+          <div class="v0-cal-days-grid" id="capacity-week-strip">
+            <!-- JS dynamically injects 7 day cells (Pzt - Paz) -->
+          </div>
+        </div>
+
+        <!-- Hourly Slots Grid (5 columns x 2 rows, matching Seans Takvimi) -->
         <div class="capacity-slots-container" id="capacity-slots-list">
           <!-- Dynamically populated slots -->
         </div>
 
         <!-- Selected Slot Details (Active filter indicator) -->
-        <div id="slot-details-box" class="slot-details-box" style="display:none;">
-          <span id="slot-details-text">Saat 19:00 için kayıtlı sporcular filtrelendi.</span>
-          <button type="button" class="btn-clear-slot-icon" onclick="clearSlotFilter()" title="Filtreyi Kaldır" aria-label="Filtreyi Kaldır">✕</button>
+        <div id="slot-details-box" class="v0-cal-selected-bar" style="display:none; margin-top:8px;">
+          <div class="v0-cal-selected-text">
+            <span class="v0-cal-dot-indicator"></span>
+            <span id="slot-details-text">Saat 19:00 için kayıtlı sporcular filtrelendi.</span>
+          </div>
+          <button type="button" class="v0-cal-today-shortcut" onclick="clearSlotFilter()" title="Tüm saatleri göster">
+            ✕ Tümü
+          </button>
         </div>
       </div>
 
@@ -478,33 +597,33 @@
       </div>
 
       <!-- Salon Sahibi & Hoca Dağılım Kartı -->
-      <div class="glass-card" style="margin-bottom:28px;">
-        <h3 style="margin-bottom:18px; font-size:18px; letter-spacing:-0.02em;">🏢 Salon (Sahibi) & 🏋️ Hoca Gelir Dağılımı (Bu Ay)</h3>
+      <div class="glass-card" style="margin-bottom:24px;">
+        <h3 style="margin-bottom:14px; font-size:17px; font-weight:800; letter-spacing:-0.01em;">Gelir Dağılımı</h3>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
-          <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:20px;">
-            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Salon Sahibi (Sinan) Payı</div>
-            <div style="font-size:26px; font-weight:800; color:var(--cyber-cyan); margin:8px 0 4px 0;" id="share-salon-month">₺0</div>
-            <div style="font-size:12px; color:var(--text-secondary);">Salona kalan işletme payı</div>
+          <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px;">
+            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Salon Payı</div>
+            <div style="font-size:24px; font-weight:800; color:var(--cyber-cyan); margin:6px 0 2px 0;" id="share-salon-month">₺0</div>
+            <div style="font-size:11.5px; color:var(--text-secondary);">Salona kalan işletme payı</div>
           </div>
-          <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:20px;">
-            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Hoca (Gülçin vb.) Hakedişleri</div>
-            <div style="font-size:26px; font-weight:800; color:var(--volt-lime); margin:8px 0 4px 0;" id="share-trainer-month">₺0</div>
-            <div style="font-size:12px; color:var(--text-secondary);">Eğitmen paket & ders payı</div>
+          <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px;">
+            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Hoca Hakedişleri</div>
+            <div style="font-size:24px; font-weight:800; color:var(--volt-lime); margin:6px 0 2px 0;" id="share-trainer-month">₺0</div>
+            <div style="font-size:11.5px; color:var(--text-secondary);">Eğitmen paket & ders payı</div>
           </div>
-          <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:20px;">
+          <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px;">
             <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Yapılan Dersler</div>
-            <div style="font-size:26px; font-weight:800; color:var(--text-primary); margin:8px 0 4px 0;" id="stat-lessons-count">0 DERS</div>
-            <div style="font-size:12px; color:var(--text-secondary);">Yoklaması alınan antrenmanlar</div>
+            <div style="font-size:24px; font-weight:800; color:var(--text-primary); margin:6px 0 2px 0;" id="stat-lessons-count">0 DERS</div>
+            <div style="font-size:11.5px; color:var(--text-secondary);">Yoklaması alınan antrenmanlar</div>
           </div>
         </div>
       </div>
 
       <!-- Action Items Grid -->
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:20px;">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:16px;">
         <!-- Expiring Packages -->
         <div class="glass-card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <h3 style="font-size:17px; display:flex; align-items:center; gap:8px;"><img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm"> Paketi Bitmek Üzere Olanlar</h3>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 style="font-size:16px; font-weight:800;">Biten Paketler</h3>
             <span class="lesson-badge badge-amber">Son 1-2 Ders</span>
           </div>
           <div id="dashboard-expiring-list">
@@ -514,8 +633,8 @@
 
         <!-- Unpaid Subscriptions -->
         <div class="glass-card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <h3 style="font-size:17px;">💳 Ödemesi Eksik Kalanlar</h3>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 style="font-size:16px; font-weight:800;">Kalan Ödemeler</h3>
             <span class="lesson-badge badge-red">Borç Takibi</span>
           </div>
           <div id="dashboard-unpaid-list">
@@ -524,15 +643,12 @@
         </div>
       </div>
 
-      <!-- Eğitmen Kadrosu Yönetimi (Hoca Tanımlama) -->
-      <div class="glass-card" style="margin-top:24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
-          <div>
-            <h3 style="font-size:18px;">🏋️ Eğitmen & Antrenör Kadrosu</h3>
-            <span style="font-size:12px; color:var(--text-secondary);">Salonda ders veren hocalar, rolleri ve prim oranları.</span>
-          </div>
+      <!-- Eğitmen Kadrosu Yönetimi -->
+      <div class="glass-card" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+          <h3 style="font-size:17px; font-weight:800;">Kadro</h3>
           <button class="btn-primary" id="btn-open-new-trainer" onclick="openNewTrainerModal()">
-            + Yeni Hoca Tanımla
+            + Yeni Hoca
           </button>
         </div>
         <div class="table-responsive">
@@ -598,7 +714,7 @@
       </div>
 
       <div class="glass-card table-responsive" style="margin-bottom:24px;">
-        <h3 style="margin-bottom:16px; font-size:18px;">📋 Aylık Eğitmen Hakediş Bordrosu ve Salon Geliri</h3>
+        <h3 style="margin-bottom:16px; font-size:17px; font-weight:800;">Aylık Bordro</h3>
         <table class="custom-table">
           <thead>
             <tr>
@@ -787,6 +903,70 @@
     </div>
   </div>
 
+  <!-- Modal: Sporcu Bilgilerini Düzenle -->
+  <div class="modal-backdrop" id="modal-edit-member">
+    <div class="modal-content" style="max-width:500px;">
+      <div class="modal-header">
+        <div>
+          <h3>Sporcu Düzenle</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;" id="edit-member-subtitle">Profil ve İletişim Bilgileri</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-edit-member')">✕</button>
+      </div>
+      <form id="edit-member-form" onsubmit="handleUpdateMember(event)">
+        <input type="hidden" id="edit-m-id">
+        <div class="form-group">
+          <label>Ad Soyad *</label>
+          <input type="text" id="edit-m-name" class="form-control" placeholder="Örn: Ayşe Yılmaz" required>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Telefon Numarası</label>
+            <input type="tel" id="edit-m-phone" class="form-control" placeholder="05XXXXXXXXX">
+          </div>
+          <div class="form-group">
+            <label>E-posta</label>
+            <input type="email" id="edit-m-email" class="form-control" placeholder="ornek@email.com">
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px;">
+          <div class="form-group">
+            <label>Boy (cm)</label>
+            <input type="number" id="edit-m-height" class="form-control" placeholder="175" min="100" max="250">
+          </div>
+          <div class="form-group">
+            <label>Kilo (kg)</label>
+            <input type="number" step="0.1" id="edit-m-weight" class="form-control" placeholder="72.5" min="30" max="250">
+          </div>
+          <div class="form-group">
+            <label>Yaş</label>
+            <input type="number" id="edit-m-age" class="form-control" placeholder="28" min="10" max="100">
+          </div>
+          <div class="form-group">
+            <label>Cinsiyet</label>
+            <select id="edit-m-gender" class="form-control">
+              <option value="">Seçiniz</option>
+              <option value="Kadın">Kadın</option>
+              <option value="Erkek">Erkek</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Sağlık / Antrenman Notu (Sakatlık, hassasiyet)</label>
+          <input type="text" id="edit-m-notes" class="form-control" placeholder="Örn: Menisküs hassasiyeti var, diz zorlanmamalı">
+        </div>
+        <div class="form-group" style="display:flex; align-items:center; gap:10px; margin-top:14px; padding:10px 14px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:12px;">
+          <input type="checkbox" id="edit-m-active" style="width:18px; height:18px; accent-color:var(--volt-lime); cursor:pointer;">
+          <label for="edit-m-active" style="margin:0; font-size:13px; font-weight:700; color:var(--text-primary); cursor:pointer;">Aktif Sporcu (Kaydı Açık)</label>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-edit-member')">İptal</button>
+          <button type="submit" class="btn-primary">Güncelle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal: Paket Satışı Yap -->
   <div class="modal-backdrop" id="modal-new-sub">
     <div class="modal-content">
@@ -911,6 +1091,9 @@
               <option value="10">10:00 - 11:00</option>
               <option value="11">11:00 - 12:00</option>
               <option value="12">12:00 - 13:00</option>
+              <option value="13">13:00 - 14:00</option>
+              <option value="14">14:00 - 15:00</option>
+              <option value="15">15:00 - 16:00</option>
               <option value="16">16:00 - 17:00</option>
               <option value="17">17:00 - 18:00</option>
               <option value="18">18:00 - 19:00</option>
@@ -1158,19 +1341,21 @@
   </div>
 
   <!-- ==================== NOTIFICATION CENTER DRAWER ==================== -->
-  <div id="v0-notification-drawer" class="v0-otp-drawer" onclick="handleNotificationBackdropClick(event)">
-    <div class="v0-otp-panel" onclick="event.stopPropagation()" style="max-height:85vh; display:flex; flex-direction:column;">
-      <div class="v0-drawer-drag-pill" onclick="closeNotificationDrawer()"></div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:20px;">🔔</span>
-          <h3 style="font-size:18px; margin:0; font-family:var(--font-heading); font-weight:800; color:var(--text-primary);">Bildirimler</h3>
+  <div id="v0-notification-drawer" class="v0-otp-backdrop" onclick="handleNotificationBackdropClick(event)">
+    <div class="v0-otp-sheet" onclick="event.stopPropagation()" style="max-height:85vh; display:flex; flex-direction:column; padding:14px 20px 32px 20px;">
+      <div class="v0-sheet-handle" onclick="closeNotificationDrawer()"></div>
+      <button type="button" class="v0-sheet-close" onclick="closeNotificationDrawer()" aria-label="Kapat">✕</button>
+
+      <div class="v0-sheet-header" style="margin-bottom:16px;">
+        <div class="v0-sheet-shield" style="width:38px; height:38px; font-size:18px; border-radius:12px;">🔔</div>
+        <div>
+          <h2 class="v0-sheet-title" style="font-size:17px; margin:0;">Bildirimler</h2>
+          <p class="v0-sheet-subtitle" style="font-size:12px; margin:2px 0 0 0;">Stüdyo ve seans bildirimleri</p>
         </div>
-        <button type="button" onclick="closeNotificationDrawer()" class="v0-drawer-close" title="Kapat">✕</button>
       </div>
 
       <!-- Tarayıcı Bildirimleri Yetkisi -->
-      <div style="background:var(--bg-surface-elevated); padding:12px 14px; border-radius:12px; border:1px solid var(--border-subtle); margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+      <div style="background:var(--bg-surface-elevated); padding:12px 14px; border-radius:14px; border:1px solid var(--border-subtle); margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
         <div>
           <div style="font-size:12.5px; font-weight:700; color:var(--text-primary);">Tarayıcı Anlık Bildirimleri</div>
           <div id="push-status-label" style="font-size:11px; color:var(--text-muted); margin-top:2px;">Seans saatinden önce anlık uyarı al</div>
@@ -1181,11 +1366,11 @@
       </div>
 
       <!-- Bildirim Listesi -->
-      <div id="v0-notification-list" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px; padding-right:2px;">
+      <div id="v0-notification-list" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px; padding:2px;">
         <!-- JS ile dinamik doldurulur -->
       </div>
 
-      <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
+      <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
         <button type="button" onclick="markAllNotificationsRead()" style="background:transparent; border:none; color:var(--volt-lime); font-size:12px; font-weight:700; cursor:pointer; text-decoration:underline;">
           Tümünü Okundu Say
         </button>
@@ -1236,10 +1421,50 @@
     </div>
   </div>
 
+  <!-- Modal: Misafir İletişim & Üyelik / PT Talep Modalı -->
+  <div class="modal-backdrop" id="modal-lead-contact">
+    <div class="modal-content" style="max-width:420px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:24px;">📞</span>
+          <div>
+            <h3 style="font-size:17px; font-weight:800; margin:0; color:var(--text-primary);">Bize Ulaşın / Bilgi Alın</h3>
+            <p style="font-size:12px; color:var(--text-secondary); margin:2px 0 0 0;">Compound Athletic eğitmenleri size en kısa sürede dönüş yapsın</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeModal('modal-lead-contact')">✕</button>
+      </div>
+      <form id="form-lead-contact" onsubmit="handleLeadSubmit(event)" style="display:flex; flex-direction:column; gap:14px; margin-top:12px;">
+        <div>
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:6px;">Adınız Soyadınız</label>
+          <input type="text" id="lead-name" class="v0-phone-input" placeholder="Örn: Ahmet Yılmaz" required style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 14px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:6px;">Telefon Numaranız</label>
+          <input type="tel" id="lead-phone" class="v0-phone-input" placeholder="05XX XXX XX XX" required style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 14px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:6px;">İlgilendiğiniz Alan</label>
+          <select id="lead-interest" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 14px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
+            <option value="PT">Birebir Personal Training (PT)</option>
+            <option value="Grup">Grup Fonksiyonel Seanslar</option>
+            <option value="Uyelik">Genel Üyelik ve Fiyat Bilgisi</option>
+          </select>
+        </div>
+        <button type="submit" class="v0-btn-submit" style="padding:12px; font-weight:800; font-size:13.5px; margin-top:4px; width:100%;">
+          Beni Arayın & Bilgi Verin →
+        </button>
+        <div style="text-align:center; font-size:11.5px; color:var(--text-muted); margin-top:2px;">
+          Veya doğrudan <a href="https://wa.me/905321112233?text=Merhaba,%20Compound%20Athletic%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" style="color:var(--volt-lime); font-weight:700; text-decoration:underline;">WhatsApp üzerinden yazın</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Javascript -->
-  <script type="module" src="/js/app.js?v=2.7.5"></script>
+  <script type="module" src="/js/app.js?v=2.8.9"></script>
 </body>
 </html>

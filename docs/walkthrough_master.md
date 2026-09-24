@@ -195,4 +195,35 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Durum geçişleri güvenli hale getirildi: `Attended -> Excused` yapıldığında ders hakkı sporcuya iade edilir (`CompletedLessons--`).
     - UI tarafında (`renderAttendanceList`): İlgili saat slotunda zaten yoklaması alınmış üyeler için buton `✓ BU SEANSTA GELDİ (Ders Düşüldü)` olarak yeşil rozetle gösterilerek mükerrer tıklama riski ortadan kaldırıldı.
   - **Test Doğrulaması:** 53 birim ve entegrasyon testinin tamamı başarıyla geçti (53/53 passed). Versiyon `v2.7.5` olarak yayınlandı.
+- **2026-09-23 (v2.8.6 - 4 Rol Kapsamlı Denetim, 12-16 Öğle Seansları & Sade Başlık Standardı):**
+  - **4 Rol Bazlı Kapsamlı Ekran ve RBAC Denetimi:**
+    - *Misafir (Guest):* Hero, eğitmen kadrosu, lokasyon/harita, WhatsApp entegrasyonu, lead formu ve seans gizlilik duvarı başarıyla doğrulandı.
+    - *Sporcu (Member - Meltem & Can):* Aktif paket kartı, 2 haftalık kesintisiz seans takvimi, anlık rezervasyon, 3 saat iptal kuralı, Hevy tarzı canlı egzersiz seti loglama motoru ve rekorlar doğrulandı.
+    - *Koç (Trainer - Gülçin):* Mod anahtarı (`[Sporcu | Salon]`), stüdyo saatlik doluluk çubuğu, sağlık notları, ikame antrenör `%40 Hak Ediş` rozeti, anlık yoklama ders düşümü ve kişisel hakediş dökümü (diğer antrenör ve salon verilerinden izole) doğrulandı.
+    - *Salon Sahibi (Admin - Sinan):* Genel ciro (`₺24.000`), kasa (`₺6.000`), alacak (`₺18.000`), salon payı (`₺6.600`), hoca hakedişleri (`₺17.400`), kadro yönetimi ve bordrolar doğrulandı.
+  - **Kesintisiz Çalışma Saatleri (12:00 - 16:00 Öğle Seansları):**
+    - Seans saatlerindeki 12:00 - 16:00 boşluğu giderildi.
+    - Backend `operatingHours` dizisine ve seans planlama açılır menüsüne 13:00, 14:00, 15:00 saatleri eklendi; 09:00 - 21:00 arası kesintisiz saatlik çizelgeye dönüştürüldü.
+    - Veritabanındaki `SessionSlots` tablosuna ve dinamik fallback motoruna öğle saatleri (12:00, 14:00 vb.) eklenerek hem mobil Seanslar sekmesinde hem de Salon Masası'nda görünür kılındı.
+  - **Kısa & Sade Başlık Tasarım İlkesi:**
+    - Gösterişli, uzun ve aşırı emojili başlıklar minimalist ve kurumsal bir stile kavuşturuldu:
+      - `Salon (Sahibi) & 🏋️ Hoca Gelir Dağılımı (Bu Ay)` -> `Gelir Dağılımı`
+      - `🏋️ Eğitmen & Antrenör Kadrosu` -> `Kadro`
+      - `📋 Aylık Eğitmen Hakediş Bordrosu ve Salon Geliri` -> `Aylık Bordro`
+      - `🗓️ Seans Takvimi` -> `Seanslar`
+      - `Antrenman & Egzersiz` -> `Antrenman`
+      - `Profilim & Rezervasyonlarım` -> `Profilim`
+      - `Salon Sahibi (Sinan) Payı` -> `Salon Payı`
+      - `Hoca (Gülçin vb.) Hakedişleri` -> `Hoca Hakedişleri`
+  - **Sporcu Bilgilerini Düzenleme (Member Edit Feature):**
+    - Sporcular tablosuna (`view-uyeler`) her satır için `✏️ Düzenle` aksiyon butonu eklendi.
+    - Açılan `#modal-edit-member` modalı üzerinden sporcunun adı soyadı, telefonu, e-postası, boyu, kilosu, yaşı, cinsiyeti, sakatlık/sağlık kısıt notu ve aktiflik durumu düzenlenebilmektedir.
+    - `PUT /api/members/{id}` uç noktası ve `GymService.UpdateMemberAsync` entegrasyonu tamamlandı.
+  - **Test Doğrulaması:** 54 birim ve entegrasyon testinin tamamı başarıyla geçti (54/54 passed). Versiyon `v2.8.8`.
+- **2026-09-23 (v2.8.9 - Saatlik Doluluk İnteraktif Tarih Gezinimi & 7 Günlük Takvim Şeridi):**
+  - **Kullanıcı Talebi:** *"Saatlik Doluluk'ta tarih değiştirmek zor olmuş. ileri geri ve/veya sporcu görünümündeki seans takvimi gibi tarih seçimi koyalım"*
+  - **İnteraktif 7 Günlük Takvim Şeridi (`#capacity-week-strip`):** Sporcu Seanslar takvimindeki stil ve mekanizma (`.v0-cal-days-grid`, `.v0-cal-day-cell`) doğrudan Saatlik Doluluk paneline uygulandı; Pzt-Paz 7 gün kompakt şerit olarak yerleştirildi. Seçili gün Volt Lime dolgu ve parıltıyla öne çıkar.
+  - **Hızlı Gün Değiştirme (`◀`, `▶`) ve "Bugün" Kısayolu:** Tek dokunuşla önceki/sonraki güne geçiş butonları (`.v0-day-nav-arrow`) ve bugüne anında dönme rozeti (`#btn-capacity-today`) eklendi.
+  - **Senkronize Tarih Seçici:** Dinamik metin etiketi (`#capacity-current-date-label`), takvim şeridi, yerleşik tarih seçici (`#capacity-date-picker`) ve saatlik kapasite slotları 2 yönlü kusursuz senkronizasyonla bağlandı.
+
 

@@ -454,6 +454,30 @@ public static class DbSeeder
         {
             var today = DateTime.UtcNow.Date;
 
+            // Slot 1a: Bugün 12:00 - 13:00 (Sinan Hoca - Core & Omurga Sağlığı, 3/6 Müsait)
+            var slot1a = new SessionSlot
+            {
+                TrainerId = trainerSinan.Id,
+                StartTime = today.AddHours(12),
+                EndTime = today.AddHours(13),
+                Capacity = 6,
+                Title = "Core & Omurga Sağlığı",
+                SessionType = "GRUP",
+                Status = "Scheduled"
+            };
+
+            // Slot 1b: Bugün 14:00 - 15:00 (Gülçin Hoca - Kuvvet Gelişimi, 4/6 Doluyor)
+            var slot1b = new SessionSlot
+            {
+                TrainerId = trainerGulcin.Id,
+                StartTime = today.AddHours(14),
+                EndTime = today.AddHours(15),
+                Capacity = 6,
+                Title = "Kuvvet Gelişimi",
+                SessionType = "GRUP",
+                Status = "Scheduled"
+            };
+
             // Slot 1: Bugün 19:00 - 20:00 (Gülçin Hoca - Fonksiyonel Güç & Kondisyon, 4/6 Doluyor)
             var slot1 = new SessionSlot
             {
@@ -490,7 +514,7 @@ public static class DbSeeder
                 Status = "Scheduled"
             };
 
-            db.SessionSlots.AddRange(slot1, slot2, slot3);
+            db.SessionSlots.AddRange(slot1a, slot1b, slot1, slot2, slot3);
             await db.SaveChangesAsync();
 
             // Örnek rezervasyonlar

@@ -233,6 +233,51 @@ public class GymService(AppDbContext db)
         return new MemberDto(member.Id, member.FullName, member.Phone, member.Email, member.Notes, member.IsActive, member.CreatedAt, null, 0);
     }
 
+    public async Task<MemberDto?> UpdateMemberAsync(int memberId, UpdateMemberDto dto, CancellationToken cancellationToken = default)
+    {
+        var member = await db.Members
+            .Include(m => m.Subscriptions)
+                .ThenInclude(s => s.Package)
+            .Include(m => m.Subscriptions)
+                .ThenInclude(s => s.Payments)
+            .FirstOrDefaultAsync(m => m.Id == memberId, cancellationToken);
+
+        if (member == null) return null;
+
+        member.FullName = dto.FullName.Trim();
+        member.Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim();
+        member.Email = string.IsNullOrWhiteSpace(dto.Email) ? null : dto.Email.Trim();
+        member.Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim();
+        member.IsActive = dto.IsActive;
+
+        if (dto.HeightCm.HasValue) member.HeightCm = dto.HeightCm;
+        if (dto.WeightKg.HasValue) member.WeightKg = dto.WeightKg;
+        if (dto.Age.HasValue) member.Age = dto.Age;
+        if (!string.IsNullOrWhiteSpace(dto.Gender)) member.Gender = dto.Gender.Trim();
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        var activeSub = member.Subscriptions.FirstOrDefault(s => s.Status == "Active");
+        var (bmi, bmiCategory) = CalculateBmi(member.HeightCm, member.WeightKg);
+        return new MemberDto(
+            member.Id,
+            member.FullName,
+            member.Phone,
+            member.Email,
+            member.Notes,
+            member.IsActive,
+            member.CreatedAt,
+            activeSub != null ? MapToSubscriptionSummary(activeSub) : null,
+            member.Subscriptions.Count,
+            member.HeightCm,
+            member.WeightKg,
+            member.Age,
+            member.Gender,
+            bmi,
+            bmiCategory
+        );
+    }
+
     public async Task<List<PackageDto>> GetPackagesAsync(CancellationToken cancellationToken = default)
     {
         return await db.Packages
@@ -742,8 +787,8 @@ public class GymService(AppDbContext db)
             .Where(a => a.LessonDate.Date == date)
             .ToListAsync(cancellationToken);
 
-        // Butik stüdyo operasyon saatleri: 09:00 - 21:00
-        var operatingHours = new int[] { 9, 10, 11, 12, 16, 17, 18, 19, 20, 21 };
+        // Butik stüdyo operasyon saatleri: 09:00 - 21:00 (Kesintisiz saatlik çizelge)
+        var operatingHours = new int[] { 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 };
         var result = new List<HourlySlotCapacityDto>();
 
         foreach (var hour in operatingHours)

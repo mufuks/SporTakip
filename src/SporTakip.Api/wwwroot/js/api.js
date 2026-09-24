@@ -234,6 +234,10 @@ export const Api = {
     return this.get(`/members/${id}`);
   },
 
+  updateMember(id, data) {
+    return this.put(`/members/${id}`, data);
+  },
+
   createMember(data) {
     return this.post('/members', data);
   },

@@ -415,6 +415,49 @@ public class GymServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task UpdateMember_UpdatesAllProfileFieldsSuccessfully()
+    {
+        // Arrange
+        var member = new Member { FullName = "Eski İsim", Phone = "05001112233", Email = "eski@test.com", Notes = "Eski not", IsActive = true };
+        _db.Members.Add(member);
+        await _db.SaveChangesAsync();
+
+        var updateDto = new UpdateMemberDto(
+            FullName: "Yeni İsim Güncel",
+            Phone: "05559998877",
+            Email: "yeni@test.com",
+            Notes: "Yeni antrenman notu",
+            IsActive: true,
+            HeightCm: 180,
+            WeightKg: 78.5m,
+            Age: 30,
+            Gender: "Erkek"
+        );
+
+        // Act
+        var updated = await _service.UpdateMemberAsync(member.Id, updateDto);
+
+        // Assert
+        Assert.NotNull(updated);
+        Assert.Equal("Yeni İsim Güncel", updated.FullName);
+        Assert.Equal("05559998877", updated.Phone);
+        Assert.Equal("yeni@test.com", updated.Email);
+        Assert.Equal("Yeni antrenman notu", updated.Notes);
+        Assert.Equal(180, updated.HeightCm);
+        Assert.Equal(78.5m, updated.WeightKg);
+        Assert.Equal(30, updated.Age);
+        Assert.Equal("Erkek", updated.Gender);
+        Assert.NotNull(updated.Bmi);
+        Assert.Equal("Normal / Fit", updated.BmiCategory);
+
+        var refreshed = await _db.Members.FindAsync(member.Id);
+        Assert.NotNull(refreshed);
+        Assert.Equal("Yeni İsim Güncel", refreshed.FullName);
+        Assert.Equal("05559998877", refreshed.Phone);
+        Assert.Equal(180, refreshed.HeightCm);
+    }
+
+    [Fact]
     public async Task GetTrainerPersonalEarnings_ReturnsPersonalBreakdownWithoutLeakingSalonRevenue()
     {
         // Arrange

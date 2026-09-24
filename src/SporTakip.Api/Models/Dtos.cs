@@ -48,7 +48,11 @@ public record UpdateMemberDto(
     string? Phone,
     string? Email,
     string? Notes,
-    bool IsActive
+    bool IsActive = true,
+    int? HeightCm = null,
+    decimal? WeightKg = null,
+    int? Age = null,
+    string? Gender = null
 );
 
 public record PackageDto(

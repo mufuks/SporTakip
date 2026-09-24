@@ -34,6 +34,18 @@ public class MembersController(GymService gymService) : ControllerBase
         return CreatedAtAction(nameof(GetMember), new { id = member.Id }, member);
     }
 
+    [Authorize(Roles = "Coach, Admin")]
+    [HttpPut("{id}")]
+    public async Task<ActionResult<MemberDto>> UpdateMember(int id, [FromBody] UpdateMemberDto dto, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(dto.FullName))
+            return BadRequest("Ad Soyad zorunludur.");
+
+        var member = await gymService.UpdateMemberAsync(id, dto, ct);
+        if (member == null) return NotFound("Müşteri bulunamadı.");
+        return Ok(member);
+    }
+
     [HttpPut("{id}/metrics")]
     public async Task<ActionResult<AthleteMetricsDto>> UpdateMetrics(int id, [FromBody] UpdateAthleteMetricsDto dto, CancellationToken ct)
     {

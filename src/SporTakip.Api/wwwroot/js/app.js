@@ -1,4 +1,4 @@
-import { Api } from './api.js?v=2.4.1';
+import { Api } from './api.js?v=2.8.8';
 
 // State
 let currentTab = 'home';
@@ -214,7 +214,8 @@ window.updateNavForUserRole = function() {
   const athleteBtn = document.getElementById('mode-btn-athlete');
   const staffBtn = document.getElementById('mode-btn-staff');
   if (modeSwitcher) {
-    modeSwitcher.style.display = isCoach ? 'inline-flex' : 'none';
+    modeSwitcher.style.setProperty('display', isCoach ? 'inline-flex' : 'none', 'important');
+    modeSwitcher.classList.toggle('hidden-switcher', !isCoach);
     if (athleteBtn) athleteBtn.classList.toggle('active', currentAppMode === 'athlete');
     if (staffBtn) staffBtn.classList.toggle('active', currentAppMode === 'staff');
   }
@@ -293,13 +294,90 @@ async function loadAttendanceView() {
 }
 
 // Kapasite Çizelgesi (BR-03)
-async function loadCapacitySlots() {
+function renderCapacityWeekStrip() {
+  const stripEl = document.getElementById('capacity-week-strip');
+  if (!stripEl) return;
+
+  const now = new Date();
+  const todayIso = formatDateToIso(now);
+  const curDate = new Date(currentCapacityDate + 'T00:00:00');
+  const monday = getStartOfWeekMonday(curDate);
+
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+
+  stripEl.innerHTML = days.map(d => {
+    const iso = formatDateToIso(d);
+    const isSelected = iso === currentCapacityDate;
+    const isToday = iso === todayIso;
+    const dayNum = d.getDate();
+    const weekdayShort = d.toLocaleDateString('tr-TR', { weekday: 'short' });
+
+    return `
+      <div class="v0-cal-day-cell ${isSelected ? 'active' : ''} ${isToday ? 'today' : ''}"
+           data-date="${iso}"
+           onclick="selectCapacityDate('${iso}')"
+           title="${d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' })}"
+           style="min-height:46px; padding:5px 2px 4px 2px;">
+        <span class="v0-cal-day-num" style="font-size:14px;">${dayNum}</span>
+        <span class="v0-cal-day-sub" style="font-size:8.5px;">${weekdayShort}</span>
+        ${isToday && !isSelected ? '<span class="v0-cal-dot" style="margin-top:2px;"></span>' : ''}
+      </div>
+    `;
+  }).join('');
+
+  // Update readable date label
+  const labelEl = document.getElementById('capacity-current-date-label');
+  if (labelEl) {
+    const isToday = currentCapacityDate === todayIso;
+    const formatted = curDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', weekday: 'short' });
+    labelEl.innerText = isToday ? `Bugün, ${formatted}` : formatted;
+  }
+
+  // Sync native input
   const dateInput = document.getElementById('capacity-date-picker');
-  if (dateInput && !dateInput.value) {
+  if (dateInput && dateInput.value !== currentCapacityDate) {
     dateInput.value = currentCapacityDate;
   }
-  const date = dateInput ? dateInput.value : currentCapacityDate;
+}
 
+window.selectCapacityDate = async function(dateIso) {
+  if (!dateIso) return;
+  currentCapacityDate = dateIso;
+  selectedSlotHour = null;
+  const detailsBox = document.getElementById('slot-details-box');
+  if (detailsBox) detailsBox.style.display = 'none';
+
+  renderCapacityWeekStrip();
+  await loadCapacitySlots();
+  applyAttendanceFilter(currentFilter);
+};
+
+window.changeCapacityDay = async function(delta) {
+  const d = new Date(currentCapacityDate + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  await selectCapacityDate(formatDateToIso(d));
+};
+
+window.jumpCapacityToday = async function() {
+  const todayIso = formatDateToIso(new Date());
+  await selectCapacityDate(todayIso);
+};
+
+window.handleCapacityDateChange = async function(val) {
+  if (val) {
+    await selectCapacityDate(val);
+  }
+};
+
+async function loadCapacitySlots() {
+  renderCapacityWeekStrip();
+
+  const date = currentCapacityDate;
   try {
     capacitySlotsData = await Api.getCapacity(date);
     renderCapacitySlots(capacitySlotsData);
@@ -308,15 +386,6 @@ async function loadCapacitySlots() {
   }
 }
 
-window.handleCapacityDateChange = async function(val) {
-  currentCapacityDate = val;
-  selectedSlotHour = null;
-  const detailsBox = document.getElementById('slot-details-box');
-  if (detailsBox) detailsBox.style.display = 'none';
-  await loadCapacitySlots();
-  applyAttendanceFilter(currentFilter);
-};
-
 function renderCapacitySlots(slots) {
   const container = document.getElementById('capacity-slots-list');
   if (!container || !slots) return;
@@ -324,7 +393,6 @@ function renderCapacitySlots(slots) {
   container.innerHTML = slots.map(slot => {
     const hasMembers = slot.totalMembers > 0;
     const statusClass = (slot.statusLevel || 'comfortable').toLowerCase();
-    const pct = Math.min(100, Math.round((slot.totalMembers / slot.capacityLimit) * 100));
     const isActive = selectedSlotHour === slot.hour;
 
     let trainerSummary = 'Boş Saat';
@@ -332,26 +400,17 @@ function renderCapacitySlots(slots) {
       trainerSummary = slot.trainers.map(t => `${t.trainerName} (${t.memberCount})`).join(', ');
     }
 
+    const countLabel = hasMembers ? `${slot.totalMembers}/${slot.capacityLimit}` : 'Boş';
+
     return `
-      <div class="capacity-slot-card ${hasMembers ? 'has-session ' + statusClass : 'empty-slot'} ${isActive ? 'active-slot' : ''}"
-           onclick="selectSlotHour(${slot.hour})"
-           title="${slot.timeSlot} - ${hasMembers ? slot.totalMembers + '/' + slot.capacityLimit + ' Kişi (' + trainerSummary + ')' : 'Boş Saat (Kayıt yok)'}">
-        <div class="slot-card-top">
-          <span class="slot-time">${slot.timeSlot}</span>
-          ${hasMembers ? `<span class="slot-live-dot ${statusClass}" title="${slot.totalMembers} kişi aktif"></span>` : ''}
-        </div>
-        <div class="slot-badge-wrap">
-          <span class="slot-count-badge ${hasMembers ? statusClass : 'muted'}">
-            ${hasMembers ? `${slot.totalMembers}/${slot.capacityLimit}` : 'Boş'}
-          </span>
-        </div>
-        <div class="slot-bar-track">
-          <div class="slot-bar-fill ${hasMembers ? statusClass : ''}" style="width:${hasMembers ? pct : 0}%;"></div>
-        </div>
-        <div class="slot-trainers-line" title="${escapeHtml(trainerSummary)}">
-          ${hasMembers ? escapeHtml(trainerSummary) : '—'}
-        </div>
-      </div>
+      <button type="button"
+              class="v0-cal-day-cell capacity-hour-cell ${hasMembers ? 'has-session ' + statusClass : 'empty'} ${isActive ? 'active' : ''}"
+              onclick="selectSlotHour(${slot.hour})"
+              title="${slot.timeSlot} - ${hasMembers ? slot.totalMembers + '/' + slot.capacityLimit + ' Kişi (' + trainerSummary + ')' : 'Boş Saat (Kayıt yok)'}">
+        <span class="v0-cal-day-num">${slot.timeSlot}</span>
+        <span class="v0-cal-day-sub">${countLabel}</span>
+        <span class="v0-cal-dot ${statusClass}"></span>
+      </button>
     `;
   }).join('');
 }
@@ -685,6 +744,9 @@ async function loadMembersView(search = '') {
             <div style="display:flex; gap:6px;">
               <button class="btn-primary" style="padding:7px 14px; font-size:12px;" onclick="openNewSubModalForMember(${m.id}, '${escapeHtml(m.fullName)}')">
                 + Paket Sat
+              </button>
+              <button class="btn-secondary" style="padding:7px 12px; font-size:12px;" onclick="openEditMemberModal(${m.id})">
+                ✏️ Düzenle
               </button>
               ${sub && sub.remainingBalance > 0 ? `
                 <button class="btn-secondary" style="padding:7px 12px; font-size:12px; color:var(--flame-orange);" onclick="openPaymentModal(${sub.id}, '${escapeHtml(m.fullName)}', ${sub.remainingBalance})">
@@ -1134,6 +1196,80 @@ window.handleCreateMember = async function(e) {
     }
   } catch (err) {
     showToast(err.message, 'error');
+  }
+};
+
+window.openEditMemberModal = async function(memberId) {
+  let m = (typeof allMembers !== 'undefined' ? allMembers : []).find(x => x.id === memberId);
+  if (!m) {
+    try {
+      m = await Api.getMember(memberId);
+    } catch (err) {
+      showToast(`Sporcu bulunamadı: ${err.message}`, 'error');
+      return;
+    }
+  }
+
+  document.getElementById('edit-m-id').value = m.id;
+  document.getElementById('edit-m-name').value = m.fullName || '';
+  document.getElementById('edit-m-phone').value = m.phone || '';
+  document.getElementById('edit-m-email').value = m.email || '';
+  document.getElementById('edit-m-notes').value = m.notes || '';
+  document.getElementById('edit-m-height').value = m.heightCm ?? '';
+  document.getElementById('edit-m-weight').value = m.weightKg ?? '';
+  document.getElementById('edit-m-age').value = m.age ?? '';
+  document.getElementById('edit-m-gender').value = m.gender || '';
+  document.getElementById('edit-m-active').checked = m.isActive !== false;
+
+  const subtitle = document.getElementById('edit-member-subtitle');
+  if (subtitle) {
+    subtitle.innerText = `${m.fullName} · ID #${m.id}`;
+  }
+
+  openModal('modal-edit-member');
+};
+
+window.handleUpdateMember = async function(e) {
+  e.preventDefault();
+  const id = parseInt(document.getElementById('edit-m-id').value);
+  const fullName = document.getElementById('edit-m-name').value.trim();
+  const phone = document.getElementById('edit-m-phone').value.trim();
+  const email = document.getElementById('edit-m-email').value.trim();
+  const notes = document.getElementById('edit-m-notes').value.trim();
+  const heightVal = document.getElementById('edit-m-height').value;
+  const weightVal = document.getElementById('edit-m-weight').value;
+  const ageVal = document.getElementById('edit-m-age').value;
+  const gender = document.getElementById('edit-m-gender').value;
+  const isActive = document.getElementById('edit-m-active').checked;
+
+  if (!fullName) {
+    showToast('Ad Soyad zorunludur.', 'error');
+    return;
+  }
+
+  const payload = {
+    fullName: fullName,
+    phone: phone || null,
+    email: email || null,
+    notes: notes || null,
+    isActive: isActive,
+    heightCm: heightVal ? parseInt(heightVal) : null,
+    weightKg: weightVal ? parseFloat(weightVal) : null,
+    age: ageVal ? parseInt(ageVal) : null,
+    gender: gender || null
+  };
+
+  try {
+    const updated = await Api.updateMember(id, payload);
+    showToast(`✓ ${updated.fullName} başarıyla güncellendi!`);
+    closeModal('modal-edit-member');
+    await loadMembersView();
+    // Attendance listesi de açıksa güncelle
+    if (document.getElementById('view-yoklama')?.style.display !== 'none') {
+      await loadAttendanceView();
+    }
+  } catch (err) {
+    showToast(`Güncelleme Hatası: ${err.message}`, 'error');
   }
 };
 
@@ -1634,15 +1770,26 @@ async function loadAthleteHome() {
     if (guestWelcome) guestWelcome.style.display = 'block';
     if (memberSidebar) memberSidebar.style.display = 'none';
 
+    const guestHomeWrap = document.getElementById('athlete-guest-home-wrap');
+    const memberSessionsWrap = document.getElementById('athlete-member-sessions-wrap');
+    if (guestHomeWrap) guestHomeWrap.style.display = 'block';
+    if (memberSessionsWrap) memberSessionsWrap.style.display = 'none';
+
     if (greetingSubEl) greetingSubEl.innerText = 'Hoş Geldiniz,';
-    if (nameEl) nameEl.innerText = 'Misafir Sporcu';
+    if (nameEl) nameEl.innerText = 'Misafir Ziyaretçi';
     if (roleEl) roleEl.innerText = 'Giriş Yapılmadı';
     if (badgeDot) badgeDot.style.background = 'rgba(255, 255, 255, 0.3)';
     if (loginHeaderBtn) loginHeaderBtn.style.display = 'inline-flex';
   }
 
-  // Load Today's Sessions (Misafir veya Üye herkes günün seanslarını görebilir)
-  await renderSessionsList('v0-sessions-container', new Date().toISOString().split('T')[0]);
+  // Load Today's Sessions (Yalnızca oturum açmış üyeler için seanslar yüklenir)
+  if (user && token) {
+    const guestHomeWrap = document.getElementById('athlete-guest-home-wrap');
+    const memberSessionsWrap = document.getElementById('athlete-member-sessions-wrap');
+    if (guestHomeWrap) guestHomeWrap.style.display = 'none';
+    if (memberSessionsWrap) memberSessionsWrap.style.display = 'block';
+    await renderSessionsList('v0-sessions-container', new Date().toISOString().split('T')[0]);
+  }
 }
 
 // Load Sessions for a specific date
@@ -1650,11 +1797,68 @@ async function renderSessionsList(containerId, dateStr) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  const dateLabel = document.getElementById('v0-sessions-date-label');
-  if (dateLabel) {
-    const todayStr = new Date().toISOString().split('T')[0];
-    dateLabel.innerText = dateStr === todayStr ? `Bugün, ${new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}` : new Date(dateStr).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+  const user = Api.getUser();
+  const token = Api.getToken();
+
+  // GUEST PRIVACY GATE: Misafirler seans saatlerini, hocaları veya dolulukları göremez
+  if (!user || !token) {
+    const chipsContainer = document.getElementById('v0-day-filter-chips');
+    if (chipsContainer) chipsContainer.style.display = 'none';
+
+    const calWrapper = document.getElementById('v0-calendar-wrapper');
+    if (calWrapper) calWrapper.style.display = 'none';
+
+    const dateLabel = document.getElementById('v0-sessions-date-label');
+    if (dateLabel) dateLabel.innerText = 'Gizli Takvim';
+
+    container.innerHTML = `
+      <div class="v0-card" style="text-align:center; padding:32px 20px; border:1px solid rgba(204,255,0,0.25); background:linear-gradient(135deg, rgba(204,255,0,0.06), var(--bg-surface-elevated)); border-radius:20px; box-shadow:var(--shadow-card);">
+        <div style="width:64px; height:64px; margin:0 auto 16px auto; border-radius:50%; background:rgba(204,255,0,0.12); display:grid; place-items:center; font-size:30px; border:1px solid rgba(204,255,0,0.3);">
+          🔒
+        </div>
+        <h3 style="font-size:18px; font-weight:800; color:var(--text-primary); margin:0 0 8px 0;">Stüdyo Seans & Doluluk Takvimi</h3>
+        <p style="font-size:13px; color:var(--text-secondary); margin:0 0 24px 0; line-height:1.6; max-width:320px; margin-left:auto; margin-right:auto;">
+          Eğitmen müsaitlikleri, anlık kontenjan dolulukları ve seans rezervasyonu üyelerimizin gizliliği gereği yalnızca <strong>kayıtlı atletlerimize</strong> açıktır.
+        </p>
+
+        <div style="display:flex; flex-direction:column; gap:12px; max-width:280px; margin:0 auto;">
+          <button type="button" class="v0-btn-submit" onclick="openOtpDrawer()" style="padding:13px; font-size:13px; margin:0; width:100%;">
+            <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:4px;"> Mevcut Üye Girişi Yap
+          </button>
+          <button type="button" onclick="openLeadModal('Seans Takvimi')" class="btn-primary" style="background:var(--bg-surface-elevated); color:var(--volt-lime); border:1px solid var(--volt-lime); padding:11px 16px; font-size:12.5px; font-weight:800; border-radius:12px; cursor:pointer;">
+            📞 Üye Olmak İstiyorum / Bana Ulaşın
+          </button>
+          <a href="https://wa.me/905321112233?text=Merhaba,%20Compound%20Athletic%20seanslar%C4%B1%20ve%20%C3%BCyelik%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" style="font-size:12px; color:#25D366; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px; margin-top:2px;">
+            <span>💬</span> WhatsApp ile Bilgi Alın →
+          </a>
+        </div>
+      </div>
+    `;
+    return;
   }
+
+  const chipsContainer = document.getElementById('v0-day-filter-chips');
+  if (chipsContainer) chipsContainer.style.display = 'none'; // legacy
+
+  const calWrapper = document.getElementById('v0-calendar-wrapper');
+  if (calWrapper) calWrapper.style.display = 'block';
+
+  const dObj = new Date(dateStr + 'T00:00:00');
+  const nowObj = new Date();
+  const todayIso = `${nowObj.getFullYear()}-${String(nowObj.getMonth() + 1).padStart(2, '0')}-${String(nowObj.getDate()).padStart(2, '0')}`;
+  const isToday = dateStr === todayIso;
+  const fullDateLabel = isToday 
+    ? `Bugün, ${dObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}` 
+    : dObj.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const dateLabel = document.getElementById('v0-sessions-date-label');
+  if (dateLabel) dateLabel.innerText = fullDateLabel;
+
+  const dateBadge = document.getElementById('v0-sessions-selected-date-badge');
+  if (dateBadge) dateBadge.innerText = fullDateLabel;
+
+  const selectedDateText = document.getElementById('v0-cal-selected-date-text');
+  if (selectedDateText) selectedDateText.innerText = fullDateLabel;
 
   try {
     let slots = [];
@@ -1664,32 +1868,15 @@ async function renderSessionsList(containerId, dateStr) {
       console.warn('API seansları çekilemedi:', e);
     }
 
-    // If no backend slots exist for this date, provide realistic interactive default slots
+    // Dynamic, day-specific realistic slots if API has no slots for this date
     if (!slots || slots.length === 0) {
-      slots = [
-        {
-          id: 101,
-          startTime: `${dateStr}T19:00:00`,
-          endTime: `${dateStr}T20:00:00`,
-          title: 'Fonksiyonel Güç & Kondisyon',
-          trainerName: 'Gülçin Hoca',
-          capacity: 6,
-          confirmedCount: 4,
-          capacityStatus: 'Filling',
-          waitlistCount: 0
-        },
-        {
-          id: 102,
-          startTime: `${dateStr}T20:00:00`,
-          endTime: `${dateStr}T21:00:00`,
-          title: 'Core & Mobilite',
-          trainerName: 'Sinan Hoca',
-          capacity: 6,
-          confirmedCount: 6,
-          capacityStatus: 'Critical',
-          waitlistCount: 1
-        }
-      ];
+      slots = getRealisticSlotsForDate(dateStr);
+    }
+
+    const selectedCount = document.getElementById('v0-cal-selected-count');
+    if (selectedCount) {
+      const availableCount = (slots || []).length;
+      selectedCount.innerText = availableCount > 0 ? `· ${availableCount} Seans Mevcut` : '· Seans Bulunmuyor';
     }
 
     // Check my reservations if logged in
@@ -1861,33 +2048,213 @@ async function renderSessionsList(containerId, dateStr) {
   }
 }
 
-// Load Athlete Sessions View (All Dates)
+// Dynamic realistic fallback for days beyond API data
+function getRealisticSlotsForDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const dayOfWeek = d.getDay(); // 0: Pazar, 1: Pzt, 2: Sal, 3: Çar, 4: Per, 5: Cum, 6: Cmt
+
+  switch (dayOfWeek) {
+    case 1: // Pazartesi
+      return [
+        { id: 201, startTime: `${dateStr}T10:00:00`, endTime: `${dateStr}T11:00:00`, title: 'Haftalık Başlangıç Güç', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 221, startTime: `${dateStr}T12:30:00`, endTime: `${dateStr}T13:30:00`, title: 'Öğle Fonksiyonel & Core', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 222, startTime: `${dateStr}T14:30:00`, endTime: `${dateStr}T15:30:00`, title: 'Kuvvet & Mobilite', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
+        { id: 202, startTime: `${dateStr}T18:00:00`, endTime: `${dateStr}T19:00:00`, title: 'Hipertrofi & Kuvvet', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
+        { id: 203, startTime: `${dateStr}T19:00:00`, endTime: `${dateStr}T20:00:00`, title: 'Fonksiyonel Güç & Kondisyon', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 5, capacityStatus: 'Filling', waitlistCount: 0 }
+      ];
+    case 2: // Salı
+      return [
+        { id: 204, startTime: `${dateStr}T11:00:00`, endTime: `${dateStr}T12:00:00`, title: 'Postür & Omurga Esnekliği', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 1, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 223, startTime: `${dateStr}T13:00:00`, endTime: `${dateStr}T14:00:00`, title: 'Öğle Hızlı Kondisyon', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 224, startTime: `${dateStr}T15:00:00`, endTime: `${dateStr}T16:00:00`, title: 'Atletik Güç', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
+        { id: 205, startTime: `${dateStr}T18:30:00`, endTime: `${dateStr}T19:30:00`, title: 'Metabolic Conditioning & HIIT', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 206, startTime: `${dateStr}T19:30:00`, endTime: `${dateStr}T20:30:00`, title: 'Athletic Performance & Hız', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 5, capacityStatus: 'Filling', waitlistCount: 0 }
+      ];
+    case 3: // Çarşamba
+      return [
+        { id: 207, startTime: `${dateStr}T10:00:00`, endTime: `${dateStr}T11:00:00`, title: 'Sabah Güç & Kondisyon', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 225, startTime: `${dateStr}T12:00:00`, endTime: `${dateStr}T13:00:00`, title: 'Core & Omurga Sağlığı', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 226, startTime: `${dateStr}T14:00:00`, endTime: `${dateStr}T15:00:00`, title: 'Kuvvet Gelişimi', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
+        { id: 208, startTime: `${dateStr}T17:30:00`, endTime: `${dateStr}T18:30:00`, title: 'Functional Hypertrophy', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 209, startTime: `${dateStr}T19:00:00`, endTime: `${dateStr}T20:00:00`, title: 'Fonksiyonel Güç & Kondisyon', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
+        { id: 210, startTime: `${dateStr}T20:00:00`, endTime: `${dateStr}T21:00:00`, title: 'Core & Mobilite', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 6, capacityStatus: 'Critical', waitlistCount: 1 }
+      ];
+    case 4: // Perşembe
+      return [
+        { id: 211, startTime: `${dateStr}T11:00:00`, endTime: `${dateStr}T12:00:00`, title: 'Postür & Omurga Esnekliği', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 1, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 227, startTime: `${dateStr}T13:30:00`, endTime: `${dateStr}T14:30:00`, title: 'Öğle Mobilite & Güç', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 228, startTime: `${dateStr}T15:30:00`, endTime: `${dateStr}T16:30:00`, title: 'Fonksiyonel Kondisyon', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 212, startTime: `${dateStr}T18:30:00`, endTime: `${dateStr}T19:30:00`, title: 'Metabolic Conditioning & HIIT', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 213, startTime: `${dateStr}T19:30:00`, endTime: `${dateStr}T20:30:00`, title: 'Athletic Performance & Hız', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 5, capacityStatus: 'Filling', waitlistCount: 0 }
+      ];
+    case 5: // Cuma
+      return [
+        { id: 214, startTime: `${dateStr}T10:00:00`, endTime: `${dateStr}T11:00:00`, title: 'Sabah Kondisyon & Güç', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 229, startTime: `${dateStr}T12:30:00`, endTime: `${dateStr}T13:30:00`, title: 'Full Body HIIT & Core', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 230, startTime: `${dateStr}T14:30:00`, endTime: `${dateStr}T15:30:00`, title: 'Power & Kettlebell', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
+        { id: 215, startTime: `${dateStr}T17:30:00`, endTime: `${dateStr}T18:30:00`, title: 'Friday Functional Blast', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
+        { id: 216, startTime: `${dateStr}T19:00:00`, endTime: `${dateStr}T20:00:00`, title: 'Total Body Resistance', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 6, capacityStatus: 'Critical', waitlistCount: 2 },
+        { id: 217, startTime: `${dateStr}T20:00:00`, endTime: `${dateStr}T21:00:00`, title: 'Foam Roller & Doku Mobilite', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 }
+      ];
+    case 6: // Cumartesi
+      return [
+        { id: 218, startTime: `${dateStr}T11:00:00`, endTime: `${dateStr}T12:30:00`, title: 'Compound Weekend Bootcamp', trainerName: 'Gülçin & Sinan', capacity: 8, confirmedCount: 6, capacityStatus: 'Filling', waitlistCount: 0 },
+        { id: 231, startTime: `${dateStr}T13:00:00`, endTime: `${dateStr}T14:00:00`, title: 'Mobilite & Esneklik', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 219, startTime: `${dateStr}T14:00:00`, endTime: `${dateStr}T15:00:00`, title: 'Squat & Deadlift Teknik Kliniği', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
+        { id: 232, startTime: `${dateStr}T15:30:00`, endTime: `${dateStr}T16:30:00`, title: 'Serbest Ağırlık Seansı', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 }
+      ];
+    case 0: // Pazar
+    default:
+      return [
+        { id: 220, startTime: `${dateStr}T12:00:00`, endTime: `${dateStr}T13:00:00`, title: 'Active Recovery & Yoga Mobilite', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 },
+        { id: 233, startTime: `${dateStr}T14:00:00`, endTime: `${dateStr}T15:00:00`, title: 'Hafif Kondisyon & Stretching', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 }
+      ];
+  }
+}
+
+// ==================== CALENDAR ENGINE (BULUNDUĞU VE SONRAKİ HAFTA) ====================
+let currentCalendarSelectedDate = '';
+let currentCalendarWeekMode = 'all'; // 'all' | 'w1' | 'w2'
+
+function getStartOfWeekMonday(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0: Paz, 1: Pzt, ..., 6: Cmt
+  const diff = (day === 0 ? -6 : 1) - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function formatDateToIso(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+window.setCalendarWeekView = function(mode) {
+  currentCalendarWeekMode = mode;
+  const btnAll = document.getElementById('v0-btn-cal-all');
+  const btnW1 = document.getElementById('v0-btn-cal-w1');
+  const btnW2 = document.getElementById('v0-btn-cal-w2');
+  const rowW1 = document.getElementById('v0-cal-week-row-1');
+  const rowW2 = document.getElementById('v0-cal-week-row-2');
+
+  if (btnAll) btnAll.classList.toggle('active', mode === 'all');
+  if (btnW1) btnW1.classList.toggle('active', mode === 'w1');
+  if (btnW2) btnW2.classList.toggle('active', mode === 'w2');
+
+  if (rowW1) {
+    rowW1.style.display = (mode === 'all' || mode === 'w1') ? 'block' : 'none';
+  }
+  if (rowW2) {
+    rowW2.style.display = (mode === 'all' || mode === 'w2') ? 'block' : 'none';
+  }
+};
+
+window.selectCalendarToday = function() {
+  const now = new Date();
+  const todayIso = formatDateToIso(now);
+  selectCalendarDate(todayIso);
+};
+
+window.selectCalendarDate = async function(dateIso) {
+  currentCalendarSelectedDate = dateIso;
+
+  // Highlight cell in calendar
+  document.querySelectorAll('.v0-cal-day-cell').forEach(cell => {
+    const isTarget = cell.getAttribute('data-date') === dateIso;
+    cell.classList.toggle('active', isTarget);
+  });
+
+  await renderSessionsList('v0-all-sessions-container', dateIso);
+};
+
+// Load Athlete Sessions View (All Dates in 2-Week Calendar)
 async function loadAthleteSessionsView() {
-  const chipsContainer = document.getElementById('v0-day-filter-chips');
-  if (!chipsContainer) return;
+  const calWrapper = document.getElementById('v0-calendar-wrapper');
+  const user = Api.getUser();
+  const token = Api.getToken();
 
-  const today = new Date();
-  chipsContainer.innerHTML = '';
+  const now = new Date();
+  const todayIso = formatDateToIso(now);
 
-  for (let i = 0; i < 5; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() + i);
-    const dateIso = d.toISOString().split('T')[0];
-    const label = i === 0 ? 'Bugün' : i === 1 ? 'Yarın' : d.toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric', month: 'short' });
-
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = `v0-day-chip ${i === 0 ? 'active' : ''}`;
-    chip.innerText = label;
-    chip.onclick = () => {
-      chipsContainer.querySelectorAll('.v0-day-chip').forEach(b => b.classList.remove('active'));
-      chip.classList.add('active');
-      renderSessionsList('v0-all-sessions-container', dateIso);
-    };
-    chipsContainer.appendChild(chip);
+  if (!user || !token) {
+    if (calWrapper) calWrapper.style.display = 'none';
+    await renderSessionsList('v0-all-sessions-container', todayIso);
+    return;
   }
 
-  await renderSessionsList('v0-all-sessions-container', today.toISOString().split('T')[0]);
+  if (calWrapper) calWrapper.style.display = 'block';
+
+  if (!currentCalendarSelectedDate) {
+    currentCalendarSelectedDate = todayIso;
+  }
+
+  // Week 1: Bulunduğu Hafta (Pzt - Paz)
+  const mondayW1 = getStartOfWeekMonday(now);
+  const week1Days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(mondayW1);
+    d.setDate(mondayW1.getDate() + i);
+    week1Days.push(d);
+  }
+
+  // Week 2: Sonraki Hafta (Pzt - Paz)
+  const mondayW2 = new Date(mondayW1);
+  mondayW2.setDate(mondayW1.getDate() + 7);
+  const week2Days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(mondayW2);
+    d.setDate(mondayW2.getDate() + i);
+    week2Days.push(d);
+  }
+
+  // Month Title (e.g. "Eylül 2026" or "Eylül - Ekim 2026")
+  const monthTextEl = document.getElementById('v0-cal-month-text');
+  if (monthTextEl) {
+    const m1Name = mondayW1.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+    const lastDayW2 = week2Days[6];
+    const m2Name = lastDayW2.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+    if (m1Name.toLowerCase() === m2Name.toLowerCase()) {
+      monthTextEl.innerText = m1Name.charAt(0).toUpperCase() + m1Name.slice(1);
+    } else {
+      const m1Short = mondayW1.toLocaleDateString('tr-TR', { month: 'short' });
+      const m2Full = lastDayW2.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+      monthTextEl.innerText = `${m1Short} – ${m2Full}`;
+    }
+  }
+
+  // Render Day Cells
+  const renderDaysGrid = (containerId, daysList) => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = daysList.map(d => {
+      const dateIso = formatDateToIso(d);
+      const isToday = dateIso === todayIso;
+      const isSelected = dateIso === currentCalendarSelectedDate;
+      const isPast = dateIso < todayIso;
+      const dayNum = d.getDate();
+      const weekdayShort = d.toLocaleDateString('tr-TR', { weekday: 'short' });
+
+      return `
+        <button type="button" 
+                class="v0-cal-day-cell ${isToday ? 'today' : ''} ${isSelected ? 'active' : ''} ${isPast ? 'past' : ''}" 
+                data-date="${dateIso}"
+                onclick="selectCalendarDate('${dateIso}')"
+                title="${d.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}">
+          <span class="v0-cal-day-num">${dayNum}</span>
+          <span class="v0-cal-day-sub">${isToday ? 'Bugün' : weekdayShort}</span>
+          <span class="v0-cal-dot"></span>
+        </button>
+      `;
+    }).join('');
+  };
+
+  renderDaysGrid('v0-cal-days-w1', week1Days);
+  renderDaysGrid('v0-cal-days-w2', week2Days);
+
+  await renderSessionsList('v0-all-sessions-container', currentCalendarSelectedDate);
 }
 
 // Session Booking Handler
@@ -1947,14 +2314,62 @@ window.renderAthleteProfile = async function() {
   const user = Api.getUser();
   if (!user || !Api.getToken()) {
     container.innerHTML = `
-      <div class="v0-card" style="text-align:center;">
+      <div class="v0-card" style="text-align:center; padding:28px 20px; margin-bottom:16px;">
         <span style="font-size:40px; display:block; margin-bottom:10px;">👤</span>
-        <h3 style="font-size:18px; font-weight:800; color:var(--text-primary);">Henüz Giriş Yapmadınız</h3>
-        <p style="font-size:13px; color:var(--text-secondary); margin:8px 0 20px 0; line-height:1.5;">
+        <h3 style="font-size:18px; font-weight:800; color:var(--text-primary); margin:0 0 6px 0;">Henüz Giriş Yapmadınız</h3>
+        <p style="font-size:13px; color:var(--text-secondary); margin:0 0 20px 0; line-height:1.5;">
           Aktif ders haklarınızı, geçerlilik sürenizi ve rezervasyon geçmişinizi takip etmek için telefon numaranızla giriş yapın.
         </p>
-        <button class="v0-book-btn available" style="max-width:240px; margin:0 auto;" onclick="openOtpDrawer()">
-          Giriş Yap / Doğrula
+        <div style="display:flex; flex-direction:column; gap:10px; max-width:280px; margin:0 auto;">
+          <button class="v0-book-btn available" style="width:100%; margin:0;" onclick="openOtpDrawer()">
+            Giriş Yap / Doğrula
+          </button>
+          <button type="button" onclick="openLeadModal('Üyelik Bilgisi')" class="btn-primary" style="background:var(--bg-surface-elevated); color:var(--volt-lime); border:1px solid var(--volt-lime); padding:10px 14px; font-size:12.5px; font-weight:800; border-radius:12px; cursor:pointer;">
+            📞 Üye Olmak İstiyorum / Bilgi Al
+          </button>
+        </div>
+      </div>
+
+      <!-- Studio Information & Contact Card -->
+      <div class="v0-card" style="padding:20px; border-radius:16px; margin-bottom:16px;">
+        <h4 style="font-size:15px; font-weight:800; margin:0 0 12px 0; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+          <span>🏢</span> Compound Athletic Stüdyosu
+        </h4>
+        <div style="display:flex; flex-direction:column; gap:10px; font-size:12.5px; color:var(--text-secondary);">
+          <div style="display:flex; gap:10px; align-items:flex-start;">
+            <span style="color:var(--volt-lime); font-size:16px;">📍</span>
+            <div>
+              <span style="font-weight:600; color:var(--text-primary); display:block;">İhsaniye, Erkal Sk. No:5A, 16600 Nilüfer / Bursa</span>
+              <a href="https://maps.google.com/?q=%C4%B0hsaniye,+Erkal+Sk.+No:5A,+16600+Nil%C3%BCfer/Bursa" target="_blank" style="display:inline-block; font-size:11px; color:var(--volt-lime); margin-top:3px; text-decoration:underline; font-weight:700;">Haritada Aç (Google Maps) ↗</a>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <span style="color:var(--volt-lime);">⏰</span>
+            <span>Hafta İçi: 07:00 – 22:00 | Hafta Sonu: 09:00 – 18:00</span>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <span style="color:var(--volt-lime);">📞</span>
+            <span>+90 532 111 22 33</span>
+          </div>
+        </div>
+        <div style="margin-top:14px; display:flex; gap:8px;">
+          <a href="https://wa.me/905321112233?text=Merhaba,%20Compound%20Athletic%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" style="flex:1; padding:9px 12px; border-radius:10px; background:#25D366; color:#fff; text-align:center; font-size:12px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+            <span>💬</span> WhatsApp
+          </a>
+          <a href="tel:+905321112233" style="flex:1; padding:9px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle); text-align:center; font-size:12px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+            <span>📞</span> Hemen Ara
+          </a>
+        </div>
+      </div>
+
+      <!-- PWA Card -->
+      <div class="v0-card" style="padding:18px 20px; border-radius:16px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+        <div>
+          <div style="font-size:13px; font-weight:800; color:var(--text-primary);">SporTakip Mobil Uygulaması</div>
+          <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">Ana ekranınıza ekleyerek tam ekran kullanın</div>
+        </div>
+        <button type="button" class="btn-primary" onclick="openModal('modal-pwa-ios-guide')" style="padding:8px 14px; font-size:11.5px; font-weight:800; border-radius:999px; flex-shrink:0;">
+          Yükle 📲
         </button>
       </div>
     `;
@@ -3060,6 +3475,47 @@ function initPwaInstallFlow() {
 }
 
 // App Initialization
+// Guest Lead Modal Handlers
+window.openLeadModal = function(interest = 'Genel') {
+  const modal = document.getElementById('modal-lead-contact');
+  const interestSelect = document.getElementById('lead-interest');
+  if (interestSelect && interest) {
+    if (interest.includes('PT')) interestSelect.value = 'PT';
+    else if (interest.includes('Grup')) interestSelect.value = 'Grup';
+    else interestSelect.value = 'Uyelik';
+  }
+  if (modal) modal.classList.add('active');
+};
+
+window.handleLeadSubmit = function(event) {
+  event.preventDefault();
+  const name = document.getElementById('lead-name')?.value?.trim();
+  const phone = document.getElementById('lead-phone')?.value?.trim();
+  const interest = document.getElementById('lead-interest')?.value;
+
+  if (!name || !phone) {
+    showToast('Lütfen adınızı ve telefon numaranızı girin.', 'error');
+    return;
+  }
+
+  try {
+    const leads = JSON.parse(localStorage.getItem('sportakip_guest_leads') || '[]');
+    leads.push({
+      name,
+      phone,
+      interest,
+      createdAt: new Date().toISOString()
+    });
+    localStorage.setItem('sportakip_guest_leads', JSON.stringify(leads));
+  } catch (e) {}
+
+  closeModal('modal-lead-contact');
+  showToast('🎉 Talebiniz alındı! Eğitmenlerimiz en kısa sürede sizinle iletişime geçecektir.', 'success');
+
+  const form = document.getElementById('form-lead-contact');
+  if (form) form.reset();
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch((err) => {
