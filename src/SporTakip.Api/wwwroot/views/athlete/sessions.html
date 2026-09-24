@@ -1,0 +1,60 @@
+<section id="v0-view-sessions" class="v0-section animate-fade-in" style="display:none;">
+      <div class="v0-section-header" style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <h2 class="v0-section-title">Seanslar</h2>
+        <span class="v0-section-date" id="v0-sessions-selected-date-badge" style="color:var(--volt-lime); font-weight:700; font-size:12.5px;">Bugün</span>
+      </div>
+
+      <!-- TAKVİM GÖRÜNÜMÜ (14 Günlük Kesintisiz Takvim Grid) -->
+      <div class="v0-calendar-container" id="v0-calendar-wrapper">
+        <!-- Calendar Header -->
+        <div class="v0-cal-header" style="margin-bottom: 8px;">
+          <div class="v0-cal-month-title" id="v0-cal-month-label">
+            <span id="v0-cal-month-text">Eylül 2026</span>
+          </div>
+        </div>
+
+        <!-- Weekday Headers (Pzt, Sal, Çar, Per, Cum, Cmt, Paz) -->
+        <div class="v0-cal-weekday-grid">
+          <div class="v0-cal-weekday-col">PZT</div>
+          <div class="v0-cal-weekday-col">SAL</div>
+          <div class="v0-cal-weekday-col">ÇAR</div>
+          <div class="v0-cal-weekday-col">PER</div>
+          <div class="v0-cal-weekday-col">CUM</div>
+          <div class="v0-cal-weekday-col weekend">CMT</div>
+          <div class="v0-cal-weekday-col weekend">PAZ</div>
+        </div>
+
+        <!-- Week 1 (Bulunduğu Hafta) -->
+        <div class="v0-cal-week-row" id="v0-cal-week-row-1">
+          <div class="v0-cal-days-grid" id="v0-cal-days-w1">
+            <!-- 7 day cells injected by JS -->
+          </div>
+        </div>
+
+        <!-- Week 2 (Sonraki Hafta) -->
+        <div class="v0-cal-week-row" id="v0-cal-week-row-2">
+          <div class="v0-cal-days-grid" id="v0-cal-days-w2">
+            <!-- 7 day cells injected by JS -->
+          </div>
+        </div>
+
+        <!-- Selected Date Info Bar -->
+        <div class="v0-cal-selected-bar" id="v0-cal-selected-bar">
+          <div class="v0-cal-selected-text">
+            <span class="v0-cal-dot-indicator"></span>
+            <strong id="v0-cal-selected-date-text">23 Eylül Çarşamba</strong>
+            <span class="v0-cal-selected-sessions-count" id="v0-cal-selected-count">· Seanslar Listeleniyor</span>
+          </div>
+          <button type="button" class="v0-cal-today-shortcut" onclick="selectCalendarToday()" title="Bugünün seanslarına dön">
+            Bugün
+          </button>
+        </div>
+      </div>
+
+      <!-- Backward compatibility hidden container if any legacy code queries v0-day-filter-chips -->
+      <div id="v0-day-filter-chips" style="display:none;"></div>
+
+      <div class="v0-sessions-list" id="v0-all-sessions-container">
+        <!-- Injected -->
+      </div>
+    </section>

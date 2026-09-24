@@ -370,8 +370,25 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
       7. `modules/admin.js`: SuperAdmin & Salon Sahibi kullanıcı yönetim tablosu, kolon sıralama, rol filtre çipleri, kullanıcı düzenleme modalı ve salon sahibi atama.
     - `app.js` (Orchestrator): Yalnızca ana router (`navigateTo`, `setAppMode`, `toggleAppMode`, `updateNavForUserRole`), PWA servis çalışanı ve yükleme akışı ile `DOMContentLoaded` bootstrap mantığını içeren ~250 satırlık temiz bir koordinatöre dönüştürüldü.
     - Tüm inline `onclick` HTML event çağrıları (`index.html` içerisindeki 66 adet handler) ilgili modüllerde `window.*` nesnesine bağlanarak geriye dönük tam uyumluluk sağlandı.
-    - `sw.js` ve `index.html` cache versiyonları `v3.0.0` olarak güncellendi ve tüm yeni modül dosyaları çevrimdışı önbellekleme (`PRECACHE_ASSETS`) listesine dahil edildi.
     - 63/63 backend birim testi ve tarayıcı doğrulama testleri başarıyla tamamlandı.
+- **2026-09-24 (v3.1.0 - index.html Refactoring: Views & Modals HTML Partials Mimarisi):**
+  - **Kullanıcı Talebi:** *"index.html bunu da böl parçala yönet yapabilir miyiz sence? - isterim best-practice ile devam edebilirsin"*
+  - **Uygulanan Mimari Dönüşüm:**
+    - 1.883 satırlık dev monolitik `index.html` dosyası %82 oranında hafifletilerek **354 satıra** düşürüldü.
+    - Sadece ana App Shell (Header, Boş View Container'ı, Alt Navigasyon, Modals Root) `index.html`'de bırakıldı; ilk boyama gecikmesini 0ms tutmak için yalnızca varsayılan başlangıç ekranı (`v0-view-home`) iskelete dahil edildi.
+    - **11 Bağımsız Görünüm Dosyası (`views/`):**
+      - `views/athlete/` (`home.html`, `sessions.html`, `workout.html`, `profile.html`)
+      - `views/staff/` (`yoklama.html`, `takvim.html`, `dashboard.html`, `uyeler.html`, `kasa.html`, `hakedisim.html`)
+      - `views/admin/` (`superadmin.html`)
+    - **7 Odaklı Modal/Çekmece Dosyası (`modals/`):**
+      - `auth-modals.html`, `workout-modals.html`, `member-modals.html`, `staff-modals.html`, `session-modals.html`, `athlete-modals.html`, `admin-modals.html`
+    - **Dinamik Önbellekli Kısmi Yükleyici ([loader.js](file:///c:/MUFUKS\Code\SporTakip\src\SporTakip.Api\wwwroot\js\modules\loader.js)):**
+      - `ensureViewLoaded(tabName)`: Sekmeye ilk tıklandığında ilgili `.html` parçasını bir kez fetch edip DOM'a ekler; sonraki geçişlerde DOM'da koruyarak 0ms anlık geçiş sağlar.
+      - `preloadModals()`: Modalları arka planda non-blocking olarak `#modals-root` içine monte eder.
+    - **PWA & Doğrulama:**
+      - `sw.js` ve `index.html` sürümü `v3.1.0` olarak güncellendi, tüm 18 partial dosyası Service Worker `PRECACHE_ASSETS` listesine eklendi.
+      - Kural 18'e tam uyumlu hafif tarayıcı testi yapıldı: Konsolda 0 hata, anlık sekme geçişleri ve ekran görüntüsü ile doğrulandı.
+
 
 
 

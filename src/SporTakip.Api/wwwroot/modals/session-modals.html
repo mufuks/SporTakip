@@ -1,0 +1,140 @@
+<div class="modal-backdrop" id="modal-schedule-session">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h3>Seans Planla</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;">Butik Salon Saatlik Rezervasyon</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-schedule-session')">✕</button>
+      </div>
+      <form id="schedule-form" onsubmit="handleScheduleSession(event)">
+        <div class="form-group">
+          <label>Sporcu (Aktif Abonelik) *</label>
+          <select id="schedule-sub-select" class="form-control" required>
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Dersi Verecek Hoca *</label>
+          <select id="schedule-trainer-select" class="form-control" required>
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Tarih *</label>
+            <input type="date" id="schedule-date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Saat Dilimi *</label>
+            <select id="schedule-hour" class="form-control" required>
+              <option value="9">09:00 - 10:00</option>
+              <option value="10">10:00 - 11:00</option>
+              <option value="11">11:00 - 12:00</option>
+              <option value="12">12:00 - 13:00</option>
+              <option value="13">13:00 - 14:00</option>
+              <option value="14">14:00 - 15:00</option>
+              <option value="15">15:00 - 16:00</option>
+              <option value="16">16:00 - 17:00</option>
+              <option value="17">17:00 - 18:00</option>
+              <option value="18">18:00 - 19:00</option>
+              <option value="19" selected>19:00 - 20:00</option>
+              <option value="20">20:00 - 21:00</option>
+              <option value="21">21:00 - 22:00</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Not / Hedef Seans</label>
+          <input type="text" id="schedule-notes" class="form-control" placeholder="Örn: Bacak & Core, Kuvvet Seansı">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-schedule-session')">İptal</button>
+          <button type="submit" class="btn-primary">Seansı Planla</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<div class="modal-backdrop" id="modal-edit-session">
+    <div class="modal-content" style="max-width:520px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="display:flex; align-items:center; gap:8px;"><span>✏️</span> Seansı Düzenle</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;" id="edit-session-subtitle">Seans Saat & Bilgileri</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-edit-session')">✕</button>
+      </div>
+      <form id="edit-session-form" onsubmit="handleSaveEditSession(event)">
+        <input type="hidden" id="edit-session-id">
+
+        <div class="form-group">
+          <label>Seans Başlığı / Antrenman Adı *</label>
+          <input type="text" id="edit-session-title" class="form-control" placeholder="Örn: Fonksiyonel Güç & Kondisyon" required>
+        </div>
+
+        <div class="form-group">
+          <label>Eğitmen / Hoca *</label>
+          <select id="edit-session-trainer" class="form-control" required>
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Tarih *</label>
+            <input type="date" id="edit-session-date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Kapasite Kontenjanı *</label>
+            <input type="number" id="edit-session-capacity" class="form-control" min="1" max="20" value="6" required>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Başlangıç Saati *</label>
+            <input type="time" id="edit-session-start-time" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Bitiş Saati *</label>
+            <input type="time" id="edit-session-end-time" class="form-control" required>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Seans Türü</label>
+            <select id="edit-session-type" class="form-control">
+              <option value="GRUP">Grup Dersi</option>
+              <option value="PT">Bireysel (Özel Ders / PT)</option>
+              <option value="OPEN_GYM">Serbest Çalışma</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Seans Durumu</label>
+            <select id="edit-session-status" class="form-control">
+              <option value="Scheduled">Aktif / Planlandı</option>
+              <option value="Completed">Tamamlandı</option>
+              <option value="Cancelled">İptal Edildi</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Notlar</label>
+          <input type="text" id="edit-session-notes" class="form-control" placeholder="Ekstra antrenman bilgisi veya açıklama">
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px; flex-wrap:wrap; gap:10px;">
+          <button type="button" class="btn-danger-outline" onclick="handleDeleteSessionClick()" style="font-size:12px; padding:8px 14px; border:1px solid rgba(239,68,68,0.4); color:#ef4444; background:transparent; border-radius:var(--radius-xs); cursor:pointer;">
+            🗑️ Seansı Sil / İptal Et
+          </button>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="btn-secondary" onclick="closeModal('modal-edit-session')">Vazgeç</button>
+            <button type="submit" class="btn-primary">💾 Değişiklikleri Kaydet</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>

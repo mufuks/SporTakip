@@ -1,0 +1,43 @@
+<section id="v0-view-workout" class="v0-section animate-fade-in" style="display:none;">
+      <div class="v0-section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <h2 class="v0-section-title">Antrenman</h2>
+        <div class="v0-workout-subnav" style="display:flex; gap:6px;">
+          <button type="button" class="v0-subtab-btn active" id="btn-wsub-templates" onclick="switchWorkoutSubTab('templates')">Programlar</button>
+          <button type="button" class="v0-subtab-btn" id="btn-wsub-live" onclick="switchWorkoutSubTab('live')">Canlı İdman <span id="v0-live-pulse-dot" style="display:none; width:8px; height:8px; background:#CCFF00; border-radius:50%; display:inline-block; margin-left:4px;"></span></button>
+          <button type="button" class="v0-subtab-btn" id="btn-wsub-progress" onclick="switchWorkoutSubTab('progress')">Rekorlarım (PR)</button>
+        </div>
+      </div>
+
+      <!-- Sub-view 1: Program Şablonları & Serbest İdman -->
+      <div id="v0-workout-subview-templates" class="v0-workout-subview">
+        <div class="v0-workout-quick-start" style="background:linear-gradient(135deg, rgba(204,255,0,0.12), var(--bg-surface-elevated)); border:1px solid rgba(204,255,0,0.25); border-radius:18px; padding:20px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; box-shadow:var(--shadow-card);">
+          <div>
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:var(--volt-lime); text-transform:uppercase;">Hızlı Başlat</span>
+            <h3 style="font-size:17px; font-weight:800; color:var(--text-primary); margin:4px 0 2px 0;">Serbest Antrenman</h3>
+            <p style="font-size:12px; color:var(--text-secondary); margin:0;">Belirli bir şablon olmadan kendi egzersizlerini serbestçe logla.</p>
+          </div>
+          <button type="button" class="v0-btn-submit" onclick="startNewWorkout(null)" style="padding:10px 20px; font-size:13px; font-weight:800; border-radius:9999px; display:inline-flex; align-items:center; gap:6px; cursor:pointer; width:auto; margin-top:0;">
+            <img src="/images/tiger1_badge.png?v=2.7.5" alt="Başlat" class="tiger-icon-inline tiger-icon-sm"> Serbest Başlat
+          </button>
+        </div>
+
+        <h3 style="font-size:15px; font-weight:800; color:var(--text-primary); margin-bottom:14px;">Programlar</h3>
+        <div id="v0-workout-templates-list" class="v0-templates-grid">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Sub-view 2: Canlı İdman (Hevy / Nike Training Canlı Set Kaydı) -->
+      <div id="v0-workout-subview-live" class="v0-workout-subview" style="display:none;">
+        <div id="v0-live-workout-container">
+          <!-- Injected dynamically: Timer, Exercises, Set Inputs, Finish Button -->
+        </div>
+      </div>
+
+      <!-- Sub-view 3: Gelişim & 1RM Rekorları -->
+      <div id="v0-workout-subview-progress" class="v0-workout-subview" style="display:none;">
+        <div id="v0-progress-container">
+          <!-- Injected dynamically: PR Cards & History -->
+        </div>
+      </div>
+    </section>

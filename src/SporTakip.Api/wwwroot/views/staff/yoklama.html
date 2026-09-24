@@ -1,0 +1,72 @@
+<section id="view-yoklama" class="v0-section animate-fade-in" style="display:none;">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">HIZLI <span class="text-volt">YOKLAMA</span></h2>
+          <p class="page-subtitle">Salonda antrenman esnasında tek dokunuşla katılım düşün.</p>
+        </div>
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" placeholder="Üye adı veya paket ara..." oninput="filterAttendance(this.value)">
+        </div>
+      </div>
+
+      <!-- Quick Filter Chips -->
+      <div class="filter-chips">
+        <button class="filter-chip active" data-filter="all" onclick="setAttendanceFilter('all')">Tüm Aktif Paketler</button>
+        <button class="filter-chip" data-filter="expiring" onclick="setAttendanceFilter('expiring')"><img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-xs"> Son 1-2 Dersi Kalanlar</button>
+        <button class="filter-chip" data-filter="unpaid" onclick="setAttendanceFilter('unpaid')">💳 Borçlu Üyeler</button>
+      </div>
+
+      <!-- Saatlik Stüdyo Doluluk (Seans Takvimi Estetiğinde) -->
+      <div class="v0-calendar-container capacity-panel" style="margin-bottom:20px;">
+        <!-- Header: Başlık, İleri/Geri Tarih Navigasyonu ve Seans Planla -->
+        <div class="v0-cal-header" style="margin-bottom:12px; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center;">
+          <div class="v0-cal-month-title" style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:15px; font-weight:800;">Saatlik Doluluk</span>
+            <span class="v0-cal-badge-current" style="font-size:10px; padding:2px 8px; font-weight:800;">Kapasite: 6</span>
+          </div>
+
+          <!-- Tarih Hızlı Navigasyon Barı (◀ Tarih ▶ [Bugün] [Tarih Seçici] [+ Seans Planla]) -->
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <div class="cal-nav-bar" style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:2px 4px; display:inline-flex; align-items:center; gap:4px;">
+              <button type="button" class="cal-nav-btn" style="width:28px; height:28px; font-size:11px;" onclick="changeCapacityDay(-1)" title="Önceki Gün">◀</button>
+              <span id="capacity-current-date-label" style="font-size:12px; font-weight:700; color:var(--text-primary); padding:0 6px; white-space:nowrap;">Bugün</span>
+              <button type="button" class="cal-nav-btn" style="width:28px; height:28px; font-size:11px;" onclick="changeCapacityDay(1)" title="Sonraki Gün">▶</button>
+            </div>
+            <button type="button" class="btn-secondary" style="padding:5px 10px; font-size:11.5px; height:32px; border-radius:10px; font-weight:700;" onclick="jumpCapacityToday()" title="Bugüne Dön">Bugün</button>
+            <input type="date" id="capacity-date-picker" class="form-control" style="padding:4px 8px; font-size:12px; height:32px; width:auto; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:var(--text-primary);" onchange="handleCapacityDateChange(this.value)" title="Takvimden Tarih Seç">
+            <button type="button" class="btn-primary" style="padding:6px 12px; font-size:11.5px; height:32px; border-radius:10px; font-weight:800; display:inline-flex; align-items:center; gap:4px;" onclick="openScheduleSessionModal()">
+              <span>+</span> Seans Planla
+            </button>
+          </div>
+        </div>
+
+        <!-- Haftalık Tarih Seçim Şeridi (Sporcu Seans Takvimi Estetiğinde 7 Günlük Grid) -->
+        <div style="margin-bottom:12px;">
+          <div class="v0-cal-days-grid" id="capacity-week-strip">
+            <!-- JS dynamically injects 7 day cells (Pzt - Paz) -->
+          </div>
+        </div>
+
+        <!-- Hourly Slots Grid (5 columns x 2 rows, matching Seans Takvimi) -->
+        <div class="capacity-slots-container" id="capacity-slots-list">
+          <!-- Dynamically populated slots -->
+        </div>
+
+        <!-- Selected Slot Details (Active filter indicator) -->
+        <div id="slot-details-box" class="v0-cal-selected-bar" style="display:none; margin-top:8px;">
+          <div class="v0-cal-selected-text">
+            <span class="v0-cal-dot-indicator"></span>
+            <span id="slot-details-text">Saat 19:00 için kayıtlı sporcular filtrelendi.</span>
+          </div>
+          <button type="button" class="v0-cal-today-shortcut" onclick="clearSlotFilter()" title="Tüm saatleri göster">
+            ✕ Tümü
+          </button>
+        </div>
+      </div>
+
+      <!-- Cards Grid -->
+      <div class="attendance-grid" id="attendance-list">
+        <!-- Javascript dynamically fills this -->
+      </div>
+    </section>

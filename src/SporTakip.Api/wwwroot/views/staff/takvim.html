@@ -1,0 +1,69 @@
+<section id="view-takvim" class="v0-section animate-fade-in" style="display:none;">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">SEANS <span class="text-volt">TAKVİMİ</span></h2>
+          <p class="page-subtitle">Aylık stüdyo seans çizelgesi. Günlere tıklayarak antrenman ve sporcu detaylarını inceleyin.</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div class="cal-nav-bar">
+            <button class="cal-nav-btn" onclick="changeCalendarMonth(-1)" title="Önceki Ay">◀</button>
+            <span class="cal-month-title" id="cal-month-heading">Yükleniyor...</span>
+            <button class="cal-nav-btn" onclick="changeCalendarMonth(1)" title="Sonraki Ay">▶</button>
+            <button class="btn-secondary" style="padding:7px 14px; font-size:12px;" onclick="goToTodayCalendar()">Bugün</button>
+          </div>
+          <button class="btn-primary" onclick="openScheduleModal()">
+            + Seans Planla
+          </button>
+        </div>
+      </div>
+
+      <!-- Capacity Legend & Summary Bar -->
+      <div class="cal-summary-strip">
+        <div class="cal-legend-group">
+          <span class="legend-item"><span class="status-dot dot-green"></span> Rahat (0-3)</span>
+          <span class="legend-item"><span class="status-dot dot-orange"></span> Doluyor (4-5)</span>
+          <span class="legend-item"><span class="status-dot dot-red"></span> Kritik Dolu (6+)</span>
+        </div>
+        <div id="cal-month-stats" class="cal-stats-summary">
+          <!-- Ay geneli özet -->
+        </div>
+      </div>
+
+      <!-- Month Calendar Outer Card -->
+      <div class="glass-card calendar-card-wrapper">
+        <!-- Weekdays Header (Pzt - Paz) -->
+        <div class="calendar-weekdays-grid">
+          <div class="cal-weekday-hdr">Pzt</div>
+          <div class="cal-weekday-hdr">Sal</div>
+          <div class="cal-weekday-hdr">Çar</div>
+          <div class="cal-weekday-hdr">Per</div>
+          <div class="cal-weekday-hdr">Cum</div>
+          <div class="cal-weekday-hdr">Cmt</div>
+          <div class="cal-weekday-hdr">Paz</div>
+        </div>
+
+        <!-- 7-Column Days Grid -->
+        <div class="calendar-grid" id="calendar-days-grid">
+          <!-- Dynamically populated day cells -->
+        </div>
+      </div>
+
+      <!-- Selected Day Details Panel -->
+      <div class="glass-card" id="calendar-day-details" style="display:none; margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 id="cal-selected-day-title" style="font-size:18px;">Seans Detayı</h3>
+            <span id="cal-selected-day-subtitle" style="font-size:13px; color:var(--text-secondary);">Detaylar yükleniyor...</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-primary" style="padding:8px 16px; font-size:12px;" onclick="openScheduleModalForSelectedDate()">
+              + Bu Güne Seans Ekle
+            </button>
+            <button class="btn-secondary" style="padding:8px 12px; font-size:12px;" onclick="closeCalendarDayDetails()">✕ Kapat</button>
+          </div>
+        </div>
+        <div id="cal-selected-day-slots" class="attendance-grid">
+          <!-- Hourly cards for selected day -->
+        </div>
+      </div>
+    </section>

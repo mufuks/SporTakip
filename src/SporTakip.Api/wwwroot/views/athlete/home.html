@@ -1,0 +1,150 @@
+<section id="v0-view-home" class="animate-fade-in">
+      <div class="v0-home-grid">
+        <!-- Left Sidebar (Desktop) / Top Flow (Mobile) -->
+        <div class="v0-home-sidebar">
+          <!-- GUEST WELCOME CARD (Shown when NOT logged in) -->
+          <div class="v0-package-card" id="athlete-guest-welcome" style="text-align:center; padding:28px 20px;">
+            <div class="v0-package-glow"></div>
+            <div class="v0-guest-tiger-wrap">
+              <img src="/images/tiger2_badge.png?v=2.7.5" alt="Compound Athletic" class="v0-guest-tiger-img">
+            </div>
+            <h3 style="font-size:18px; font-weight:800; color:var(--text-primary); margin:0 0 8px 0;">Compound Athletic</h3>
+            <p style="font-size:13px; color:var(--text-secondary); margin:0 0 20px 0; line-height:1.5;">
+              Kişiye özel antrenman programları, birebir koçluk ve performans hedefleriniz için profesyonel spor stüdyosu.
+            </p>
+            <div style="display:flex; flex-direction:column; gap:10px; max-width:280px; margin:0 auto;">
+              <button type="button" class="v0-btn-submit" onclick="openOtpDrawer()" style="padding:12px; font-size:13px; width:100%; margin:0;">
+                <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:4px;"> Kayıtlı Üye Girişi (SMS)
+              </button>
+              <button type="button" onclick="openLeadModal('Üyelik / PT Bilgi')" style="background:var(--bg-surface-elevated); color:var(--volt-lime); border:1px solid var(--volt-lime); padding:10px 14px; font-size:12.5px; font-weight:800; border-radius:12px; cursor:pointer;">
+                📞 Üye Olmak İstiyorum / Bana Ulaşın
+              </button>
+            </div>
+          </div>
+
+          <!-- LOGGED-IN WRAPPER (Shown ONLY when logged in) -->
+          <div id="athlete-member-sidebar" style="display:none;">
+            <!-- Active Package Card with Segmented Progress -->
+            <div class="v0-package-card" id="athlete-package-card">
+              <div class="v0-package-glow"></div>
+              <div class="v0-package-top">
+                <div>
+                  <p class="v0-package-label">Aktif Paket</p>
+                  <h2 class="v0-package-title">
+                    <span class="v0-package-icon-box">🏋️</span>
+                    <span id="pkg-card-title">Yükleniyor...</span>
+                  </h2>
+                </div>
+                <span class="v0-status-pill-active" id="pkg-card-status">Aktif</span>
+              </div>
+
+              <!-- Segmented Bar -->
+              <div class="v0-segmented-bar" id="pkg-segmented-bar" aria-label="Ders Tamamlama İlerlemesi">
+                <!-- Dynamically populated -->
+              </div>
+
+              <!-- 3 Metrics -->
+              <div class="v0-metrics-grid">
+                <div class="v0-metric-item">
+                  <span class="v0-metric-label"><span>🏋️</span> Kalan</span>
+                  <span class="v0-metric-value volt" id="pkg-metric-remaining">--</span>
+                </div>
+                <div class="v0-metric-item">
+                  <span class="v0-metric-label"><span>📅</span> Geçerlilik</span>
+                  <span class="v0-metric-value" id="pkg-metric-days">--</span>
+                </div>
+                <div class="v0-metric-item">
+                  <span class="v0-metric-label"><span>💳</span> Bakiye</span>
+                  <span class="v0-metric-value emerald" id="pkg-metric-balance">--</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Workout Teaser Card -->
+            <div class="v0-section v0-sidebar-teaser-wrap" id="athlete-workout-teaser-wrap" style="margin-top:16px;">
+              <div class="v0-workout-teaser" onclick="switchAthleteTab('workout')">
+                <div class="v0-workout-emoji-box">🦵</div>
+                <div class="v0-workout-content">
+                  <div class="v0-workout-top">
+                    <span class="v0-workout-tag" id="teaser-workout-tag">Son Antrenmanım</span>
+                    <span class="v0-workout-date" id="teaser-workout-date">· --</span>
+                  </div>
+                  <p class="v0-workout-name" id="teaser-workout-name">Antrenman Programları</p>
+                  <div class="v0-workout-meta" id="teaser-workout-meta">
+                    <span>Programları İncele</span>
+                  </div>
+                </div>
+                <span style="color:rgba(255,255,255,0.3); font-size:18px;">›</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Main Column -->
+        <div class="v0-home-main">
+          <!-- Member Logged-in View: Günün Seansları -->
+          <div class="v0-section" id="athlete-member-sessions-wrap" style="display:none;">
+            <div class="v0-section-header">
+              <h2 class="v0-section-title">Günün Seansları</h2>
+              <span class="v0-section-date" id="v0-sessions-date-label">Bugün</span>
+            </div>
+
+            <div class="v0-sessions-list" id="v0-sessions-container">
+              <!-- Dynamically rendered from /api/sessions -->
+              <div style="text-align:center; padding:24px; color:rgba(255,255,255,0.4); font-size:13px;">
+                Seanslar yükleniyor...
+              </div>
+            </div>
+          </div>
+
+          <!-- Guest View: Studio Information & Privacy Shield & Lead Actions -->
+          <div class="v0-section" id="athlete-guest-home-wrap">
+            <div class="v0-section-header">
+              <h2 class="v0-section-title">Stüdyo & Ayrıcalıklar</h2>
+              <span class="v0-section-date" style="color:var(--volt-lime); font-weight:700;">📍 Nilüfer / Bursa</span>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div class="v0-card" style="padding:16px 18px; border-radius:16px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <span style="font-size:24px;">🎯</span>
+                  <div>
+                    <h4 style="font-size:15px; font-weight:800; margin:0; color:var(--text-primary);">Birebir Personal Training (PT)</h4>
+                    <p style="font-size:12px; color:var(--text-secondary); margin:2px 0 0 0;">Kişiye özel postür analizi, kuvvet ve kondisyon koçluğu</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="v0-card" style="padding:16px 18px; border-radius:16px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <span style="font-size:24px;">👥</span>
+                  <div>
+                    <h4 style="font-size:15px; font-weight:800; margin:0; color:var(--text-primary);">Butik Fonksiyonel Seanslar</h4>
+                    <p style="font-size:12px; color:var(--text-secondary); margin:2px 0 0 0;">Maksimum 6 kişilik özel gruplarla yüksek enerjili istasyon antrenmanları</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Privacy Lock & Lead Conversion Card -->
+              <div class="v0-card" style="padding:18px; border-radius:16px; border:1px dashed rgba(204,255,0,0.3); background:linear-gradient(135deg, rgba(204,255,0,0.05), var(--bg-surface-elevated));">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                  <span style="font-size:20px;">🔒</span>
+                  <h4 style="font-size:14.5px; font-weight:800; margin:0; color:var(--text-primary);">Stüdyo Doluluğu ve Seans Takvimi</h4>
+                </div>
+                <p style="font-size:12px; color:var(--text-secondary); margin:0 0 14px 0; line-height:1.5;">
+                  Salonumuzda seanslar randevuludur. Eğitmen müsaitlikleri ve anlık stüdyo dolulukları üyelerimizin gizliliği gereği sadece kayıtlı atletlerimize açıktır.
+                </p>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <button type="button" onclick="openLeadModal('Üyelik / PT Bilgi')" class="btn-primary" style="flex:1; min-width:130px; padding:10px 14px; font-size:12px; font-weight:800; text-align:center;">
+                    📞 Bana Ulaşın
+                  </button>
+                  <a id="landing-hero-wa" href="https://wa.me/905321112233?text=Merhaba,%20Compound%20Athletic%20üyelik%20ve%20PT%20hakkında%20bilgi%20almak%20istiyorum." target="_blank" class="v0-btn-submit gym-contact-wa" style="flex:1; min-width:130px; padding:10px 14px; font-size:12px; font-weight:800; text-align:center; text-decoration:none; background:#25D366; color:#fff; border:none; display:inline-flex; align-items:center; justify-content:center; gap:6px; margin:0;">
+                    <span>💬</span> WhatsApp
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>

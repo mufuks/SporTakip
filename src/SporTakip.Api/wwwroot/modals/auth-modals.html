@@ -1,0 +1,92 @@
+<div class="v0-otp-backdrop" id="v0-otp-drawer" onclick="handleOtpBackdropClick(event)">
+    <div class="v0-otp-sheet">
+      <div class="v0-sheet-handle"></div>
+      <button type="button" class="v0-sheet-close" onclick="closeOtpDrawer()" aria-label="Kapat">✕</button>
+
+      <div class="v0-sheet-header">
+        <div class="v0-sheet-shield">📱</div>
+        <div>
+          <h2 class="v0-sheet-title">SMS ile Hızlı Giriş</h2>
+          <p class="v0-sheet-subtitle" id="v0-otp-step-subtitle">Telefon numaranızı girerek hemen giriş yapın</p>
+        </div>
+      </div>
+
+      <!-- Step 1: Phone Entry -->
+      <div id="v0-otp-step-phone" class="animate-rise-in">
+        <label for="v0-input-phone" style="display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:8px;">
+          Telefon Numarası
+        </label>
+        <div class="v0-phone-wrapper">
+          <span class="v0-phone-prefix">+90</span>
+          <input type="tel" id="v0-input-phone" class="v0-phone-input" placeholder="5XX XXX XX XX" maxlength="14" oninput="handlePhoneInput(this)">
+        </div>
+        <button type="button" id="v0-btn-send-otp" class="v0-btn-submit" disabled onclick="submitSendOtp()">
+          <span>Kod Gönder</span>
+          <span style="font-size:16px;">→</span>
+        </button>
+      </div>
+
+      <!-- Step 2: 6-Digit Code Entry -->
+      <div id="v0-otp-step-code" class="animate-rise-in" style="display:none;">
+        <div class="v0-otp-boxes">
+          <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="0">
+          <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="1">
+          <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="2">
+          <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="3">
+          <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="4">
+          <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="5">
+        </div>
+
+        <div class="v0-otp-timer-row">
+          <span>Kalan Süre: <span class="v0-otp-timer-val" id="v0-otp-timer">03:00</span></span>
+          <button type="button" class="v0-otp-resend-btn" onclick="resendOtp()">Tekrar Gönder</button>
+        </div>
+
+        <button type="button" id="v0-btn-verify-otp" class="v0-btn-submit" disabled onclick="submitVerifyOtp()">
+          Kodu Onayla
+        </button>
+
+        <button type="button" class="v0-btn-back-phone" onclick="goToPhoneStep()">
+          Numarayı değiştir
+        </button>
+      </div>
+    </div>
+  </div>
+
+<div id="v0-notification-drawer" class="v0-otp-backdrop" onclick="handleNotificationBackdropClick(event)">
+    <div class="v0-otp-sheet" onclick="event.stopPropagation()" style="max-height:85vh; display:flex; flex-direction:column; padding:14px 20px 32px 20px;">
+      <div class="v0-sheet-handle" onclick="closeNotificationDrawer()"></div>
+      <button type="button" class="v0-sheet-close" onclick="closeNotificationDrawer()" aria-label="Kapat">✕</button>
+
+      <div class="v0-sheet-header" style="margin-bottom:16px;">
+        <div class="v0-sheet-shield" style="width:38px; height:38px; font-size:18px; border-radius:12px;">🔔</div>
+        <div>
+          <h2 class="v0-sheet-title" style="font-size:17px; margin:0;">Bildirimler</h2>
+          <p class="v0-sheet-subtitle" style="font-size:12px; margin:2px 0 0 0;">Stüdyo ve seans bildirimleri</p>
+        </div>
+      </div>
+
+      <!-- Tarayıcı Bildirimleri Yetkisi -->
+      <div style="background:var(--bg-surface-elevated); padding:12px 14px; border-radius:14px; border:1px solid var(--border-subtle); margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <div>
+          <div style="font-size:12.5px; font-weight:700; color:var(--text-primary);">Tarayıcı Anlık Bildirimleri</div>
+          <div id="push-status-label" style="font-size:11px; color:var(--text-muted); margin-top:2px;">Seans saatinden önce anlık uyarı al</div>
+        </div>
+        <button type="button" id="btn-toggle-push" onclick="togglePushPermission()" style="background:var(--volt-lime-accent); color:#000; border:none; padding:6px 14px; border-radius:999px; font-size:11.5px; font-weight:800; cursor:pointer; flex-shrink:0;">
+          İzin Ver
+        </button>
+      </div>
+
+      <!-- Bildirim Listesi -->
+      <div id="v0-notification-list" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px; padding:2px;">
+        <!-- JS ile dinamik doldurulur -->
+      </div>
+
+      <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
+        <button type="button" onclick="markAllNotificationsRead()" style="background:transparent; border:none; color:var(--volt-lime); font-size:12px; font-weight:700; cursor:pointer; text-decoration:underline;">
+          Tümünü Okundu Say
+        </button>
+        <span style="font-size:11px; color:var(--text-muted);" id="notification-unread-summary">0 yeni bildirim</span>
+      </div>
+    </div>
+  </div>

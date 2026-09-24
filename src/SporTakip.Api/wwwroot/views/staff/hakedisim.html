@@ -1,0 +1,57 @@
+<section id="view-hakedisim" class="v0-section animate-fade-in" style="display:none;">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">KİŞİSEL <span class="text-volt">HAKEDİŞİM</span></h2>
+          <p class="page-subtitle">Girdiğiniz seansların dökümü, %40 ikame primleriniz ve bu ayki kişisel net kazancınız.</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <select id="hakedis-month-select" class="form-control" style="max-width:180px;" onchange="handleHakedisMonthChange(this.value)">
+            <!-- Populated dynamically -->
+          </select>
+          <button type="button" class="btn-secondary" onclick="loadMyEarningsView()">🔄 Yenile</button>
+        </div>
+      </div>
+
+      <!-- Koç Hakediş Özet Metrikleri (3 Kart) -->
+      <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="stat-card">
+          <div class="stat-label">Toplam Verilen Seans</div>
+          <div class="stat-value text-volt" id="hakedis-total-lessons">0</div>
+          <div class="stat-meta" id="hakedis-lessons-meta">0 Asıl · 0 İkame Ders</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">İkame Ders Payım (%40)</div>
+          <div class="stat-value text-orange" id="hakedis-sub-lessons">0 Seans</div>
+          <div class="stat-meta">Başka hocanın yerine girilen</div>
+        </div>
+        <div class="stat-card cyan">
+          <div class="stat-label">Bu Ayki Tahmini Hakedişim</div>
+          <div class="stat-value text-cyan" id="hakedis-total-amount">₺0</div>
+          <div class="stat-meta" id="hakedis-amount-meta">Ders primi + paket payı</div>
+        </div>
+      </div>
+
+      <!-- Ders Detay Tablosu -->
+      <div class="glass-card table-responsive" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:17px; font-weight:800; color:var(--text-primary);">📋 Seans Seans Prim Dökümü</h3>
+          <span style="font-size:12px; color:var(--text-muted);" id="hakedis-table-count">0 seans listelendi</span>
+        </div>
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Tarih & Saat</th>
+              <th>Sporcu Adı</th>
+              <th>Paket</th>
+              <th>Ders No</th>
+              <th>Ders Türü</th>
+              <th>Durum</th>
+              <th style="text-align:right;">Kazanılan Prim</th>
+            </tr>
+          </thead>
+          <tbody id="hakedis-table-body">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </section>

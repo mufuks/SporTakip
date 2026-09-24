@@ -1,0 +1,266 @@
+<div class="modal-backdrop" id="modal-new-member">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Yeni Sporcu Kaydı</h3>
+        <button class="modal-close" onclick="closeModal('modal-new-member')">✕</button>
+      </div>
+      <form id="new-member-form" onsubmit="handleCreateMember(event)">
+        <div class="form-group">
+          <label>Ad Soyad *</label>
+          <input type="text" id="m-name" class="form-control" placeholder="Örn: Ayşe Yılmaz" required>
+        </div>
+        <div class="form-group">
+          <label>Telefon Numarası</label>
+          <input type="tel" id="m-phone" class="form-control" placeholder="05XXXXXXXXX">
+        </div>
+        <div class="form-group">
+          <label>Sağlık / Antrenman Notu (Bel fıtığı, sakatlık vb.)</label>
+          <input type="text" id="m-notes" class="form-control" placeholder="Örn: Menisküs hassasiyeti var">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-new-member')">İptal</button>
+          <button type="submit" class="btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<div class="modal-backdrop" id="modal-edit-member">
+    <div class="modal-content" style="max-width:500px;">
+      <div class="modal-header">
+        <div>
+          <h3>Sporcu Düzenle</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;" id="edit-member-subtitle">Profil ve İletişim Bilgileri</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-edit-member')">✕</button>
+      </div>
+      <form id="edit-member-form" onsubmit="handleUpdateMember(event)">
+        <input type="hidden" id="edit-m-id">
+        <div class="form-group">
+          <label>Ad Soyad *</label>
+          <input type="text" id="edit-m-name" class="form-control" placeholder="Örn: Ayşe Yılmaz" required>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Telefon Numarası</label>
+            <input type="tel" id="edit-m-phone" class="form-control" placeholder="05XXXXXXXXX">
+          </div>
+          <div class="form-group">
+            <label>E-posta</label>
+            <input type="email" id="edit-m-email" class="form-control" placeholder="ornek@email.com">
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px;">
+          <div class="form-group">
+            <label>Boy (cm)</label>
+            <input type="number" id="edit-m-height" class="form-control" placeholder="175" min="100" max="250">
+          </div>
+          <div class="form-group">
+            <label>Kilo (kg)</label>
+            <input type="number" step="0.1" id="edit-m-weight" class="form-control" placeholder="72.5" min="30" max="250">
+          </div>
+          <div class="form-group">
+            <label>Yaş</label>
+            <input type="number" id="edit-m-age" class="form-control" placeholder="28" min="10" max="100">
+          </div>
+          <div class="form-group">
+            <label>Cinsiyet</label>
+            <select id="edit-m-gender" class="form-control">
+              <option value="">Seçiniz</option>
+              <option value="Kadın">Kadın</option>
+              <option value="Erkek">Erkek</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Sağlık / Antrenman Notu (Sakatlık, hassasiyet)</label>
+          <input type="text" id="edit-m-notes" class="form-control" placeholder="Örn: Menisküs hassasiyeti var, diz zorlanmamalı">
+        </div>
+        <div class="form-group" style="display:flex; align-items:center; gap:10px; margin-top:14px; padding:10px 14px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:12px;">
+          <input type="checkbox" id="edit-m-active" style="width:18px; height:18px; accent-color:var(--volt-lime); cursor:pointer;">
+          <label for="edit-m-active" style="margin:0; font-size:13px; font-weight:700; color:var(--text-primary); cursor:pointer;">Aktif Sporcu (Kaydı Açık)</label>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-edit-member')">İptal</button>
+          <button type="submit" class="btn-primary">Güncelle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<div class="modal-backdrop" id="modal-new-sub">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h3>Paket Tanımla</h3>
+          <span class="text-volt" style="font-weight:700; font-size:14px;" id="sub-member-title">Üye Adı</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-new-sub')">✕</button>
+      </div>
+      <form id="new-sub-form" onsubmit="handleCreateSubscription(event)">
+        <input type="hidden" id="sub-member-id">
+        <div class="form-group">
+          <label>Paket Seçiniz *</label>
+          <select id="sub-package-select" class="form-control" onchange="updatePackagePriceField()">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Sorumlu Eğitmen</label>
+          <select id="sub-trainer-select" class="form-control">
+            <option value="">Varsayılan Eğitmen</option>
+          </select>
+        </div>
+        <div style="background:rgba(204,255,0,0.08); border:1px solid rgba(204,255,0,0.22); border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; color:var(--text-secondary); display:flex; gap:8px; align-items:center;">
+          <span style="font-size:16px;">💡</span>
+          <div>
+            <strong style="color:var(--volt-lime);">Esnek Fiyat:</strong>
+            <span>Paketin varsayılan fiyatı aşağıya gelir; bu sporcuya özel dilediğiniz tutarı yazarak değiştirebilirsiniz.</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Paket Ücreti (TL) *</label>
+          <input type="number" id="sub-price" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Salon İşletme Payı (Kesinti) *</label>
+          <select id="sub-salon-rate" class="form-control">
+            <option value="0.10">%10 Salon / %90 Hoca</option>
+            <option value="0.30">%30 Salon / %70 Hoca</option>
+            <option value="0.40">%40 Salon / %60 Hoca</option>
+            <option value="0.00">%0 Salon / %100 Hoca</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tahsil Edilen Tutar (Peşinat / Tam)</label>
+          <input type="number" id="sub-payment" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Ödeme Şekli</label>
+          <select id="sub-pay-method" class="form-control">
+            <option value="Nakit">Nakit</option>
+            <option value="Havale/EFT">Havale / EFT</option>
+            <option value="Kredi Kartı">Kredi Kartı</option>
+          </select>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-new-sub')">Vazgeç</button>
+          <button type="submit" class="btn-primary">Paketi Başlat</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<div class="modal-backdrop" id="modal-payment">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h3>Tahsilat Ekle</h3>
+          <span class="text-volt" style="font-weight:700; font-size:14px;" id="pay-member-name">Üye Adı</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-payment')">✕</button>
+      </div>
+      <form id="payment-form" onsubmit="handleAddPayment(event)">
+        <input type="hidden" id="pay-sub-id">
+        <div class="form-group">
+          <label>Tahsil Edilen Tutar (TL) *</label>
+          <input type="number" id="pay-amount" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Ödeme Yöntemi</label>
+          <select id="pay-method" class="form-control">
+            <option value="Nakit">Nakit</option>
+            <option value="Havale/EFT">Havale / EFT</option>
+            <option value="Kredi Kartı">Kredi Kartı</option>
+          </select>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-payment')">İptal</button>
+          <button type="submit" class="btn-primary">Tahsil Et</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<div class="modal-backdrop" id="modal-whatsapp-templates">
+    <div class="modal-content" style="max-width:520px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="display:flex; align-items:center; gap:8px;"><span>💬</span> WhatsApp Hatırlatma Şablonları</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;" id="wa-modal-member-name">Üye Adı</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-whatsapp-templates')">✕</button>
+      </div>
+
+      <div style="margin:16px 0;">
+        <!-- Şablon 1: Ders & 3 Saat Kuralı -->
+        <div class="wa-template-card">
+          <div class="wa-template-title">
+            <span>🕒</span> Şablon 1: Seans & 3 Saat Kuralı Hatırlatması
+          </div>
+          <div class="wa-template-body" id="wa-template-text-1">
+            Yükleniyor...
+          </div>
+          <button class="btn-primary" style="width:100%; font-size:12px; padding:8px;" onclick="sendWhatsAppTemplate(1)">
+            WhatsApp'ta Gönder 💬
+          </button>
+        </div>
+
+        <!-- Şablon 2: Paket Bitiş & Yenileme -->
+        <div class="wa-template-card">
+          <div class="wa-template-title">
+            <span><img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-xs"></span> Şablon 2: Paket Yenileme Uyarısı (Son Dersler)
+          </div>
+          <div class="wa-template-body" id="wa-template-text-2">
+            Yükleniyor...
+          </div>
+          <button class="btn-primary" style="width:100%; font-size:12px; padding:8px;" onclick="sendWhatsAppTemplate(2)">
+            WhatsApp'ta Gönder 💬
+          </button>
+        </div>
+
+        <!-- Şablon 3: Bakiye / Borç Hatırlatma -->
+        <div class="wa-template-card">
+          <div class="wa-template-title">
+            <span>💳</span> Şablon 3: Kalan Bakiye & Ödeme Hatırlatması
+          </div>
+          <div class="wa-template-body" id="wa-template-text-3">
+            Yükleniyor...
+          </div>
+          <button class="btn-primary" style="width:100%; font-size:12px; padding:8px;" onclick="sendWhatsAppTemplate(3)">
+            WhatsApp'ta Gönder 💬
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end;">
+        <button type="button" class="btn-secondary" onclick="closeModal('modal-whatsapp-templates')">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+<div class="modal-backdrop" id="modal-edit-member-notes">
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="display:flex; align-items:center; gap:8px;"><span>⚠️</span> Sporcu Sağlık & Sakatlık Notu</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;" id="edit-member-notes-name">Sporcu Adı</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-edit-member-notes')">✕</button>
+      </div>
+      <form id="edit-member-notes-form" onsubmit="handleSaveMemberNotes(event)">
+        <input type="hidden" id="edit-member-notes-id">
+        <div class="form-group">
+          <label>Sakatlık, Fıtık veya Sağlık Kısıt Notu</label>
+          <textarea id="edit-member-notes-textarea" class="form-control" rows="3" placeholder="Örn: Bel fıtığı L4-L5 - Ağır deadlift kısıtı, Trap Bar ve Core stabilitesi önerilir."></textarea>
+          <small style="color:var(--text-muted); font-size:11.5px; margin-top:6px; display:block;">
+            💡 Bu not antrenman yoklama listesinde tüm koçlara uyarı rozeti olarak görünecektir. Boş bırakıp kaydederseniz uyarı kaldırılır.
+          </small>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-edit-member-notes')">Vazgeç</button>
+          <button type="submit" class="btn-primary">💾 Notu Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>

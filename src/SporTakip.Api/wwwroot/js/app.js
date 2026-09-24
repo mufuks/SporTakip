@@ -1,4 +1,4 @@
-import { Api } from './api.js?v=3.0.0';
+import { Api } from './api.js?v=3.1.0';
 import { state } from './modules/state.js';
 import { 
   applyTheme, toggleTheme, showToast, openModal, closeModal, 
@@ -55,6 +55,7 @@ import {
   openEditUserModal, toggleTrainerFields, handleSaveEditUser,
   handleAssignRole, openCreateGymOwnerModal, handleCreateGymOwnerSubmit 
 } from './modules/admin.js';
+import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js';
 
 // Workspace / App Mode State
 let currentAppMode = localStorage.getItem('sportakip_app_mode') || 'athlete';
@@ -64,7 +65,7 @@ window.currentTab = currentTab;
 window.currentAthleteTab = currentAthleteTab;
 
 // Universal Navigation & Role-Based Access Control (RBAC)
-window.navigateTo = function(tabName) {
+window.navigateTo = async function(tabName) {
   const user = Api.getUser();
   const token = Api.getToken();
   const roles = user && user.roles ? user.roles : (user && user.role ? [user.role] : []);
@@ -112,24 +113,15 @@ window.navigateTo = function(tabName) {
     btn.classList.toggle('active', bTab === tabName);
   });
 
-  // Views dictionary
-  const allViews = {
-    home: document.getElementById('v0-view-home'),
-    sessions: document.getElementById('v0-view-sessions'),
-    workout: document.getElementById('v0-view-workout'),
-    profile: document.getElementById('v0-view-profile'),
-    yoklama: document.getElementById('view-yoklama'),
-    takvim: document.getElementById('view-takvim'),
-    dashboard: document.getElementById('view-dashboard'),
-    uyeler: document.getElementById('view-uyeler'),
-    kasa: document.getElementById('view-kasa'),
-    hakedisim: document.getElementById('view-hakedisim'),
-    superadmin: document.getElementById('view-superadmin')
-  };
+  // Ensure view partial is mounted in DOM
+  await ensureViewLoaded(tabName);
 
-  Object.keys(allViews).forEach(key => {
-    if (allViews[key]) {
-      allViews[key].style.display = key === tabName ? 'block' : 'none';
+  // Show active view, hide others
+  Object.keys(viewRoutes).forEach(key => {
+    const route = viewRoutes[key];
+    const el = document.getElementById(route.id);
+    if (el) {
+      el.style.display = key === tabName ? 'block' : 'none';
     }
   });
 
@@ -382,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('[PWA] ServiceWorker registration failed:', err);
     });
   }
-  setupOtpBoxListeners();
+  preloadModals().catch(() => {});
   updateAppAvatars();
   updateNavForUserRole();
   initPwaInstallFlow();

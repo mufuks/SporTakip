@@ -1,0 +1,86 @@
+<section id="view-superadmin" class="v0-section animate-fade-in" style="display:none;">
+      <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div style="display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; color:#c084fc; background:rgba(124,58,237,0.14); border:1px solid rgba(124,58,237,0.3); padding:3px 10px; border-radius:999px; margin-bottom:6px;">
+            <span>🛡️</span> PLATFORM SUPERADMIN
+          </div>
+          <h2 class="page-title">SİSTEM & <span class="text-volt">YÖNETİM</span></h2>
+          <p class="page-subtitle">Sistem kullanıcıları, salon sahipleri, eğitmen yetkilendirmeleri ve platform özeti.</p>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn-primary" style="background:var(--volt-lime-accent); color:#000; font-size:12.5px; padding:8px 16px; font-weight:800;" onclick="openCreateGymOwnerModal()">
+            + Yeni Salon Sahibi
+          </button>
+          <button type="button" class="btn-secondary" style="font-size:12px; padding:8px 14px;" onclick="loadSuperAdminView()">
+            🔄 Yenile
+          </button>
+        </div>
+      </div>
+
+      <!-- Platform Özet Metrikleri -->
+      <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom:24px;">
+        <div class="stat-card">
+          <div class="stat-label">Toplam Kayıtlı Kullanıcı</div>
+          <div class="stat-value text-volt" id="sa-stat-total-users">0</div>
+          <div class="stat-meta" id="sa-stat-users-meta">0 SuperAdmin · 0 Salon Sahibi</div>
+        </div>
+        <div class="stat-card cyan">
+          <div class="stat-label">Kadro & Sporcular</div>
+          <div class="stat-value text-cyan" id="sa-stat-coaches-athletes">0 / 0</div>
+          <div class="stat-meta">Eğitmen / Aktif Sporcu</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">Paketler & Brüt Ciro</div>
+          <div class="stat-value text-orange" id="sa-stat-revenue">₺0</div>
+          <div class="stat-meta" id="sa-stat-subs-meta">0 Aktif Paket</div>
+        </div>
+      </div>
+
+      <!-- Kullanıcı & Yetki Yönetim Tablosu -->
+      <div class="glass-card table-responsive" style="margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+          <div>
+            <h3 style="font-size:17px; font-weight:800; color:var(--text-primary); margin:0;">👥 Kayıtlı Kullanıcılar ve Roller</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin:2px 0 0 0;">Kullanıcıları arayın, sıralayın, telefon veya yetkilerini tek dokunuşla düzenleyin.</p>
+          </div>
+          <div class="search-box" style="max-width:280px; width:100%;">
+            <input type="text" id="sa-user-search" class="search-input" placeholder="İsim veya telefon ara..." oninput="filterSuperAdminUsers(this.value)">
+          </div>
+        </div>
+
+        <!-- Rol Filtreleme Çipleri -->
+        <div class="sa-role-filter-chips" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
+          <button type="button" class="sa-chip active" id="sa-chip-all" onclick="filterSuperAdminByRole('all')">Tümü (<span id="sa-count-all">0</span>)</button>
+          <button type="button" class="sa-chip" id="sa-chip-superadmin" onclick="filterSuperAdminByRole('SuperAdmin')">🛡️ SuperAdmin (<span id="sa-count-sa">0</span>)</button>
+          <button type="button" class="sa-chip" id="sa-chip-admin" onclick="filterSuperAdminByRole('Admin')">👑 Salon Sahibi (<span id="sa-count-owner">0</span>)</button>
+          <button type="button" class="sa-chip" id="sa-chip-coach" onclick="filterSuperAdminByRole('Coach')">🥊 Eğitmen (<span id="sa-count-coach">0</span>)</button>
+          <button type="button" class="sa-chip" id="sa-chip-athlete" onclick="filterSuperAdminByRole('Athlete')">🏃 Sporcu (<span id="sa-count-athlete">0</span>)</button>
+        </div>
+
+        <table class="custom-table" id="sa-users-table">
+          <thead>
+            <tr>
+              <th onclick="sortSuperAdminUsers('name')" style="cursor:pointer; user-select:none;" title="Ada göre sırala">
+                Kullanıcı <span id="sort-icon-name" class="sa-sort-icon" style="font-size:11px; opacity:0.6;">↕</span>
+              </th>
+              <th onclick="sortSuperAdminUsers('phone')" style="cursor:pointer; user-select:none;" title="Telefona göre sırala">
+                Telefon <span id="sort-icon-phone" class="sa-sort-icon" style="font-size:11px; opacity:0.6;">↕</span>
+              </th>
+              <th onclick="sortSuperAdminUsers('role')" style="cursor:pointer; user-select:none;" title="Role göre sırala">
+                Mevcut Roller <span id="sort-icon-role" class="sa-sort-icon" style="font-size:11px; opacity:0.6;">↕</span>
+              </th>
+              <th onclick="sortSuperAdminUsers('profile')" style="cursor:pointer; user-select:none;" title="Profile göre sırala">
+                Bağlı Profil <span id="sort-icon-profile" class="sa-sort-icon" style="font-size:11px; opacity:0.6;">↕</span>
+              </th>
+              <th onclick="sortSuperAdminUsers('created')" style="cursor:pointer; user-select:none;" title="Tarihe göre sırala">
+                Kayıt Tarihi <span id="sort-icon-created" class="sa-sort-icon" style="font-size:11px; color:var(--volt-lime);">▼</span>
+              </th>
+              <th style="text-align:right;">İşlemler & Yetki</th>
+            </tr>
+          </thead>
+          <tbody id="sa-users-table-body">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </section>

@@ -1,0 +1,30 @@
+<div id="v0-modal-finish-workout" class="modal-backdrop">
+      <div class="v0-finish-modal-box">
+        <div style="text-align:center; margin-bottom:14px;">
+          <span style="font-size:36px; display:inline-block; margin-bottom:6px;">🏆</span>
+          <h3 style="font-size:17px; font-weight:800; color:var(--text-primary); margin:0;">Tebrikler, İdmanı Bitirdin!</h3>
+          <span class="v0-finish-duration-pill" id="v0-finish-modal-duration">⏱ Toplam Süre: -- dk</span>
+        </div>
+
+        <div style="margin-bottom:14px; text-align:center; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:14px; padding:12px 10px;">
+          <label style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:6px;">Antrenman Değerlendirmen</label>
+          <div style="display:flex; justify-content:center; gap:8px; font-size:24px;" id="v0-star-rating">
+            <span class="v0-star" data-rating="1" onclick="setWorkoutRating(1)" style="cursor:pointer;">⭐</span>
+            <span class="v0-star" data-rating="2" onclick="setWorkoutRating(2)" style="cursor:pointer;">⭐</span>
+            <span class="v0-star" data-rating="3" onclick="setWorkoutRating(3)" style="cursor:pointer;">⭐</span>
+            <span class="v0-star" data-rating="4" onclick="setWorkoutRating(4)" style="cursor:pointer;">⭐</span>
+            <span class="v0-star" data-rating="5" onclick="setWorkoutRating(5)" style="cursor:pointer;">⭐</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom:18px;">
+          <label style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:6px;">Antrenman Notu (İsteğe Bağlı)</label>
+          <input type="text" id="v0-finish-notes" class="v0-phone-input" placeholder="Örn: Squat formum çok akıcıydı 💪" style="width:100%; box-sizing:border-box; font-size:12.5px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
+        </div>
+
+        <div style="display:flex; gap:10px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('v0-modal-finish-workout')" style="flex:1; padding:10px; font-size:12.5px; font-weight:700; border-radius:9999px;">Vazgeç</button>
+          <button type="button" class="v0-btn-submit" onclick="submitFinishWorkout()" style="flex:1.8; margin:0; padding:10px; font-size:12.5px; font-weight:800;">Tamamla & Kaydet</button>
+        </div>
+      </div>
+    </div>

@@ -1,0 +1,132 @@
+<div class="modal-backdrop" id="modal-new-trainer">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Yeni Hoca Tanımla</h3>
+        <button class="modal-close" onclick="closeModal('modal-new-trainer')">✕</button>
+      </div>
+      <form id="new-trainer-form" onsubmit="handleCreateTrainer(event)">
+        <div class="form-group">
+          <label>Hoca Ad Soyad *</label>
+          <input type="text" id="t-name" class="form-control" placeholder="Örn: Kerem Demir" required>
+        </div>
+        <div class="form-group">
+          <label>Rolü *</label>
+          <select id="t-role" class="form-control" required>
+            <option value="Eğitmen">Eğitmen (Grup & Bireysel)</option>
+            <option value="PT">PT (Özel Ders Antrenörü)</option>
+            <option value="Salon Sahibi">Salon Sahibi / İşletmeci</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Telefon Numarası</label>
+          <input type="tel" id="t-phone" class="form-control" placeholder="05XXXXXXXXX">
+        </div>
+        <div class="form-group">
+          <label>Varsayılan Prim / Hakediş Oranı (%) *</label>
+          <input type="number" id="t-share-rate" class="form-control" value="40" min="0" max="100" step="1" required>
+          <small style="color:var(--text-muted); font-size:11px; margin-top:4px; display:block;">Örn: %40 (İkame hoca veya ders başı hakediş oranı)</small>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-new-trainer')">İptal</button>
+          <button type="submit" class="btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<div class="modal-backdrop" id="modal-edit-trainer">
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header">
+        <div>
+          <h3>✏️ Eğitmen Bilgilerini Düzenle</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;" id="edit-trainer-subtitle">Kadro ve Prim Ayarları</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-edit-trainer')">✕</button>
+      </div>
+      <form id="edit-trainer-form" onsubmit="handleUpdateTrainerSubmit(event)">
+        <input type="hidden" id="edit-t-id">
+        <div class="form-group">
+          <label>Hoca Ad Soyad *</label>
+          <input type="text" id="edit-t-name" class="form-control" placeholder="Örn: Hoca_1" required>
+        </div>
+        <div class="form-group">
+          <label>Rolü *</label>
+          <select id="edit-t-role" class="form-control" required>
+            <option value="Eğitmen">Eğitmen (Grup & Bireysel)</option>
+            <option value="PT">PT (Özel Ders Antrenörü)</option>
+            <option value="Salon Sahibi">Salon Sahibi / İşletmeci</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Telefon Numarası</label>
+          <input type="tel" id="edit-t-phone" class="form-control" placeholder="05XXXXXXXXX veya +905...">
+          <small style="color:var(--text-muted); font-size:11px; margin-top:3px; display:block;">Giriş hesabı ile otomatik senkronize edilir.</small>
+        </div>
+        <div class="form-group">
+          <label>Varsayılan Prim / Hakediş Oranı (%) *</label>
+          <input type="number" id="edit-t-share-rate" class="form-control" value="40" min="0" max="100" step="1" required>
+        </div>
+        <div class="form-group" style="display:flex; align-items:center; gap:10px; margin-top:14px; padding:10px 14px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:12px;">
+          <input type="checkbox" id="edit-t-active" style="width:18px; height:18px; accent-color:var(--volt-lime); cursor:pointer;">
+          <label for="edit-t-active" style="margin:0; font-size:13px; font-weight:700; color:var(--text-primary); cursor:pointer;">Kadroda Aktif (Seanslara atanabilir)</label>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-edit-trainer')">İptal</button>
+          <button type="submit" class="btn-primary" style="font-weight:800;">💾 Güncelle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<div class="modal-backdrop" id="modal-package">
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="package-modal-title">Yeni Paket Tanımla</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;">Salon Standart Paketi</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-package')">✕</button>
+      </div>
+      <form id="package-form" onsubmit="handleSavePackage(event)">
+        <input type="hidden" id="pkg-id">
+        <div class="form-group">
+          <label>Paket Adı *</label>
+          <input type="text" id="pkg-name" class="form-control" placeholder="Örn: 8 Seans Fonksiyonel Grup" required>
+        </div>
+        <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Paket Türü *</label>
+            <select id="pkg-type" class="form-control" required>
+              <option value="GRUP">GRUP</option>
+              <option value="PT">PT (Özel Ders)</option>
+              <option value="OZEL">Özel / İkili</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Ders (Seans) Sayısı *</label>
+            <input type="number" id="pkg-lessons" class="form-control" min="1" max="100" value="8" required>
+          </div>
+        </div>
+        <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Varsayılan Liste Fiyatı (TL) *</label>
+            <input type="number" id="pkg-price" class="form-control" min="0" step="100" placeholder="8000" required>
+          </div>
+          <div class="form-group">
+            <label>Geçerlilik Süresi (Gün) *</label>
+            <input type="number" id="pkg-validity" class="form-control" min="1" max="365" value="35" required>
+          </div>
+        </div>
+        <div class="form-group" id="pkg-active-group" style="display:none; margin-top:8px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="pkg-is-active" checked style="width:16px; height:16px; accent-color:var(--volt-lime);">
+            <span style="font-size:13px;">Bu paket aktif ve satışa açık</span>
+          </label>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-package')">Vazgeç</button>
+          <button type="submit" class="btn-primary" id="btn-save-package">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>

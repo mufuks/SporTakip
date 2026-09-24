@@ -1,0 +1,78 @@
+<div class="modal-backdrop" id="modal-pwa-ios-guide">
+    <div class="modal-content" style="max-width:440px; text-align:center;">
+      <div class="modal-header" style="justify-content:center; position:relative;">
+        <div style="text-align:center;">
+          <div style="width:58px; height:58px; margin:0 auto 8px auto; border-radius:16px; overflow:hidden; border:2px solid var(--volt-lime); box-shadow:0 0 18px var(--volt-lime-glow); background:#0a0a0c; display:grid; place-items:center;">
+            <img src="/images/tiger2_badge.png?v=2.7.5" alt="SporTakip" style="width:100%; height:100%; object-fit:contain; padding:4px;">
+          </div>
+          <h3 style="font-size:17px; font-weight:800; margin:0;">iPhone'a SporTakip'i Yükle</h3>
+          <p style="font-size:12px; color:var(--text-secondary); margin:4px 0 0 0;">Safari üzerinden 3 adımda ana ekranınıza ekleyin:</p>
+        </div>
+        <button class="modal-close" style="position:absolute; right:0; top:0;" onclick="closeModal('modal-pwa-ios-guide')">✕</button>
+      </div>
+
+      <div class="pwa-ios-steps">
+        <div class="pwa-ios-step">
+          <div class="pwa-ios-step-num">1</div>
+          <div class="pwa-ios-step-content">
+            Safari ekranının en altındaki <strong>Paylaş</strong> <span class="pwa-ios-icon-badge">⎋</span> simgesine dokunun.
+          </div>
+        </div>
+        <div class="pwa-ios-step">
+          <div class="pwa-ios-step-num">2</div>
+          <div class="pwa-ios-step-content">
+            Açılan menüde aşağı kaydırarak <strong>"Ana Ekrana Ekle"</strong> <span class="pwa-ios-icon-badge">⊞</span> seçeneğini bulun ve dokunun.
+          </div>
+        </div>
+        <div class="pwa-ios-step">
+          <div class="pwa-ios-step-num">3</div>
+          <div class="pwa-ios-step-content">
+            Sağ üst köşedeki <strong>"Ekle"</strong> butonuna basın. SporTakip ana ekranınızda bağımsız mobil uygulama olarak kurulacaktır! 🐯
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn-primary" style="width:100%; padding:12px; font-size:13px; font-weight:800;" onclick="closeModal('modal-pwa-ios-guide')">
+        Anladım, Harika! 👍
+      </button>
+    </div>
+  </div>
+
+<div class="modal-backdrop" id="modal-lead-contact">
+    <div class="modal-content" style="max-width:420px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:24px;">📞</span>
+          <div>
+            <h3 style="font-size:17px; font-weight:800; margin:0; color:var(--text-primary);">Bize Ulaşın / Bilgi Alın</h3>
+            <p style="font-size:12px; color:var(--text-secondary); margin:2px 0 0 0;">Compound Athletic eğitmenleri size en kısa sürede dönüş yapsın</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeModal('modal-lead-contact')">✕</button>
+      </div>
+      <form id="form-lead-contact" onsubmit="handleLeadSubmit(event)" style="display:flex; flex-direction:column; gap:14px; margin-top:12px;">
+        <div>
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:6px;">Adınız Soyadınız</label>
+          <input type="text" id="lead-name" class="v0-phone-input" placeholder="Örn: Ahmet Yılmaz" required style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 14px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:6px;">Telefon Numaranız</label>
+          <input type="tel" id="lead-phone" class="v0-phone-input" placeholder="05XX XXX XX XX" required style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 14px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:6px;">İlgilendiğiniz Alan</label>
+          <select id="lead-interest" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 14px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
+            <option value="PT">Birebir Personal Training (PT)</option>
+            <option value="Grup">Grup Fonksiyonel Seanslar</option>
+            <option value="Uyelik">Genel Üyelik ve Fiyat Bilgisi</option>
+          </select>
+        </div>
+        <button type="submit" class="v0-btn-submit" style="padding:12px; font-weight:800; font-size:13.5px; margin-top:4px; width:100%;">
+          Beni Arayın & Bilgi Verin →
+        </button>
+        <div style="text-align:center; font-size:11.5px; color:var(--text-muted); margin-top:2px;">
+          Veya doğrudan <a id="landing-lead-wa" class="gym-contact-wa" href="https://wa.me/905321112233?text=Merhaba,%20Compound%20Athletic%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" style="color:var(--volt-lime); font-weight:700; text-decoration:underline;">WhatsApp üzerinden yazın</a>
+        </div>
+      </form>
+    </div>
+  </div>
