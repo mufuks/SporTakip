@@ -1,13 +1,20 @@
-const CACHE_NAME = 'sportakip-shell-v2.9.9';
+const CACHE_NAME = 'sportakip-shell-v3.0.0';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon.ico',
-  '/css/app.css?v=2.9.9',
-  '/js/app.js?v=2.9.9',
-  '/js/api.js?v=2.9.9',
+  '/css/app.css?v=3.0.0',
+  '/js/app.js?v=3.0.0',
+  '/js/api.js?v=3.0.0',
+  '/js/modules/state.js',
+  '/js/modules/utils.js',
+  '/js/modules/auth.js',
+  '/js/modules/staff.js',
+  '/js/modules/athlete.js',
+  '/js/modules/workouts.js',
+  '/js/modules/admin.js',
   '/images/compound-brand-icon.png?v=2.7.5',
   '/images/default-avatar.png?v=2.7.5',
   '/images/compound-watermark.png',

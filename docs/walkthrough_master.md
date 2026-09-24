@@ -357,8 +357,22 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Uygulanan Değişiklikler:**
     - `DbSeeder.cs` içerisindeki eski geriye dönük isim değiştirme döngüleri, kişisel numara bazlı test hesapları, karmaşık geçmiş yoklama ve set logları tamamen temizlendi (satır sayısı 802'den 297'ye düşürüldü).
     - Kod 6 temiz ve modüler metoda ayrıldı: `SeedSuperAdminAsync`, `SeedPackagesAsync`, `SeedExercisesAsync`, `SeedTrainersAsync`, `SeedDemoAthleteAsync`, `SeedTodaySessionsAsync`.
-    - Sistemde yalnızca 1 SuperAdmin, 1 Salon Sahibi (`SalonSahibi_1`), 1 Eğitmen (`Hoca_1`), 15 Temel Egzersiz, Standart Paketler, 1 temiz örnek sporcu (`Atlet_1`) ve seans takviminin canlı test edilebilmesi için bugüne ait yalnızca 2 seans bırakıldı.
-    - Testler 63/63 (%100) başarıyla doğrulandı.
+- **2026-09-24 (v3.0.0 - Monolitik app.js Refactoring: Modern Vanilla ES Modüler Mimari):**
+  - **Kullanıcı Talebi:** *"app.js app.css'imiz çok büyüdü bunları bölerek yönetmek daha çok işimize gelir mi"*
+  - **Uygulanan Mimari Dönüşüm:**
+    - 4.288 satırlık dev monolitik `app.js` dosyası sıfır build step (Vite/Webpack gerektirmeyen native browser ES modules) prensibiyle 7 temiz ve odaklı modüle ayrıldı:
+      1. `modules/state.js`: Global reaktif durum deposu (`window.state`).
+      2. `modules/utils.js`: Toast bildirimleri, modal yönetimi, HTML/JS escaping, tema yönetimi, para/tarih formatlayıcılar, segmentli ilerleme çubuğu.
+      3. `modules/auth.js`: Dinamik salon iletişim bilgileri, OTP modal & SMS doğrulama döngüsü, avatar yükleme/sıfırlama, çıkış yapma.
+      4. `modules/staff.js`: Hızlı Yoklama & Kontenjan slotları, Üyeler & Notlar & Rozetler, Hakedişim/Bordro, Kasa & Finans, Kadro (Antrenör listeleme & düzenleme), Paketler ve Seans Planlama.
+      5. `modules/athlete.js`: Sporcu Ana Sayfası, Seanslar takvimi ve rezervasyon/iptal motoru, Profilim & BMI/vücut metrikleri, Bildirim çekmecesi ve Lead formu.
+      6. `modules/workouts.js`: İdman şablonları, Canlı İdman koçu ve kronometresi, Set logları, 1RM ve aşırı yüklenme analiz grafiği.
+      7. `modules/admin.js`: SuperAdmin & Salon Sahibi kullanıcı yönetim tablosu, kolon sıralama, rol filtre çipleri, kullanıcı düzenleme modalı ve salon sahibi atama.
+    - `app.js` (Orchestrator): Yalnızca ana router (`navigateTo`, `setAppMode`, `toggleAppMode`, `updateNavForUserRole`), PWA servis çalışanı ve yükleme akışı ile `DOMContentLoaded` bootstrap mantığını içeren ~250 satırlık temiz bir koordinatöre dönüştürüldü.
+    - Tüm inline `onclick` HTML event çağrıları (`index.html` içerisindeki 66 adet handler) ilgili modüllerde `window.*` nesnesine bağlanarak geriye dönük tam uyumluluk sağlandı.
+    - `sw.js` ve `index.html` cache versiyonları `v3.0.0` olarak güncellendi ve tüm yeni modül dosyaları çevrimdışı önbellekleme (`PRECACHE_ASSETS`) listesine dahil edildi.
+    - 63/63 backend birim testi ve tarayıcı doğrulama testleri başarıyla tamamlandı.
+
 
 
 
