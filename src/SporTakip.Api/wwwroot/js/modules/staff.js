@@ -20,7 +20,14 @@ let calMonth = new Date().getMonth() + 1;
 // ==================== 1. HIZLI YOKLAMA (ATTENDANCE & CAPACITY) ====================
 async function loadAttendanceView() {
   const container = document.getElementById('attendance-list');
-  container.innerHTML = '<div style="color:var(--text-muted); padding:40px; text-align:center;">Antrenman listesi yükleniyor...</div>';
+
+  // SWR Pattern: Eğer önceden yüklenmiş veri varsa anında çiz (0ms gecikme)
+  if (activeSubscriptions && activeSubscriptions.length > 0) {
+    applyAttendanceFilter(currentFilter);
+    renderCapacityWeekStrip();
+  } else {
+    container.innerHTML = '<div style="color:var(--text-muted); padding:40px; text-align:center;">Antrenman listesi yükleniyor...</div>';
+  }
 
   try {
     // Eğitmenleri ve aktif paketleri paralel al
@@ -36,7 +43,9 @@ async function loadAttendanceView() {
 
     applyAttendanceFilter(currentFilter);
   } catch (err) {
-    container.innerHTML = `<div style="color:var(--pulse-rose); padding:20px;">Hata: ${err.message}</div>`;
+    if (!activeSubscriptions || activeSubscriptions.length === 0) {
+      container.innerHTML = `<div style="color:var(--pulse-rose); padding:20px;">Hata: ${err.message}</div>`;
+    }
   }
 }
 
@@ -558,53 +567,65 @@ async function loadDashboardView() {
 }
 
 
+function renderMembersTable(members, container) {
+  if (!members || members.length === 0) {
+    container.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Kayıtlı üye bulunamadı.</td></tr>';
+    return;
+  }
+
+  container.innerHTML = members.map(m => {
+    const sub = m.activeSubscription;
+    const subBadge = sub 
+      ? `<span class="lesson-badge badge-green">${escapeHtml(sub.packageName)} (${sub.remainingLessons} Ders Kaldı)</span>`
+      : `<span style="color:var(--text-muted); font-size:12px;">Aktif Paket Yok</span>`;
+
+    return `
+      <tr>
+        <td>
+          <strong style="color:var(--text-primary); font-size:15px;">${escapeHtml(m.fullName)}</strong>
+          ${m.notes ? `<div style="font-size:11px; color:var(--flame-orange); margin-top:2px;">⚠️ ${escapeHtml(m.notes)}</div>` : ''}
+        </td>
+        <td>${m.phone ? escapeHtml(m.phone) : '<span style="color:var(--text-muted);">-</span>'}</td>
+        <td>${subBadge}</td>
+        <td><strong style="color:var(--cyber-cyan);">${m.totalSubscriptionsCount}</strong> Dönem</td>
+        <td>
+          <div style="display:flex; gap:6px;">
+            <button class="btn-primary" style="padding:7px 14px; font-size:12px;" onclick="openNewSubModalForMember(${m.id}, '${escapeHtml(m.fullName)}')">
+              + Paket Sat
+            </button>
+            <button class="btn-secondary" style="padding:7px 12px; font-size:12px;" onclick="openEditMemberModal(${m.id})">
+              ✏️ Düzenle
+            </button>
+            ${sub && sub.remainingBalance > 0 ? `
+              <button class="btn-secondary" style="padding:7px 12px; font-size:12px; color:var(--flame-orange);" onclick="openPaymentModal(${sub.id}, '${escapeHtml(m.fullName)}', ${sub.remainingBalance})">
+                Tahsil Et
+              </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
 // ==================== 3. ÜYELER ====================
 async function loadMembersView(search = '') {
   const container = document.getElementById('members-table-body');
-  container.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:24px;">Yükleniyor...</td></tr>';
+
+  // SWR Pattern: Arama yapılmıyorsa ve hafızada üye listesi varsa anında göster (0ms)
+  if (!search && allMembers && allMembers.length > 0) {
+    renderMembersTable(allMembers, container);
+  } else if (!allMembers || allMembers.length === 0 || search) {
+    container.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:24px;">Yükleniyor...</td></tr>';
+  }
 
   try {
     allMembers = await Api.getMembers(search);
-    if (allMembers.length === 0) {
-      container.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Kayıtlı üye bulunamadı.</td></tr>';
-      return;
-    }
-
-    container.innerHTML = allMembers.map(m => {
-      const sub = m.activeSubscription;
-      const subBadge = sub 
-        ? `<span class="lesson-badge badge-green">${escapeHtml(sub.packageName)} (${sub.remainingLessons} Ders Kaldı)</span>`
-        : `<span style="color:var(--text-muted); font-size:12px;">Aktif Paket Yok</span>`;
-
-      return `
-        <tr>
-          <td>
-            <strong style="color:var(--text-primary); font-size:15px;">${escapeHtml(m.fullName)}</strong>
-            ${m.notes ? `<div style="font-size:11px; color:var(--flame-orange); margin-top:2px;">⚠️ ${escapeHtml(m.notes)}</div>` : ''}
-          </td>
-          <td>${m.phone ? escapeHtml(m.phone) : '<span style="color:var(--text-muted);">-</span>'}</td>
-          <td>${subBadge}</td>
-          <td><strong style="color:var(--cyber-cyan);">${m.totalSubscriptionsCount}</strong> Dönem</td>
-          <td>
-            <div style="display:flex; gap:6px;">
-              <button class="btn-primary" style="padding:7px 14px; font-size:12px;" onclick="openNewSubModalForMember(${m.id}, '${escapeHtml(m.fullName)}')">
-                + Paket Sat
-              </button>
-              <button class="btn-secondary" style="padding:7px 12px; font-size:12px;" onclick="openEditMemberModal(${m.id})">
-                ✏️ Düzenle
-              </button>
-              ${sub && sub.remainingBalance > 0 ? `
-                <button class="btn-secondary" style="padding:7px 12px; font-size:12px; color:var(--flame-orange);" onclick="openPaymentModal(${sub.id}, '${escapeHtml(m.fullName)}', ${sub.remainingBalance})">
-                  Tahsil Et
-                </button>
-              ` : ''}
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
+    renderMembersTable(allMembers, container);
   } catch (err) {
-    container.innerHTML = `<tr><td colspan="6" style="color:var(--pulse-rose);">Hata: ${err.message}</td></tr>`;
+    if (!allMembers || allMembers.length === 0) {
+      container.innerHTML = `<tr><td colspan="6" style="color:var(--pulse-rose);">Hata: ${err.message}</td></tr>`;
+    }
   }
 }
 
@@ -868,6 +889,9 @@ window.handleCreateTrainer = async function(e) {
 let allPackagesAdmin = [];
 
 async function loadPackagesAdmin() {
+  if (allPackagesAdmin && allPackagesAdmin.length > 0) {
+    renderPackagesTable(allPackagesAdmin);
+  }
   try {
     allPackagesAdmin = await Api.getPackages(true); // all = true (hem aktif hem pasif)
     renderPackagesTable(allPackagesAdmin);

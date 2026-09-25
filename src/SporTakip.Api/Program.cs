@@ -42,7 +42,8 @@ else
         options.UseSqlite(sqliteConn));
 }
 
-// 2. Servisler (DI)
+// 2. Servisler (DI & Memory Cache)
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<GymService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISessionService, SessionService>();
@@ -204,7 +205,7 @@ static string ParsePostgresConnectionString(string connectionStringOrUri)
             var port = uri.Port > 0 ? uri.Port : 5432;
             var database = uri.AbsolutePath.TrimStart('/');
 
-            return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;";
+            return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Pooling=true;Minimum Pool Size=5;Maximum Pool Size=30;Connection Idle Lifetime=300;";
         }
         catch
         {

@@ -10,9 +10,13 @@ namespace SporTakip.Api.Controllers;
 public class MembersController(GymService gymService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<MemberDto>>> GetMembers([FromQuery] string? search, CancellationToken ct)
+    public async Task<ActionResult<List<MemberDto>>> GetMembers(
+        [FromQuery] string? search,
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
+        CancellationToken ct)
     {
-        var members = await gymService.GetMembersAsync(search, ct);
+        var members = await gymService.GetMembersAsync(search, page, pageSize, ct);
         return Ok(members);
     }
 

@@ -25,6 +25,12 @@
 | **PERF-05**| Ağ / Trafik | API JSON yanıtları ve statik varlıklar için Brotli/Gzip sıkıştırması ve istemci `Cache-Control` başlıkları eksikti. | 🟡 Orta | `[Resolved]` |
 | **PERF-06**| Eşzamanlılık / DB | SQLite varsayılan rollback journal modu ile yazma anında okuma kilitlenmelerine yol açıyordu. | 🟡 Orta | `[Resolved]` |
 | **PERF-07**| CPU / Tahsisat | `AuthService.NormalizePhoneNumber` Regex nesnesi ve ara stringler tahsis ederek GC baskısı yaratıyordu. | 🟢 Düşük | `[Resolved]` |
+| **PERF-08**| Bellek / Cache | Sıkça okunan ve nadir değişen paketler, stüdyo bilgileri ve egzersiz kataloğu her istekte veritabanına sorgu atıyordu. | 🟡 Orta | `[Resolved]` |
+| **PERF-09**| CPU / EF Core | Kimlik doğrulama ve profil sorgularında (`SendOtp`, `VerifyOtp`, `GetCurrentUserProfile`) LINQ expression ağacı her seferinde baştan derleniyordu. | 🟡 Orta | `[Resolved]` |
+| **PERF-10**| Veritabanı / Ağ | `GetMembersAsync` tüm üye listesini tek seferde çekiyordu; üye sayısı arttıkça bellek ve ağ yükü oluşturma riski taşıyordu. | 🟡 Orta | `[Resolved]` |
+| **PERF-11**| Veritabanı / Havuz| PostgreSQL (Neon) bağlantı dizesinde bağlantı havuzu (connection pool) ayarları optimize edilmemişti. | 🟡 Orta | `[Resolved]` |
+| **PERF-12**| Frontend / Hissiyat | Sekme geçişlerinde (`staff.js`, `athlete.js`) mevcut hafızadaki veri yok sayılarak arayüz "Yükleniyor..." ekranına sıfırlanıyordu (UI flicker). | 🟡 Orta | `[Resolved]` |
+| **PERF-13**| Statik Varlık | `wwwroot/images` dizininde kullanılmayan ~1.65 MB yüksek çözünürlüklü artık görsel dosyaları bulunuyordu. | 🟢 Düşük | `[Resolved]` |
 
 ---
 
@@ -47,7 +53,7 @@
    - `app.css` içerisindeki mükerrer responsive medya sorgusu ve seçici tanımları temizlendi.
    - **Tek Tıkla Seans Yoklaması (Toplu Yoklama):** `GymService.MarkAllAttendedForSlotAsync` metodu, `AttendanceController.MarkAllSlotAttendance` (`POST /api/attendance/mark-all-slot`) endpoint'i ve arayüzde `yoklama.html` ile `staff.js` entegrasyonu tamamlandı. Antrenörler tek dokunuşla seçili saatteki tüm sporcuları yoklamada "Geldi" durumuna geçirebilir.
 
-4. **Kapsamlı Sistem Geneli Performans Optimizasyonu (PERF-01 - PERF-07):**
+4. **Kapsamlı Sistem Geneli Performans Optimizasyonu (PERF-01 - PERF-13):**
    - **Veritabanı İndeksleri (PERF-01):** `ApplicationDbContext` üzerinde `AttendanceRecord.LessonDate`, `(TrainerId, LessonDate)`, `SessionSlotId`; `Subscription.MemberId`, `(Status, StartDate)`, `PrimaryTrainerId`; `Payment.SubscriptionId`, `PaymentDate`; `Reservation.(SessionSlotId, Status)`, `MemberId`; `ExerciseLog.(ExerciseId, WorkoutLogId)`, `WorkoutLogId`; `SetLog.(ExerciseLogId, IsCompleted)` bileşik B-Tree indeksleri tanımlandı.
    - **Sargability (PERF-02):** `GetHourlyStudioCapacityAsync`, `MarkAttendanceAsync` ve `MarkAllAttendedForSlotAsync` sorgularında `LessonDate.Date == ...` ifadesi yerine `LessonDate >= start && LessonDate < end` aralık sorgusu kullanılarak indeks seek yeteneği aktive edildi.
    - **Entity Materialization Eliminasyonu (PERF-03):** `GetDashboardStatsAsync` içinde ödeme ve abonelik entity'lerini belleğe çekmek yerine doğrudan `SumAsync` ve SQL tekil agregasyon (`GroupBy(_ => 1)`) kurgulandı. `SuperAdmin.GetStats` sorgusunda tüm kullanıcılar yerine sadece `Select(u => u.Roles)` çekilip abonelikler doğrudan SQL `CountAsync`/`SumAsync` ile hesaplandı. `GetMembersAsync` sorgusunda tüm geçmiş abonelik ve ödemeler yerine yalnızca aktif abonelik ve ödemeleri SQL düzeyinde yansıtan (projected) hafif modele geçildi.
@@ -55,4 +61,10 @@
    - **HTTP Yanıt Sıkıştırma & İstemci Önbellekleme (PERF-05):** `Program.cs` içine `ResponseCompression` (Brotli & Gzip) eklendi; statik varlıklar (JS, CSS, PNG, WOFF2) için 7 günlük `Cache-Control: public, max-age=604800, immutable`, `index.html` ve `sw.js` için anında yenilenen `no-cache` başlıkları devreye alındı.
    - **SQLite WAL Modu (PERF-06):** Başlangıçta `PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA temp_store=MEMORY;` çalıştırılarak okuma-yazma kilitlenmeleri sonlandırıldı ve transaction hızı artırıldı.
    - **Zero-Allocation Telefon Normalizasyonu (PERF-07):** `AuthService.NormalizePhoneNumber` içerisinde `Regex.Replace` kaldırıldı; `stackalloc char` ve tek geçişli `char.IsAsciiDigit` döngüsü ile sıfır GC bellek tahsisatına ulaşıldı.
-   - **Test Doğrulaması:** 12 yeni performans ve regresyon testi eklenerek toplam **76/76 test %100 başarıyla ve 0 derleme uyarısıyla** tamamlandı.
+   - **In-Memory Caching & Cache Invalidation (PERF-08):** `IMemoryCache` altyapısı kurularak `GetPackagesAsync`, `GetGymInfoAsync` ve `GetExercisesAsync` sorguları RAM önbelleğine alındı. Yeni paket eklendiğinde, güncellendiğinde veya silindiğinde önbellek anında geçersiz kılınarak (eviction) veri tutarlılığı sağlandı.
+   - **EF Core Compiled Queries (PERF-09):** `AuthService` içerisinde sık çağrılan `GetUserByPhoneCompiled` ve `GetUserByIdCompiled` statik derlenmiş sorguları oluşturuldu (`EF.CompileAsyncQuery`). Sorgu ağacı ayrıştırma (expression tree parsing) maliyeti sıfırlandı.
+   - **Sayfalama Altyapısı (PERF-10):** `GymService.GetMembersAsync` ve `MembersController` üzerine `page` ve `pageSize` desteği eklendi; geriye dönük tam uyumluluk (backward compatibility) korundu.
+   - **PostgreSQL Bağlantı Havuzu Optimizasyonu (PERF-11):** `ParsePostgresConnectionString` metodu üzerinden `Pooling=true;Minimum Pool Size=5;Maximum Pool Size=30;Connection Idle Lifetime=300;` ayarları eklenerek Neon bulut bağlantı gecikmeleri en aza indirildi.
+   - **Frontend Stale-While-Revalidate (SWR) & Instant UI (PERF-12):** `staff.js` ve `athlete.js` içinde sekme geçişlerinde önbellekteki veriler (üyeler, yoklama, sporcu paketi) anında (0ms) render edilecek ve ağ isteği arka planda sessizce yürütülecek şekilde refactor edildi. Arayüz beyaz ekran / yükleniyor titreşimi tamamen ortadan kalktı.
+   - **Gereksiz Statik Varlık Temizliği (PERF-13):** Projede doğrudan referans verilmeyen ~1.65 MB boyutundaki artık görseller (`athlete-woman-portrait-dark.png`, `tiger2_trans.png`) silinerek dağıtım paketi boyutu hafifletildi.
+   - **Test Doğrulaması:** 16 yeni performans, önbellek ve sayfalama birim testi eklenerek toplam **80/80 test %100 başarıyla ve 0 derleme uyarısıyla** tamamlandı.

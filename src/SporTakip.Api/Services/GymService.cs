@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using SporTakip.Api.Data;
 using SporTakip.Api.Models;
 using SporTakip.Api.Models.Identity;
 
 namespace SporTakip.Api.Services;
 
-public class GymService(ApplicationDbContext db)
+public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
 {
     public async Task<DashboardStatsDto> GetDashboardStatsAsync(CancellationToken cancellationToken = default)
     {
@@ -75,7 +76,7 @@ public class GymService(ApplicationDbContext db)
         );
     }
 
-    public async Task<List<MemberDto>> GetMembersAsync(string? search = null, CancellationToken cancellationToken = default)
+    public async Task<List<MemberDto>> GetMembersAsync(string? search = null, int? page = null, int? pageSize = null, CancellationToken cancellationToken = default)
     {
         var query = db.Members.AsNoTracking();
 
@@ -85,8 +86,14 @@ public class GymService(ApplicationDbContext db)
             query = query.Where(m => m.FullName.ToLower().Contains(s) || (m.Phone != null && m.Phone.Contains(s)));
         }
 
+        query = query.OrderBy(m => m.FullName);
+
+        if (page.HasValue && pageSize.HasValue && page.Value > 0 && pageSize.Value > 0)
+        {
+            query = query.Skip((page.Value - 1) * pageSize.Value).Take(pageSize.Value);
+        }
+
         var projected = await query
-            .OrderBy(m => m.FullName)
             .Select(m => new
             {
                 Member = m,
@@ -354,17 +361,33 @@ public class GymService(ApplicationDbContext db)
 
     public async Task<List<PackageDto>> GetPackagesAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
     {
+        var cacheKey = includeInactive ? "packages_all" : "packages_active";
+        if (cache != null && cache.TryGetValue(cacheKey, out List<PackageDto>? cached) && cached != null)
+        {
+            return cached;
+        }
+
         var query = db.Packages.AsQueryable();
         if (!includeInactive)
         {
             query = query.Where(p => p.IsActive);
         }
 
-        return await query
+        var list = await query
             .OrderBy(p => p.PackageType)
             .ThenBy(p => p.LessonCount)
             .Select(p => new PackageDto(p.Id, p.Name, p.PackageType, p.LessonCount, p.DefaultPrice, p.ValidityDays, p.IsActive))
             .ToListAsync(cancellationToken);
+
+        if (cache != null)
+        {
+            cache.Set(cacheKey, list, new MemoryCacheEntryOptions
+            {
+                SlidingExpiration = TimeSpan.FromMinutes(15)
+            });
+        }
+
+        return list;
     }
 
     public async Task<PackageDto> CreatePackageAsync(CreatePackageDto dto, CancellationToken cancellationToken = default)
@@ -388,6 +411,9 @@ public class GymService(ApplicationDbContext db)
 
         db.Packages.Add(package);
         await db.SaveChangesAsync(cancellationToken);
+
+        cache?.Remove("packages_active");
+        cache?.Remove("packages_all");
 
         return new PackageDto(package.Id, package.Name, package.PackageType, package.LessonCount, package.DefaultPrice, package.ValidityDays, package.IsActive);
     }
@@ -413,6 +439,9 @@ public class GymService(ApplicationDbContext db)
 
         await db.SaveChangesAsync(cancellationToken);
 
+        cache?.Remove("packages_active");
+        cache?.Remove("packages_all");
+
         return new PackageDto(package.Id, package.Name, package.PackageType, package.LessonCount, package.DefaultPrice, package.ValidityDays, package.IsActive);
     }
 
@@ -434,6 +463,10 @@ public class GymService(ApplicationDbContext db)
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        cache?.Remove("packages_active");
+        cache?.Remove("packages_all");
+
         return true;
     }
 
@@ -1027,6 +1060,7 @@ public class GymService(ApplicationDbContext db)
         }
 
         await db.SaveChangesAsync(cancellationToken);
+        cache?.Remove("gym_info");
         return new TrainerDto(trainer.Id, trainer.FullName, trainer.Role, trainer.Phone, trainer.DefaultShareRate, trainer.IsActive);
     }
 
@@ -1265,6 +1299,12 @@ public class GymService(ApplicationDbContext db)
     /// </summary>
     public async Task<GymInfoDto> GetGymInfoAsync(CancellationToken cancellationToken = default)
     {
+        const string cacheKey = "gym_info";
+        if (cache != null && cache.TryGetValue(cacheKey, out GymInfoDto? cached) && cached != null)
+        {
+            return cached;
+        }
+
         // 1. Rolü "Salon Sahibi" olan aktif antrenörü bul
         var ownerTrainer = await db.Trainers
             .AsNoTracking()
@@ -1311,7 +1351,7 @@ public class GymService(ApplicationDbContext db)
         var cleanPhone = cleanDigits.StartsWith("0") ? "90" + cleanDigits[1..] : (cleanDigits.StartsWith("90") ? cleanDigits : "90" + cleanDigits);
         var formatted = FormatPhoneDisplay(ownerPhone);
 
-        return new GymInfoDto(
+        var result = new GymInfoDto(
             StudioName: "Compound Athletic Stüdyosu",
             Address: "İhsaniye, Erkal Sk. No:5A, 16600 Nilüfer / Bursa",
             MapsUrl: "https://maps.google.com/?q=%C4%B0hsaniye,+Erkal+Sk.+No:5A,+16600+Nil%C3%BCfer/Bursa",
@@ -1321,6 +1361,16 @@ public class GymService(ApplicationDbContext db)
             FormattedPhone: formatted,
             CleanPhone: cleanPhone
         );
+
+        if (cache != null)
+        {
+            cache.Set(cacheKey, result, new MemoryCacheEntryOptions
+            {
+                SlidingExpiration = TimeSpan.FromMinutes(15)
+            });
+        }
+
+        return result;
     }
 
     private static string FormatPhoneDisplay(string phone)

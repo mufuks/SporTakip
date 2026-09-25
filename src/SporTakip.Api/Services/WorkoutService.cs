@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using SporTakip.Api.Data;
 using SporTakip.Api.Models;
 using SporTakip.Api.Models.Workout;
@@ -9,17 +10,25 @@ public class WorkoutService : IWorkoutService
 {
     private readonly ApplicationDbContext _db;
     private readonly ILogger<WorkoutService> _logger;
+    private readonly IMemoryCache? _cache;
 
-    public WorkoutService(ApplicationDbContext db, ILogger<WorkoutService> logger)
+    public WorkoutService(ApplicationDbContext db, ILogger<WorkoutService> logger, IMemoryCache? cache = null)
     {
         _db = db;
         _logger = logger;
+        _cache = cache;
     }
 
     #region Egzersiz Kataloğu
 
     public async Task<List<ExerciseDto>> GetExercisesAsync(string? muscleGroup = null, CancellationToken ct = default)
     {
+        var cacheKey = $"exercises_{muscleGroup?.Trim().ToLower() ?? "all"}";
+        if (_cache != null && _cache.TryGetValue(cacheKey, out List<ExerciseDto>? cached) && cached != null)
+        {
+            return cached;
+        }
+
         var query = _db.Exercises.AsNoTracking().Where(e => e.IsActive);
 
         if (!string.IsNullOrWhiteSpace(muscleGroup))
@@ -29,7 +38,17 @@ public class WorkoutService : IWorkoutService
         }
 
         var list = await query.OrderBy(e => e.Name).ToListAsync(ct);
-        return list.Select(MapToExerciseDto).ToList();
+        var dtos = list.Select(MapToExerciseDto).ToList();
+
+        if (_cache != null)
+        {
+            _cache.Set(cacheKey, dtos, new MemoryCacheEntryOptions
+            {
+                SlidingExpiration = TimeSpan.FromMinutes(30)
+            });
+        }
+
+        return dtos;
     }
 
     public async Task<ExerciseDto?> GetExerciseByIdAsync(int id, CancellationToken ct = default)

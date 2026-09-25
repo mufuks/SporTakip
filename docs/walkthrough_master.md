@@ -429,6 +429,31 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **7. Birim & Entegrasyon Testleri ([PerformanceOptimizationTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/PerformanceOptimizationTests.cs)):**
     - 12 yeni performans ve regresyon testi eklenerek toplam **76/76 test %100 başarıyla ve sıfır derleme uyarısıyla** doğrulandı. Sürüm `v3.3.0`.
 
+- **Faz 35 (İleri Düzey Performans, Önbellekleme & Anında UI Deneyimi - v3.4.0):**
+  - **1. In-Memory Caching & Cache Invalidation ([Program.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Program.cs), [GymService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/GymService.cs), [WorkoutService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/WorkoutService.cs)):**
+    - `builder.Services.AddMemoryCache()` eklendi.
+    - Sık okunan ve nadir değişen veri setleri (`GetPackagesAsync` 15 dk sliding, `GetGymInfoAsync` 15 dk sliding, `GetExercisesAsync` 30 dk sliding) RAM önbelleğe alındı.
+    - Paket oluşturma/güncelleme/silme veya antrenör bilgisi güncelleme durumlarında önbellek anında temizlenerek (`cache.Remove`) tam veri tutarlılığı sağlandı.
+  - **2. EF Core Compiled Queries ([AuthService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/AuthService.cs)):**
+    - Sık çağrılan kimlik doğrulama ve profil rotalarında LINQ expression derleme maliyeti `EF.CompileAsyncQuery` ile sıfırlandı:
+      - `GetUserByPhoneCompiled`: Telefon numarasına göre kullanıcı ve bağlı profilleri arayan statik derlenmiş sorgu.
+      - `GetUserByIdCompiled`: Kullanıcı ID'sine göre arayan statik derlenmiş sorgu.
+      - `SendOtpAsync`, `VerifyOtpAsync` ve `GetCurrentUserProfileAsync` metotları derlenmiş sorgulara geçirildi.
+  - **3. Sayfalama (Pagination) Altyapısı ([GymService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/GymService.cs) & [MembersController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/MembersController.cs)):**
+    - `GetMembersAsync` metoduna opsiyonel `page` ve `pageSize` parametreleri eklendi.
+    - Geriye dönük %100 uyumluluk korundu (parametre verilmezse tüm liste çekilir; parametre verilirse `Skip((page-1)*pageSize).Take(pageSize)` ile bellek ve veritabanı yükü sınırlandırılır).
+  - **4. PostgreSQL Neon Bağlantı Havuzu (Connection Pooling) ([Program.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Program.cs)):**
+    - `ParsePostgresConnectionString` metodu `Pooling=true;Minimum Pool Size=5;Maximum Pool Size=30;Connection Idle Lifetime=300;` parametreleriyle donatıldı. Neon veritabanı bağlantı açılış süreleri ve el sıkışma gecikmeleri bertaraf edildi.
+  - **5. Frontend Stale-While-Revalidate (SWR) & Instant UI ([staff.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/staff.js), [athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js)):**
+    - **Yoklama & Üyeler Sekmesi:** `loadAttendanceView` ve `loadMembersView` sekmeleri, önceden yüklenmiş veri varsa (veya sessionStorage'da mevcutsa) ekranda "Yükleniyor..." beyaz ekranı/iskeleti göstermeden 0ms içinde anında son bilinen durumu çizer; arka planda sessizce taze veriyi alır ve DOM'u günceller.
+    - **Sporcu Portali:** Aktif paket kartı `sessionStorage` önbelleğinden anında gösterilir, sayfa açılışında gecikme ve titreşim sıfırlandı.
+  - **6. Statik Varlık Boyut Temizliği ([wwwroot/images](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/images)):**
+    - Web arayüzünde doğrudan kullanılmayan ~1.65 MB boyutundaki artık yüksek çözünürlüklü görseller (`athlete-woman-portrait-dark.png` [1.24 MB] ve `tiger2_trans.png` [406 KB]) silindi; sunucu dağıtım ve önbellek ayak izi küçültüldü.
+  - **7. Kapsamlı Test Doğrulaması ([PerformanceOptimizationTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/PerformanceOptimizationTests.cs)):**
+    - Bellek önbellekleme ve eviction, sayfalama ve derlenmiş sorguları test eden 4 yeni birim testi eklendi.
+    - **Toplam 80/80 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla 3 saniyede tamamlandı.** Sürüm: `v3.4.0`.
+
+
 
 
 

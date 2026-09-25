@@ -9,6 +9,42 @@ import { renderStudioContactCardHtml, openOtpDrawer } from './auth.js';
 
 let currentCalendarSelectedDate = new Date().toISOString().split('T')[0];
 
+function renderAthleteActivePackage(activeSub) {
+  const remainingEl = document.getElementById('pkg-metric-remaining');
+  const daysEl = document.getElementById('pkg-metric-days');
+  const balanceEl = document.getElementById('pkg-metric-balance');
+  const pkgTitleEl = document.getElementById('pkg-card-title');
+  const pkgStatusEl = document.getElementById('pkg-card-status');
+  const pkgBar = document.getElementById('pkg-segmented-bar');
+  const pkgCard = document.getElementById('athlete-package-card');
+
+  if (activeSub) {
+    if (pkgCard) pkgCard.classList.remove('empty-state');
+    if (pkgTitleEl) pkgTitleEl.innerText = activeSub.packageName || 'Aktif Paket';
+    if (pkgStatusEl) {
+      pkgStatusEl.innerText = activeSub.status === 'Active' ? 'Aktif' : 'Pasif';
+      pkgStatusEl.className = activeSub.status === 'Active' ? 'v0-status-pill-active' : 'v0-status-pill-waitlist';
+    }
+    const total = activeSub.totalLessons || 8;
+    const remaining = activeSub.remainingLessons ?? 0;
+    const used = Math.max(0, total - remaining);
+    renderSegmentedBar(used, total);
+    if (remainingEl) remainingEl.innerText = `${remaining} Ders`;
+    const daysLeft = activeSub.endDate ? Math.max(0, Math.ceil((new Date(activeSub.endDate) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
+    if (daysEl) daysEl.innerText = `${daysLeft} Gün`;
+    const balance = activeSub.remainingBalance ?? 0;
+    if (balanceEl) balanceEl.innerText = balance <= 0 ? '₺0 · Ödendi' : formatMoney(balance);
+  } else {
+    if (pkgCard) pkgCard.classList.add('empty-state');
+    if (pkgTitleEl) pkgTitleEl.innerText = 'Aktif Paket Yok';
+    if (pkgStatusEl) { pkgStatusEl.innerText = 'Paketsiz'; pkgStatusEl.className = 'v0-status-pill-waitlist'; }
+    if (pkgBar) pkgBar.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:4px 0;">Tanımlı aktif paketiniz bulunmuyor.</div>';
+    if (remainingEl) remainingEl.innerText = '0 Ders';
+    if (daysEl) daysEl.innerText = '--';
+    if (balanceEl) balanceEl.innerText = '₺0';
+  }
+}
+
 async function loadAthleteHome() {
   const user = Api.getUser();
   const token = Api.getToken();
@@ -44,7 +80,16 @@ async function loadAthleteHome() {
     if (badgeDot) badgeDot.style.background = '#CCFF00';
     if (loginHeaderBtn) loginHeaderBtn.style.display = 'none';
 
-    // Üyenin gerçek aktif paketini yükle
+    // SWR Pattern: Hafızada son bilinen paket varsa anında çiz (0ms gecikme)
+    const subCacheKey = `cached_sub_${user.id || user.phoneNumber}`;
+    try {
+      const cachedSubStr = sessionStorage.getItem(subCacheKey);
+      if (cachedSubStr) {
+        renderAthleteActivePackage(JSON.parse(cachedSubStr));
+      }
+    } catch (_) {}
+
+    // Üyenin gerçek aktif paketini yükle ve arka planda güncelle (revalidate)
     try {
       let memberId = user.memberId;
       if (!memberId && user.phoneNumber) {
@@ -61,33 +106,15 @@ async function loadAthleteHome() {
         const member = await Api.getMember(memberId);
         if (member && member.subscriptions && member.subscriptions.length > 0) {
           const activeSub = member.subscriptions.find(s => s.status === 'Active') || member.subscriptions[0];
-          if (activeSub) {
-            const pkgCard = document.getElementById('athlete-package-card');
-            if (pkgCard) pkgCard.classList.remove('empty-state');
-            if (pkgTitleEl) pkgTitleEl.innerText = activeSub.packageName || 'Aktif Paket';
-            if (pkgStatusEl) {
-              pkgStatusEl.innerText = activeSub.status === 'Active' ? 'Aktif' : 'Pasif';
-              pkgStatusEl.className = activeSub.status === 'Active' ? 'v0-status-pill-active' : 'v0-status-pill-waitlist';
-            }
-            const total = activeSub.totalLessons || 8;
-            const remaining = activeSub.remainingLessons ?? 0;
-            const used = Math.max(0, total - remaining);
-            renderSegmentedBar(used, total);
-            if (remainingEl) remainingEl.innerText = `${remaining} Ders`;
-            const daysLeft = activeSub.endDate ? Math.max(0, Math.ceil((new Date(activeSub.endDate) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
-            if (daysEl) daysEl.innerText = `${daysLeft} Gün`;
-            const balance = activeSub.remainingBalance ?? 0;
-            if (balanceEl) balanceEl.innerText = balance <= 0 ? '₺0 · Ödendi' : formatMoney(balance);
-          }
+          renderAthleteActivePackage(activeSub);
+          try {
+            if (activeSub) sessionStorage.setItem(subCacheKey, JSON.stringify(activeSub));
+          } catch (_) {}
         } else {
-          const pkgCard = document.getElementById('athlete-package-card');
-          if (pkgCard) pkgCard.classList.add('empty-state');
-          if (pkgTitleEl) pkgTitleEl.innerText = 'Aktif Paket Yok';
-          if (pkgStatusEl) { pkgStatusEl.innerText = 'Paketsiz'; pkgStatusEl.className = 'v0-status-pill-waitlist'; }
-          if (pkgBar) pkgBar.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:4px 0;">Tanımlı aktif paketiniz bulunmuyor.</div>';
-          if (remainingEl) remainingEl.innerText = '0 Ders';
-          if (daysEl) daysEl.innerText = '--';
-          if (balanceEl) balanceEl.innerText = '₺0';
+          renderAthleteActivePackage(null);
+          try {
+            sessionStorage.removeItem(subCacheKey);
+          } catch (_) {}
         }
       }
 

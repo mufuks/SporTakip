@@ -1,5 +1,8 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using SporTakip.Api.Data;
 using SporTakip.Api.Models;
 using SporTakip.Api.Models.Identity;
@@ -269,4 +272,129 @@ public class PerformanceOptimizationTests : IDisposable
         Assert.Single(slot10.Members);
         Assert.Equal("Slot Sporcusu", slot10.Members[0].MemberName);
     }
+
+    [Fact]
+    public async Task GetPackagesAsync_WithMemoryCache_CachesAndInvalidatesOnMutation()
+    {
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var gymServiceWithCache = new GymService(_db, cache);
+
+        // 1. Initial package
+        var initialPackage = await gymServiceWithCache.CreatePackageAsync(new CreatePackageDto("Başlangıç", "Bireysel", 10, 3000m, 60));
+
+        // 2. Fetch via cache
+        var list1 = await gymServiceWithCache.GetPackagesAsync();
+        Assert.Single(list1);
+        Assert.Equal("Başlangıç", list1[0].Name);
+
+        // Cache must have "packages_active"
+        Assert.True(cache.TryGetValue("packages_active", out List<PackageDto>? cachedPackages));
+        Assert.NotNull(cachedPackages);
+        Assert.Single(cachedPackages);
+
+        // 3. Create second package -> invalidates cache
+        await gymServiceWithCache.CreatePackageAsync(new CreatePackageDto("İleri Seviye", "Grup", 20, 5000m, 90));
+
+        // Cache entry should be evicted
+        Assert.False(cache.TryGetValue("packages_active", out _));
+
+        // 4. Fetch again -> repopulates cache with 2 packages
+        var list2 = await gymServiceWithCache.GetPackagesAsync();
+        Assert.Equal(2, list2.Count);
+        Assert.True(cache.TryGetValue("packages_active", out cachedPackages));
+        Assert.NotNull(cachedPackages);
+        Assert.Equal(2, cachedPackages.Count);
+    }
+
+    [Fact]
+    public async Task GetMembersAsync_Supports_Clean_Pagination()
+    {
+        // 12 üyeyi ekle
+        for (int i = 1; i <= 12; i++)
+        {
+            _db.Members.Add(new Member
+            {
+                FullName = $"Sporcu {i:D2}",
+                Phone = $"+9055500000{i:D2}",
+                IsActive = true
+            });
+        }
+        await _db.SaveChangesAsync();
+
+        // 1. Sayfa (5 kayıt)
+        var page1 = await _gymService.GetMembersAsync(search: null, page: 1, pageSize: 5);
+        Assert.Equal(5, page1.Count);
+        Assert.Equal("Sporcu 01", page1[0].FullName);
+        Assert.Equal("Sporcu 05", page1[4].FullName);
+
+        // 2. Sayfa (5 kayıt)
+        var page2 = await _gymService.GetMembersAsync(search: null, page: 2, pageSize: 5);
+        Assert.Equal(5, page2.Count);
+        Assert.Equal("Sporcu 06", page2[0].FullName);
+        Assert.Equal("Sporcu 10", page2[4].FullName);
+
+        // 3. Sayfa (2 kayıt)
+        var page3 = await _gymService.GetMembersAsync(search: null, page: 3, pageSize: 5);
+        Assert.Equal(2, page3.Count);
+        Assert.Equal("Sporcu 11", page3[0].FullName);
+        Assert.Equal("Sporcu 12", page3[1].FullName);
+
+        // Sayfalama parametresi verilmezse tümünü getir (Geriye Dönük Uyumluluk)
+        var all = await _gymService.GetMembersAsync(search: null);
+        Assert.True(all.Count >= 12);
+    }
+
+    [Fact]
+    public async Task WorkoutService_GetExercisesAsync_CachesCatalogResults()
+    {
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var workoutService = new WorkoutService(_db, NullLogger<WorkoutService>.Instance, cache);
+
+        _db.Exercises.AddRange(
+            new Exercise { Name = "Barbell Squat", MuscleGroup = "Bacak", Equipment = "Barbell", IsActive = true },
+            new Exercise { Name = "Bench Press", MuscleGroup = "Göğüs", Equipment = "Barbell", IsActive = true }
+        );
+        await _db.SaveChangesAsync();
+
+        // 1. Fetch
+        var exercises = await workoutService.GetExercisesAsync("Bacak");
+        Assert.Single(exercises);
+        Assert.Equal("Barbell Squat", exercises[0].Name);
+
+        // Cache must have "exercises_bacak"
+        Assert.True(cache.TryGetValue("exercises_bacak", out List<ExerciseDto>? cachedExercises));
+        Assert.NotNull(cachedExercises);
+        Assert.Single(cachedExercises);
+        Assert.Equal("Barbell Squat", cachedExercises[0].Name);
+    }
+
+    [Fact]
+    public async Task AuthService_CompiledQueries_ResolvesUserCorrectly()
+    {
+        var config = new ConfigurationBuilder().Build();
+        var authService = new AuthService(_db, config, NullLogger<AuthService>.Instance);
+
+        var user = new AppUser
+        {
+            PhoneNumber = "+905321112233",
+            FullName = "Derlenmiş Sorgu Sporcusu",
+            Roles = UserRole.Athlete,
+            PhoneVerified = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        // SendOtp uses GetUserByPhoneCompiled internally
+        var sendOtpRes = await authService.SendOtpAsync(new SendOtpRequest("0532 111 22 33"));
+        Assert.True(sendOtpRes.Success);
+        Assert.Equal("+905321112233", sendOtpRes.Phone);
+
+        // GetCurrentUserProfileAsync uses GetUserByIdCompiled internally
+        var profile = await authService.GetCurrentUserProfileAsync(user.Id);
+        Assert.NotNull(profile);
+        Assert.Equal("Derlenmiş Sorgu Sporcusu", profile.FullName);
+        Assert.Equal("+905321112233", profile.PhoneNumber);
+    }
 }
+

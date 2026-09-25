@@ -16,6 +16,20 @@ public class AuthService(
     IConfiguration config,
     ILogger<AuthService> logger) : IAuthService
 {
+    private static readonly Func<ApplicationDbContext, string, Task<AppUser?>> GetUserByPhoneCompiled =
+        EF.CompileAsyncQuery((ApplicationDbContext ctx, string phone) =>
+            ctx.Users
+                .Include(u => u.MemberProfile)
+                .Include(u => u.TrainerProfile)
+                .FirstOrDefault(u => u.PhoneNumber == phone));
+
+    private static readonly Func<ApplicationDbContext, int, Task<AppUser?>> GetUserByIdCompiled =
+        EF.CompileAsyncQuery((ApplicationDbContext ctx, int id) =>
+            ctx.Users
+                .Include(u => u.MemberProfile)
+                .Include(u => u.TrainerProfile)
+                .FirstOrDefault(u => u.Id == id));
+
     public async Task<SendOtpResponse> SendOtpAsync(SendOtpRequest request, CancellationToken ct = default)
     {
         var normalizedPhone = NormalizePhoneNumber(request.Phone);
@@ -24,11 +38,8 @@ public class AuthService(
             return new SendOtpResponse(false, "Geçersiz telefon numarası.", request.Phone, DateTime.UtcNow);
         }
 
-        // 1. AppUser var mı kontrol et
-        var user = await db.Users
-            .Include(u => u.MemberProfile)
-            .Include(u => u.TrainerProfile)
-            .FirstOrDefaultAsync(u => u.PhoneNumber == normalizedPhone, ct);
+        // 1. AppUser var mı kontrol et (EF Core Compiled Query)
+        var user = await GetUserByPhoneCompiled(db, normalizedPhone);
 
         // SuperAdmin Bootstrap kontrolü
         var superAdminPhone = config["SuperAdmin:Phone"];
@@ -213,10 +224,7 @@ public class AuthService(
             return new AuthResponse(false, "Geçersiz telefon numarası.", null, null, 0, null);
         }
 
-        var user = await db.Users
-            .Include(u => u.MemberProfile)
-            .Include(u => u.TrainerProfile)
-            .FirstOrDefaultAsync(u => u.PhoneNumber == normalizedPhone, ct);
+        var user = await GetUserByPhoneCompiled(db, normalizedPhone);
 
         if (user == null)
         {
@@ -352,10 +360,7 @@ public class AuthService(
 
     public async Task<AuthUserDto?> GetCurrentUserProfileAsync(int userId, CancellationToken ct = default)
     {
-        var user = await db.Users
-            .Include(u => u.MemberProfile)
-            .Include(u => u.TrainerProfile)
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+        var user = await GetUserByIdCompiled(db, userId);
 
         if (user == null) return null;
 
