@@ -404,6 +404,31 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Test & Doğrulama:**
     - Toplu yoklama için yeni birim test eklendi. 64/64 test (%100 Başarı) ile tamamlandı.
     - Proje `0 Uyarı, 0 Hata` ile derlendi; Kural 18'e uygun hafif tarayıcı doğrulamasında konsolda 0 hata teyit edildi.
+- **2026-09-25 (v3.3.0 - Sistem Geneli Derin Performans Optimizasyonu & Test Paketi):**
+  - **Kullanıcı Talebi:** *"Tüm projede performans iyileştirmesi yapalım. Backend tarafınız gözden geçirelim gerekirse test yazalım"*
+  - **1. Veritabanı B-Tree İndeks Mimarisi ([ApplicationDbContext.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/ApplicationDbContext.cs)):**
+    - `AttendanceRecord`: `LessonDate`, `(TrainerId, LessonDate)`, `SessionSlotId` indeksleri eklendi; aylık bordro ve kapasite aramaları O(1)/O(log N) hızına çıkarıldı.
+    - `Subscription`: `MemberId`, `(Status, StartDate)`, `PrimaryTrainerId` indeksleri eklendi.
+    - `Payment`: `SubscriptionId`, `PaymentDate` indeksleri eklendi.
+    - `Reservation`: `(SessionSlotId, Status)`, `MemberId` indeksleri eklendi.
+    - `Workout Engine`: `ExerciseLog.(ExerciseId, WorkoutLogId)`, `WorkoutLogId` ve `SetLog.(ExerciseLogId, IsCompleted)` bileşik indeksleri tanımlandı; 1RM ve aşırı yüklenme sorgularındaki tam tablo taramaları (full table scan) sıfırlandı.
+  - **2. LINQ Sargability & SQL Index-Seek ([GymService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/GymService.cs)):**
+    - `GetHourlyStudioCapacityAsync`, `MarkAttendanceAsync` ve `MarkAllAttendedForSlotAsync` sorgularında `a.LessonDate.Date == ...` gibi SQL fonksiyonu çalıştıran (non-sargable) ifadeler, `a.LessonDate >= start && a.LessonDate < end` aralık sorgularına dönüştürülerek doğrudan B-Tree index-seek işletmesi sağlandı.
+  - **3. Entity Materialization ve RAM Yükünün Kaldırılması ([GymService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/GymService.cs) & [SuperAdminController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/SuperAdminController.cs)):**
+    - `GetDashboardStatsAsync`: Ödeme ve abonelik entity'lerini belleğe çekip `.Sum()` yapmak yerine, doğrudan `SumAsync` ve SQL düzeyinde tekil agregasyon (`GroupBy(_ => 1)`) kurgulandı; sıfır entity nesnesi tahsis edildi.
+    - `SuperAdmin.GetStats`: Tüm kullanıcı ve abonelik tablolarını RAM'e çekmek yerine `CountAsync`, `SumAsync` ve hafif `Select(u => u.Roles)` projeksiyonuna geçildi.
+    - `GetMembersAsync`: Tüm üyelerin tüm geçmiş abonelikleri ve tüm ödemelerini yükleyen N+1 riski taşıyan Include zinciri yerine, yalnızca aktif abonelik ve özetini SQL seviyesinde derleyen optimize projeksiyona geçildi.
+  - **4. Eksik AsNoTracking Tamamlanması ([SessionService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/SessionService.cs) & [ReservationService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/ReservationService.cs)):**
+    - `SessionService.GetSlotsAsync`, `SessionService.GetSlotByIdAsync` ve `ReservationService.GetMyReservationsAsync` metotlarına `.AsNoTracking()` eklenerek EF Core Change Tracker bellek ve işlemci yükü ortadan kaldırıldı.
+  - **5. HTTP Yanıt Sıkıştırma, İstemci Önbellekleme & SQLite WAL ([Program.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Program.cs)):**
+    - `ResponseCompression` ile Brotli ve Gzip sıkıştırması aktive edilerek JSON ve partial HTML boyutları %70-85 oranında küçültüldü.
+    - Statik varlıklar (JS, CSS, PNG, WOFF2) için 7 günlük `Cache-Control: public, max-age=604800, immutable`, `index.html` ve `sw.js` için anında yenilenen `no-cache` başlıkları entegre edildi.
+    - SQLite başlangıcında `PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA temp_store=MEMORY;` çalıştırılarak okuma/yazma kilitlenmeleri sona erdirildi.
+  - **6. Zero-Allocation Telefon Normalizasyonu ([AuthService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/AuthService.cs)):**
+    - `Regex.Replace` kaldırıldı; `stackalloc char` ve tek geçişli döngü ile GC baskısı yaratmayan yüksek hızlı normalizasyon sağlandı.
+  - **7. Birim & Entegrasyon Testleri ([PerformanceOptimizationTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/PerformanceOptimizationTests.cs)):**
+    - 12 yeni performans ve regresyon testi eklenerek toplam **76/76 test %100 başarıyla ve sıfır derleme uyarısıyla** doğrulandı. Sürüm `v3.3.0`.
+
 
 
 

@@ -32,23 +32,26 @@ public class GymService(ApplicationDbContext db)
             .Select(MapToSubscriptionSummary)
             .ToList();
 
-        // Bu ayki ödemeler
-        var paymentsThisMonth = await db.Payments
-            .AsNoTracking()
+        // Bu ayki ödemeler (doğrudan DB agregasyonu)
+        var totalCollectedThisMonth = await db.Payments
             .Where(p => p.PaymentDate >= startOfMonth && p.PaymentDate <= endOfMonth)
-            .ToListAsync(cancellationToken);
+            .SumAsync(p => (decimal?)p.Amount, cancellationToken) ?? 0m;
 
-        var totalCollectedThisMonth = paymentsThisMonth.Sum(p => p.Amount);
-
-        // Bu ay başlayan paketlerin toplam cirosu ve Salon / Hoca payı
-        var subscriptionsThisMonth = await db.Subscriptions
-            .AsNoTracking()
+        // Bu ay başlayan paketlerin toplam cirosu ve Salon / Hoca payı (tekil SQL agregasyonu)
+        var subShareSums = await db.Subscriptions
             .Where(s => s.StartDate >= startOfMonth && s.StartDate <= endOfMonth)
-            .ToListAsync(cancellationToken);
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                TotalRevenue = g.Sum(s => s.Price),
+                SalonShare = g.Sum(s => s.SalonShareAmount),
+                TrainerShare = g.Sum(s => s.TrainerShareAmount)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
-        var totalRevenueThisMonth = subscriptionsThisMonth.Sum(s => s.Price);
-        var salonShareThisMonth = subscriptionsThisMonth.Sum(s => s.SalonShareAmount);
-        var trainerShareThisMonth = subscriptionsThisMonth.Sum(s => s.TrainerShareAmount);
+        var totalRevenueThisMonth = subShareSums?.TotalRevenue ?? 0m;
+        var salonShareThisMonth = subShareSums?.SalonShare ?? 0m;
+        var trainerShareThisMonth = subShareSums?.TrainerShare ?? 0m;
 
         // Bekleyen toplam alacak (tüm aktif paketlerden)
         var totalPendingReceivables = activeSubscriptions.Sum(s => s.RemainingBalance);
@@ -74,12 +77,7 @@ public class GymService(ApplicationDbContext db)
 
     public async Task<List<MemberDto>> GetMembersAsync(string? search = null, CancellationToken cancellationToken = default)
     {
-        var query = db.Members
-            .Include(m => m.Subscriptions)
-                .ThenInclude(s => s.Package)
-            .Include(m => m.Subscriptions)
-                .ThenInclude(s => s.Payments)
-            .AsNoTracking();
+        var query = db.Members.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -87,11 +85,57 @@ public class GymService(ApplicationDbContext db)
             query = query.Where(m => m.FullName.ToLower().Contains(s) || (m.Phone != null && m.Phone.Contains(s)));
         }
 
-        var members = await query.OrderBy(m => m.FullName).ToListAsync(cancellationToken);
+        var projected = await query
+            .OrderBy(m => m.FullName)
+            .Select(m => new
+            {
+                Member = m,
+                ActiveSub = m.Subscriptions
+                    .Where(s => s.Status == "Active")
+                    .Select(s => new
+                    {
+                        Subscription = s,
+                        PackageName = s.Package != null ? s.Package.Name : "Standart Paket",
+                        PaidAmount = s.Payments.Sum(p => (decimal?)p.Amount) ?? 0m
+                    })
+                    .FirstOrDefault(),
+                TotalSubscriptionsCount = m.Subscriptions.Count()
+            })
+            .ToListAsync(cancellationToken);
 
-        return members.Select(m =>
+        return projected.Select(item =>
         {
-            var activeSub = m.Subscriptions.FirstOrDefault(s => s.Status == "Active");
+            var m = item.Member;
+            SubscriptionSummaryDto? activeSubDto = null;
+            if (item.ActiveSub != null)
+            {
+                var s = item.ActiveSub.Subscription;
+                var paid = item.ActiveSub.PaidAmount;
+                var remaining = Math.Max(0, s.Price - paid);
+                activeSubDto = new SubscriptionSummaryDto(
+                    s.Id,
+                    m.Id,
+                    m.FullName,
+                    m.Phone,
+                    m.Notes,
+                    s.PackageId,
+                    item.ActiveSub.PackageName,
+                    s.Price,
+                    s.TotalLessons,
+                    s.CompletedLessons,
+                    Math.Max(0, s.TotalLessons - s.CompletedLessons),
+                    s.StartDate,
+                    s.EndDate,
+                    s.Status,
+                    paid,
+                    remaining,
+                    remaining <= 0,
+                    s.SalonShareAmount,
+                    s.TrainerShareAmount
+                );
+            }
+
+            var (bmi, bmiCategory) = CalculateBmi(m.HeightCm, m.WeightKg);
             return new MemberDto(
                 m.Id,
                 m.FullName,
@@ -100,8 +144,14 @@ public class GymService(ApplicationDbContext db)
                 m.Notes,
                 m.IsActive,
                 m.CreatedAt,
-                activeSub != null ? MapToSubscriptionSummary(activeSub) : null,
-                m.Subscriptions.Count
+                activeSubDto,
+                item.TotalSubscriptionsCount,
+                m.HeightCm,
+                m.WeightKg,
+                m.Age,
+                m.Gender,
+                bmi,
+                bmiCategory
             );
         }).ToList();
     }
@@ -508,12 +558,14 @@ public class GymService(ApplicationDbContext db)
         }
 
         var lessonDate = dto.LessonDate ?? DateTime.UtcNow;
+        var dayStart = lessonDate.Date;
+        var dayEnd = dayStart.AddDays(1);
 
         // 1. Aynı gün ve saatte (veya aynı gün Scheduled durumunda) mevcut bir yoklama kaydı var mı?
         var existingRecord = await db.AttendanceRecords
             .Include(a => a.Subscription)
             .FirstOrDefaultAsync(a => a.SubscriptionId == subscription.Id 
-                && a.LessonDate.Date == lessonDate.Date 
+                && a.LessonDate >= dayStart && a.LessonDate < dayEnd 
                 && (a.LessonDate.Hour == lessonDate.Hour || a.Status == "Scheduled"), cancellationToken);
 
         AttendanceRecord attendance;
@@ -636,13 +688,15 @@ public class GymService(ApplicationDbContext db)
     {
         var targetDate = (dto.Date ?? DateTime.UtcNow).Date;
         var hour = dto.Hour;
+        var slotStart = targetDate.AddHours(hour);
+        var slotEnd = slotStart.AddHours(1);
 
-        // İlgili saat dilimindeki tüm yoklama/seans kayıtlarını çek
+        // İlgili saat dilimindeki tüm yoklama/seans kayıtlarını sargable aralıkla çek
         var records = await db.AttendanceRecords
             .Include(a => a.Subscription)
                 .ThenInclude(s => s.Member)
             .Include(a => a.Trainer)
-            .Where(a => a.LessonDate.Date == targetDate && a.LessonDate.Hour == hour)
+            .Where(a => a.LessonDate >= slotStart && a.LessonDate < slotEnd)
             .ToListAsync(cancellationToken);
 
         if (records.Count == 0)
@@ -1026,6 +1080,7 @@ public class GymService(ApplicationDbContext db)
     public async Task<List<HourlySlotCapacityDto>> GetHourlyStudioCapacityAsync(DateTime targetDate, CancellationToken cancellationToken = default)
     {
         var date = targetDate.Date;
+        var nextDay = date.AddDays(1);
         var records = await db.AttendanceRecords
             .AsNoTracking()
             .Include(a => a.Trainer)
@@ -1033,7 +1088,7 @@ public class GymService(ApplicationDbContext db)
                 .ThenInclude(s => s.Member)
             .Include(a => a.Subscription)
                 .ThenInclude(s => s.Package)
-            .Where(a => a.LessonDate.Date == date)
+            .Where(a => a.LessonDate >= date && a.LessonDate < nextDay)
             .ToListAsync(cancellationToken);
 
         // Butik stüdyo operasyon saatleri: 09:00 - 21:00 (Kesintisiz saatlik çizelge)

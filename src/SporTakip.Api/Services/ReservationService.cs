@@ -422,6 +422,7 @@ public class ReservationService(
         if (member == null) return [];
 
         var query = db.Reservations
+            .AsNoTracking()
             .Include(r => r.SessionSlot)
                 .ThenInclude(s => s.Trainer)
             .Include(r => r.Member)

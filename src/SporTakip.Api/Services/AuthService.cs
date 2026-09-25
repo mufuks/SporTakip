@@ -408,35 +408,48 @@ public class AuthService(
         if (string.IsNullOrWhiteSpace(phone)) return string.Empty;
 
         var trimmed = phone.Trim();
-        var digits = Regex.Replace(trimmed, @"\D", "");
 
-        if (string.IsNullOrEmpty(digits)) return string.Empty;
+        // Yüksek performanslı, regex tahsisatsız (zero-allocation) rakam ayıklama
+        Span<char> digitSpan = stackalloc char[trimmed.Length];
+        int digitCount = 0;
+        for (int i = 0; i < trimmed.Length; i++)
+        {
+            char c = trimmed[i];
+            if (char.IsAsciiDigit(c))
+            {
+                digitSpan[digitCount++] = c;
+            }
+        }
+
+        if (digitCount == 0) return string.Empty;
+
+        var digits = digitSpan[..digitCount];
 
         // Türkiye standardı normalizasyon:
         // 05321234567 -> +905321234567
         if (digits.StartsWith("0") && digits.Length == 11)
         {
-            return "+9" + digits;
+            return string.Concat("+9", digits);
         }
 
         // 5321234567 -> +905321234567
         if (digits.Length == 10 && digits.StartsWith("5"))
         {
-            return "+90" + digits;
+            return string.Concat("+90", digits);
         }
 
         // 905321234567 -> +905321234567
         if (digits.StartsWith("90") && digits.Length == 12)
         {
-            return "+" + digits;
+            return string.Concat("+", digits);
         }
 
         if (trimmed.StartsWith("+"))
         {
-            return "+" + digits;
+            return string.Concat("+", digits);
         }
 
-        return "+" + digits;
+        return string.Concat("+", digits);
     }
 
     private static string HashCode(string code)

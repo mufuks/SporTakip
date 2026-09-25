@@ -133,6 +133,11 @@ public class ApplicationDbContext : DbContext
             entity.Property(s => s.TrainerShareAmount).HasPrecision(18, 2);
             entity.Property(s => s.Status).HasMaxLength(20);
 
+            // Performans indeksleri
+            entity.HasIndex(s => s.MemberId);
+            entity.HasIndex(s => new { s.Status, s.StartDate });
+            entity.HasIndex(s => s.PrimaryTrainerId);
+
             // V1 ilişkileri AYNEN korunuyor
             entity.HasOne(s => s.Member)
                 .WithMany(m => m.Subscriptions)
@@ -163,7 +168,12 @@ public class ApplicationDbContext : DbContext
             entity.Property(a => a.TrainerShareAmount).HasPrecision(18, 2);
             entity.Property(a => a.SubstituteShareAmount).HasPrecision(18, 2);
             entity.Property(a => a.Status).HasMaxLength(20);
+            
+            // Performans indeksleri
             entity.HasIndex(a => new { a.SubscriptionId, a.LessonDate });
+            entity.HasIndex(a => a.LessonDate);
+            entity.HasIndex(a => new { a.TrainerId, a.LessonDate });
+            entity.HasIndex(a => a.SessionSlotId);
 
             // V1 ilişkileri AYNEN korunuyor
             entity.HasOne(a => a.Subscription)
@@ -195,6 +205,10 @@ public class ApplicationDbContext : DbContext
             entity.Property(p => p.Amount).HasPrecision(18, 2);
             entity.Property(p => p.PaymentMethod).HasMaxLength(30);
 
+            // Performans indeksleri
+            entity.HasIndex(p => p.SubscriptionId);
+            entity.HasIndex(p => p.PaymentDate);
+
             entity.HasOne(p => p.Subscription)
                 .WithMany(s => s.Payments)
                 .HasForeignKey(p => p.SubscriptionId)
@@ -225,6 +239,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(r => r.Status).HasMaxLength(30);
             entity.Property(r => r.BookedBy).HasMaxLength(20);
             entity.HasIndex(r => new { r.SessionSlotId, r.MemberId }).IsUnique();
+            entity.HasIndex(r => new { r.SessionSlotId, r.Status });
+            entity.HasIndex(r => r.MemberId);
             
             entity.HasOne(r => r.SessionSlot)
                 .WithMany(ss => ss.Reservations)
@@ -315,6 +331,8 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ExerciseLog>(entity =>
         {
             entity.HasKey(el => el.Id);
+            entity.HasIndex(el => new { el.ExerciseId, el.WorkoutLogId });
+            entity.HasIndex(el => el.WorkoutLogId);
             
             entity.HasOne(el => el.WorkoutLog)
                 .WithMany(wl => wl.ExerciseLogs)
@@ -333,6 +351,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(sl => sl.WeightKg).HasPrecision(8, 2);
             entity.Property(sl => sl.DistanceMeters).HasPrecision(10, 2);
             entity.Property(sl => sl.SetType).HasMaxLength(20);
+            entity.HasIndex(sl => new { sl.ExerciseLogId, sl.IsCompleted });
             
             entity.HasOne(sl => sl.ExerciseLog)
                 .WithMany(el => el.Sets)

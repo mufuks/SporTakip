@@ -57,6 +57,7 @@ public class SessionService(
     public async Task<List<SessionSlotDto>> GetSlotsAsync(DateTime startDate, DateTime endDate, int? trainerId = null, CancellationToken ct = default)
     {
         var query = db.SessionSlots
+            .AsNoTracking()
             .Include(s => s.Trainer)
             .Include(s => s.Reservations)
                 .ThenInclude(r => r.Member)
@@ -74,6 +75,7 @@ public class SessionService(
     public async Task<SessionSlotDto?> GetSlotByIdAsync(int slotId, CancellationToken ct = default)
     {
         var slot = await db.SessionSlots
+            .AsNoTracking()
             .Include(s => s.Trainer)
             .Include(s => s.Reservations)
                 .ThenInclude(r => r.Member)

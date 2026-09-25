@@ -116,12 +116,32 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
+// 7. Yüksek Performanslı Yanıt Sıkıştırma (Brotli & Gzip)
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+    options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+    options.MimeTypes = Microsoft.AspNetCore.ResponseCompression.ResponseCompressionDefaults.MimeTypes.Concat([
+        "application/json",
+        "text/html",
+        "text/css",
+        "application/javascript",
+        "image/svg+xml"
+    ]);
+});
+
 var app = builder.Build();
 
-// 7. Veritabanı Başlatma ve Temel Tohum Verileri
+// 8. Veritabanı Başlatma ve Temel Tohum Verileri
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    if (db.Database.IsSqlite())
+    {
+        // SQLite WAL Modu: Okuma ve yazmaların birbirini kilitlemesini önler, yazma hızını katlar
+        await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA temp_store=MEMORY;");
+    }
     await DbSeeder.SeedAsync(db, app.Configuration);
 }
 
@@ -131,10 +151,29 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowAll");
+app.UseResponseCompression();
 
-// Frontend Statik Dosyalarını Sunma (PWA)
+// Frontend Statik Dosyalarını Sunma ve İstemci Önbellekleme Başlıkları (PWA)
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        var path = ctx.Context.Request.Path.Value?.ToLowerInvariant() ?? "";
+        // Service worker ve ana HTML dosyasında cache olmamalı, anında güncellenmeli
+        if (path.EndsWith("sw.js") || path.EndsWith("index.html") || string.IsNullOrEmpty(path) || path == "/")
+        {
+            ctx.Context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+            ctx.Context.Response.Headers.Pragma = "no-cache";
+            ctx.Context.Response.Headers.Expires = "0";
+        }
+        else if (path.EndsWith(".js") || path.EndsWith(".css") || path.EndsWith(".png") || path.EndsWith(".jpg") || path.EndsWith(".jpeg") || path.EndsWith(".webp") || path.EndsWith(".svg") || path.EndsWith(".woff2"))
+        {
+            // Statik modüller, stiller ve görseller için 7 günlük istemci önbelleği
+            ctx.Context.Response.Headers.CacheControl = "public, max-age=604800, immutable";
+        }
+    }
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

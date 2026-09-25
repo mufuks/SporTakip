@@ -18,6 +18,13 @@
 | **CLN-01**| Temizlik | Kök dizindeki `neon.ts` artık dosyası kullanım dışı. | 🟢 Düşük | `[Resolved]` |
 | **CLN-02**| CSS / Stil | `app.css` dosyasında mükerrer seçici tanımları bulunuyor. | 🟢 Düşük | `[Resolved]` |
 | **UX-01** | Kullanıcı Deneyimi | Salonda antrenörün tek dokunuşla tüm seansı "Katıldı" sayabileceği toplu yoklama eksik. | 💡 İyileştirme | `[Resolved]` |
+| **PERF-01**| Veritabanı / İndeks | `AttendanceRecord`, `Subscription`, `Payment`, `Reservation`, `ExerciseLog`, `SetLog` üzerinde sık sorgulanan foreign key ve tarih alanlarında indeks eksikliği. | 🔴 Yüksek | `[Resolved]` |
+| **PERF-02**| Performans / LINQ | `LessonDate.Date == date` gibi LINQ fonksiyon çağrıları SQL'de fonksiyon değerlendirmesine yol açarak indeks seek kullanımını engelliyordu (Non-sargable query). | 🟡 Orta | `[Resolved]` |
+| **PERF-03**| Bellek / Ağ | `GetDashboardStatsAsync`, `SuperAdminController.GetStats` ve `GetMembersAsync` gereksiz entity materialization yaparak RAM tüketiyordu. | 🟡 Orta | `[Resolved]` |
+| **PERF-04**| Bellek / EF Core | `SessionService.GetSlotsAsync` ve `ReservationService.GetMyReservationsAsync` salt okunur sorgularda `.AsNoTracking()` eksikti. | 🟢 Düşük | `[Resolved]` |
+| **PERF-05**| Ağ / Trafik | API JSON yanıtları ve statik varlıklar için Brotli/Gzip sıkıştırması ve istemci `Cache-Control` başlıkları eksikti. | 🟡 Orta | `[Resolved]` |
+| **PERF-06**| Eşzamanlılık / DB | SQLite varsayılan rollback journal modu ile yazma anında okuma kilitlenmelerine yol açıyordu. | 🟡 Orta | `[Resolved]` |
+| **PERF-07**| CPU / Tahsisat | `AuthService.NormalizePhoneNumber` Regex nesnesi ve ara stringler tahsis ederek GC baskısı yaratıyordu. | 🟢 Düşük | `[Resolved]` |
 
 ---
 
@@ -39,4 +46,13 @@
    - Kök dizindeki artık `neon.ts` dosyası silindi.
    - `app.css` içerisindeki mükerrer responsive medya sorgusu ve seçici tanımları temizlendi.
    - **Tek Tıkla Seans Yoklaması (Toplu Yoklama):** `GymService.MarkAllAttendedForSlotAsync` metodu, `AttendanceController.MarkAllSlotAttendance` (`POST /api/attendance/mark-all-slot`) endpoint'i ve arayüzde `yoklama.html` ile `staff.js` entegrasyonu tamamlandı. Antrenörler tek dokunuşla seçili saatteki tüm sporcuları yoklamada "Geldi" durumuna geçirebilir.
-   - 64 adet xUnit birim testi %100 başarıyla geçti. Derleme 0 hata ve 0 uyarı ile tamamlandı.
+
+4. **Kapsamlı Sistem Geneli Performans Optimizasyonu (PERF-01 - PERF-07):**
+   - **Veritabanı İndeksleri (PERF-01):** `ApplicationDbContext` üzerinde `AttendanceRecord.LessonDate`, `(TrainerId, LessonDate)`, `SessionSlotId`; `Subscription.MemberId`, `(Status, StartDate)`, `PrimaryTrainerId`; `Payment.SubscriptionId`, `PaymentDate`; `Reservation.(SessionSlotId, Status)`, `MemberId`; `ExerciseLog.(ExerciseId, WorkoutLogId)`, `WorkoutLogId`; `SetLog.(ExerciseLogId, IsCompleted)` bileşik B-Tree indeksleri tanımlandı.
+   - **Sargability (PERF-02):** `GetHourlyStudioCapacityAsync`, `MarkAttendanceAsync` ve `MarkAllAttendedForSlotAsync` sorgularında `LessonDate.Date == ...` ifadesi yerine `LessonDate >= start && LessonDate < end` aralık sorgusu kullanılarak indeks seek yeteneği aktive edildi.
+   - **Entity Materialization Eliminasyonu (PERF-03):** `GetDashboardStatsAsync` içinde ödeme ve abonelik entity'lerini belleğe çekmek yerine doğrudan `SumAsync` ve SQL tekil agregasyon (`GroupBy(_ => 1)`) kurgulandı. `SuperAdmin.GetStats` sorgusunda tüm kullanıcılar yerine sadece `Select(u => u.Roles)` çekilip abonelikler doğrudan SQL `CountAsync`/`SumAsync` ile hesaplandı. `GetMembersAsync` sorgusunda tüm geçmiş abonelik ve ödemeler yerine yalnızca aktif abonelik ve ödemeleri SQL düzeyinde yansıtan (projected) hafif modele geçildi.
+   - **Eksik AsNoTracking Tamamlanması (PERF-04):** `SessionService.GetSlotsAsync`, `SessionService.GetSlotByIdAsync` ve `ReservationService.GetMyReservationsAsync` metotlarına `.AsNoTracking()` eklendi.
+   - **HTTP Yanıt Sıkıştırma & İstemci Önbellekleme (PERF-05):** `Program.cs` içine `ResponseCompression` (Brotli & Gzip) eklendi; statik varlıklar (JS, CSS, PNG, WOFF2) için 7 günlük `Cache-Control: public, max-age=604800, immutable`, `index.html` ve `sw.js` için anında yenilenen `no-cache` başlıkları devreye alındı.
+   - **SQLite WAL Modu (PERF-06):** Başlangıçta `PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA temp_store=MEMORY;` çalıştırılarak okuma-yazma kilitlenmeleri sonlandırıldı ve transaction hızı artırıldı.
+   - **Zero-Allocation Telefon Normalizasyonu (PERF-07):** `AuthService.NormalizePhoneNumber` içerisinde `Regex.Replace` kaldırıldı; `stackalloc char` ve tek geçişli `char.IsAsciiDigit` döngüsü ile sıfır GC bellek tahsisatına ulaşıldı.
+   - **Test Doğrulaması:** 12 yeni performans ve regresyon testi eklenerek toplam **76/76 test %100 başarıyla ve 0 derleme uyarısıyla** tamamlandı.

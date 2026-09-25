@@ -68,18 +68,21 @@ public class SuperAdminController(ApplicationDbContext db, ILogger<SuperAdminCon
     [HttpGet("stats")]
     public async Task<ActionResult<SystemStatsDto>> GetStats(CancellationToken ct)
     {
-        var users = await db.Users.AsNoTracking().ToListAsync(ct);
-        var subs = await db.Subscriptions.AsNoTracking().ToListAsync(ct);
+        var userRoles = await db.Users.AsNoTracking().Select(u => u.Roles).ToListAsync(ct);
+        
+        var totalSubscriptions = await db.Subscriptions.CountAsync(ct);
+        var activeSubscriptions = await db.Subscriptions.CountAsync(s => s.Status == "Active", ct);
+        var totalRevenue = await db.Subscriptions.SumAsync(s => (decimal?)s.Price, ct) ?? 0m;
 
         var stats = new SystemStatsDto(
-            TotalUsers: users.Count,
-            SuperAdminsCount: users.Count(u => u.Roles.HasFlag(UserRole.SuperAdmin)),
-            GymOwnersCount: users.Count(u => u.Roles.HasFlag(UserRole.Admin)),
-            CoachesCount: users.Count(u => u.Roles.HasFlag(UserRole.Coach)),
-            AthletesCount: users.Count(u => u.Roles.HasFlag(UserRole.Athlete)),
-            TotalSubscriptions: subs.Count,
-            ActiveSubscriptions: subs.Count(s => s.Status == "Active"),
-            TotalRevenue: subs.Sum(s => s.Price)
+            TotalUsers: userRoles.Count,
+            SuperAdminsCount: userRoles.Count(r => r.HasFlag(UserRole.SuperAdmin)),
+            GymOwnersCount: userRoles.Count(r => r.HasFlag(UserRole.Admin)),
+            CoachesCount: userRoles.Count(r => r.HasFlag(UserRole.Coach)),
+            AthletesCount: userRoles.Count(r => r.HasFlag(UserRole.Athlete)),
+            TotalSubscriptions: totalSubscriptions,
+            ActiveSubscriptions: activeSubscriptions,
+            TotalRevenue: totalRevenue
         );
 
         return Ok(stats);
