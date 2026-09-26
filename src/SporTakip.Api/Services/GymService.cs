@@ -158,7 +158,8 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
                 m.Age,
                 m.Gender,
                 bmi,
-                bmiCategory
+                bmiCategory,
+                m.MedicalConditions
             );
         }).ToList();
     }
@@ -236,7 +237,8 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
             member.Age,
             member.Gender,
             bmi,
-            bmiCategory
+            bmiCategory,
+            member.MedicalConditions
         );
     }
 
@@ -273,7 +275,8 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
             m.Age,
             m.Gender,
             bmi,
-            bmiCategory
+            bmiCategory,
+            m.MedicalConditions
         );
     }
 
@@ -285,6 +288,7 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
             Phone = dto.Phone?.Trim(),
             Email = dto.Email?.Trim(),
             Notes = dto.Notes?.Trim(),
+            MedicalConditions = dto.MedicalConditions?.Trim(),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -292,7 +296,7 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
         db.Members.Add(member);
         await db.SaveChangesAsync(cancellationToken);
 
-        return new MemberDto(member.Id, member.FullName, member.Phone, member.Email, member.Notes, member.IsActive, member.CreatedAt, null, 0);
+        return new MemberDto(member.Id, member.FullName, member.Phone, member.Email, member.Notes, member.IsActive, member.CreatedAt, null, 0, null, null, null, null, null, null, member.MedicalConditions);
     }
 
     public async Task<MemberDto?> UpdateMemberAsync(int memberId, UpdateMemberDto dto, CancellationToken cancellationToken = default)
@@ -311,6 +315,7 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
         member.Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim();
         member.Email = string.IsNullOrWhiteSpace(dto.Email) ? null : dto.Email.Trim();
         member.Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim();
+        member.MedicalConditions = string.IsNullOrWhiteSpace(dto.MedicalConditions) ? null : dto.MedicalConditions.Trim();
         member.IsActive = dto.IsActive;
 
         if (dto.HeightCm.HasValue) member.HeightCm = dto.HeightCm;
@@ -355,7 +360,8 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
             member.Age,
             member.Gender,
             bmi,
-            bmiCategory
+            bmiCategory,
+            member.MedicalConditions
         );
     }
 

@@ -15,6 +15,7 @@ public static class DbSeeder
     public static async Task SeedAsync(ApplicationDbContext db, IConfiguration? configuration = null)
     {
         await db.Database.EnsureCreatedAsync();
+        await EnsureSchemaUpgradesAsync(db);
 
         // 1. Platform SuperAdmin
         await SeedSuperAdminAsync(db, configuration);
@@ -316,6 +317,28 @@ public static class DbSeeder
             }
             db.SessionSlots.RemoveRange(demoSlots);
             await db.SaveChangesAsync();
+        }
+    }
+
+    // ── 7. Şema Güncelleme Güvencesi (Defensive Schema Upgrades) ───────────────
+    private static async Task EnsureSchemaUpgradesAsync(ApplicationDbContext db)
+    {
+        try
+        {
+            if (db.Database.IsSqlite())
+            {
+                try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE WorkoutTemplates ADD COLUMN AssignedMemberId INTEGER NULL;"); } catch { }
+                try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN MedicalConditions TEXT NULL;"); } catch { }
+            }
+            else
+            {
+                try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkoutTemplates\" ADD COLUMN IF NOT EXISTS \"AssignedMemberId\" INTEGER NULL;"); } catch { }
+                try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"Members\" ADD COLUMN IF NOT EXISTS \"MedicalConditions\" VARCHAR(500) NULL;"); } catch { }
+            }
+        }
+        catch
+        {
+            // Sütunlar zaten mevcutsa veya yeni veritabanı EnsureCreated ile açılmışsa yoksay
         }
     }
 }

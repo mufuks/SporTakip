@@ -583,7 +583,8 @@ function renderMembersTable(members, container) {
       <tr>
         <td>
           <strong style="color:var(--text-primary); font-size:15px;">${escapeHtml(m.fullName)}</strong>
-          ${m.notes ? `<div style="font-size:11px; color:var(--flame-orange); margin-top:2px;">⚠️ ${escapeHtml(m.notes)}</div>` : ''}
+          ${m.medicalConditions ? `<div style="font-size:11.5px; font-weight:700; color:#FF453A; margin-top:3px; display:inline-flex; align-items:center; gap:4px; background:rgba(255,69,58,0.12); padding:2px 8px; border-radius:6px; border:1px solid rgba(255,69,58,0.25);">⚠️ ${escapeHtml(m.medicalConditions)}</div>` : ''}
+          ${m.notes ? `<div style="font-size:11px; color:var(--text-muted); margin-top:2px;">📝 ${escapeHtml(m.notes)}</div>` : ''}
         </td>
         <td>${m.phone ? escapeHtml(m.phone) : '<span style="color:var(--text-muted);">-</span>'}</td>
         <td>${subBadge}</td>
@@ -592,6 +593,9 @@ function renderMembersTable(members, container) {
           <div style="display:flex; gap:6px;">
             <button class="btn-primary" style="padding:7px 14px; font-size:12px;" onclick="openNewSubModalForMember(${m.id}, '${escapeHtml(m.fullName)}')">
               + Paket Sat
+            </button>
+            <button class="btn-secondary" style="padding:7px 12px; font-size:12px; color:var(--volt-lime); border-color:rgba(204,255,0,0.3);" onclick="openTemplateBuilderForMember(${m.id}, '${escapeJsString(m.fullName)}')">
+              🏋️ Program Yaz
             </button>
             <button class="btn-secondary" style="padding:7px 12px; font-size:12px;" onclick="openEditMemberModal(${m.id})">
               ✏️ Düzenle
@@ -1237,10 +1241,11 @@ window.handleCreateMember = async function(e) {
   e.preventDefault();
   const fullName = document.getElementById('m-name').value;
   const phone = document.getElementById('m-phone').value;
+  const medicalConditions = document.getElementById('m-medical')?.value?.trim() || null;
   const notes = document.getElementById('m-notes').value;
 
   try {
-    const created = await Api.createMember({ fullName, phone, notes });
+    const created = await Api.createMember({ fullName, phone, notes, medicalConditions });
     showToast(`⚡ ${created.fullName} kaydedildi!`);
     closeModal('modal-new-member');
     loadMembersView();
@@ -1268,6 +1273,9 @@ window.openEditMemberModal = async function(memberId) {
   document.getElementById('edit-m-phone').value = m.phone || '';
   document.getElementById('edit-m-email').value = m.email || '';
   document.getElementById('edit-m-notes').value = m.notes || '';
+  if (document.getElementById('edit-m-medical')) {
+    document.getElementById('edit-m-medical').value = m.medicalConditions || '';
+  }
   document.getElementById('edit-m-height').value = m.heightCm ?? '';
   document.getElementById('edit-m-weight').value = m.weightKg ?? '';
   document.getElementById('edit-m-age').value = m.age ?? '';
@@ -1305,6 +1313,7 @@ window.handleUpdateMember = async function(e) {
     phone: phone || null,
     email: email || null,
     notes: notes || null,
+    medicalConditions: document.getElementById('edit-m-medical')?.value?.trim() || null,
     isActive: isActive,
     heightCm: heightVal ? parseInt(heightVal) : null,
     weightKg: weightVal ? parseFloat(weightVal) : null,

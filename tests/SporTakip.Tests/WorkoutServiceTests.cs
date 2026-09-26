@@ -389,4 +389,70 @@ public class WorkoutServiceTests : IDisposable
         var inDb = await _db.Exercises.FindAsync(created.Id);
         Assert.Null(inDb);
     }
+
+    [Fact]
+    public async Task CreateTemplateAsync_WithAssignedMember_AssignsPersonalWorkoutAndFiltersCorrectly()
+    {
+        var (athleteUser, member, coachUser, _, _, _) = await SetupScenarioAsync();
+
+        // 1. Genel şablon oluştur
+        await _workoutService.CreateTemplateAsync(coachUser.Id, new CreateWorkoutTemplateRequest(
+            Name: "Genel Güç Şablonu",
+            Category: "Strength",
+            IsPublished: true
+        ));
+
+        // 2. Meltem'e özel şablon oluştur
+        var personal = await _workoutService.CreateTemplateAsync(coachUser.Id, new CreateWorkoutTemplateRequest(
+            Name: "Meltem'e Özel Kalça & Bacak Split",
+            Category: "Hypertrophy",
+            IsPublished: true,
+            AssignedMemberId: member.Id
+        ));
+
+        Assert.Equal(member.Id, personal.AssignedMemberId);
+        Assert.Equal("Meltem Yılmaz", personal.AssignedMemberName);
+
+        // 3. Meltem olarak şablonları listele
+        var athleteTemplates = await _workoutService.GetTemplatesAsync(onlyPublished: true, athleteUserId: athleteUser.Id);
+        Assert.Equal(2, athleteTemplates.Count);
+        // Kişiye özel atanan şablon en başta olmalı
+        Assert.Equal(personal.Id, athleteTemplates[0].Id);
+        Assert.Equal(member.Id, athleteTemplates[0].AssignedMemberId);
+    }
+
+    [Fact]
+    public async Task GetLastExercisePerformanceAsync_ReturnsMostRecentCompletedSetForAthlete()
+    {
+        var (athleteUser, _, coachUser, _, squat, _) = await SetupScenarioAsync();
+
+        // Şablon ve egzersiz hazırla
+        var template = await _workoutService.CreateTemplateAsync(coachUser.Id, new CreateWorkoutTemplateRequest(
+            Name: "Bacak İdmanı",
+            Exercises: [new CreateWorkoutTemplateExerciseRequest(squat.Id, 1, 3, "8", 90)]
+        ));
+
+        // İdman 1: Squat 80 kg x 8 tekrar
+        var startRequest = new StartWorkoutRequest(template.Id, "Test İdmanı 1");
+        var log1 = await _workoutService.StartWorkoutAsync(athleteUser.Id, startRequest);
+        var exLog1 = log1.ExerciseLogs.First();
+        var set1 = exLog1.Sets.First();
+        await _workoutService.UpdateSetAsync(athleteUser.Id, set1.Id, new UpdateSetRequest(80m, 8, null, null, "Normal", true));
+        await _workoutService.FinishWorkoutAsync(athleteUser.Id, log1.Id, new FinishWorkoutRequest(5, "Tamamlandı"));
+
+        // İdman 2: Squat 85 kg x 6 tekrar
+        var log2 = await _workoutService.StartWorkoutAsync(athleteUser.Id, new StartWorkoutRequest(template.Id, "Test İdmanı 2"));
+        var exLog2 = log2.ExerciseLogs.First();
+        var set2 = exLog2.Sets.First();
+        await _workoutService.UpdateSetAsync(athleteUser.Id, set2.Id, new UpdateSetRequest(85m, 6, null, null, "Normal", true));
+        await _workoutService.FinishWorkoutAsync(athleteUser.Id, log2.Id, new FinishWorkoutRequest(5, "Tamamlandı"));
+
+        // En son performansı sorgula
+        var performance = await _workoutService.GetLastExercisePerformanceAsync(athleteUser.Id, squat.Id);
+
+        Assert.NotNull(performance);
+        Assert.Equal(squat.Id, performance.ExerciseId);
+        Assert.Equal(85m, performance.LastWeightKg);
+        Assert.Equal(6, performance.LastReps);
+    }
 }

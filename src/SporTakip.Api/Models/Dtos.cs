@@ -15,7 +15,8 @@ public record MemberDto(
     int? Age = null,
     string? Gender = null,
     decimal? Bmi = null,
-    string? BmiCategory = null
+    string? BmiCategory = null,
+    string? MedicalConditions = null
 );
 
 public record UpdateAthleteMetricsDto(
@@ -40,7 +41,8 @@ public record CreateMemberDto(
     string FullName,
     string? Phone,
     string? Email,
-    string? Notes
+    string? Notes,
+    string? MedicalConditions = null
 );
 
 public record UpdateMemberDto(
@@ -52,7 +54,8 @@ public record UpdateMemberDto(
     int? HeightCm = null,
     decimal? WeightKg = null,
     int? Age = null,
-    string? Gender = null
+    string? Gender = null,
+    string? MedicalConditions = null
 );
 
 public record PackageDto(

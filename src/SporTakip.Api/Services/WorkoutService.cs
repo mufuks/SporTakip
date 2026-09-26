@@ -168,6 +168,7 @@ public class WorkoutService : IWorkoutService
             Category = string.IsNullOrWhiteSpace(request.Category) ? "Strength" : request.Category.Trim(),
             EstimatedDurationMinutes = request.EstimatedDurationMinutes > 0 ? request.EstimatedDurationMinutes : 60,
             IsPublished = request.IsPublished,
+            AssignedMemberId = request.AssignedMemberId,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -197,19 +198,34 @@ public class WorkoutService : IWorkoutService
                ?? throw new InvalidOperationException("Oluşturulan şablon yüklenemedi.");
     }
 
-    public async Task<List<WorkoutTemplateDto>> GetTemplatesAsync(bool onlyPublished = true, CancellationToken ct = default)
+    public async Task<List<WorkoutTemplateDto>> GetTemplatesAsync(bool onlyPublished = true, int? athleteUserId = null, CancellationToken ct = default)
     {
         var query = _db.WorkoutTemplates
             .AsNoTracking()
             .Include(t => t.Trainer)
+            .Include(t => t.AssignedMember)
             .Include(t => t.Exercises)
                 .ThenInclude(we => we.Exercise)
             .AsQueryable();
 
-        if (onlyPublished)
-            query = query.Where(t => t.IsPublished);
+        if (athleteUserId.HasValue)
+        {
+            var member = await _db.Members.FirstOrDefaultAsync(m => m.UserId == athleteUserId.Value, ct);
+            var memberId = member?.Id ?? -1;
 
-        var list = await query.OrderByDescending(t => t.CreatedAt).ToListAsync(ct);
+            // Sporcu: Kendisine özel atanan programları VE genel yayınlanmış programları görür
+            query = query.Where(t => t.AssignedMemberId == memberId || (t.AssignedMemberId == null && (!onlyPublished || t.IsPublished)));
+        }
+        else if (onlyPublished)
+        {
+            query = query.Where(t => t.IsPublished);
+        }
+
+        var list = await query
+            .OrderByDescending(t => t.AssignedMemberId != null)
+            .ThenByDescending(t => t.CreatedAt)
+            .ToListAsync(ct);
+
         return list.Select(MapToTemplateDto).ToList();
     }
 
@@ -218,6 +234,7 @@ public class WorkoutService : IWorkoutService
         var template = await _db.WorkoutTemplates
             .AsNoTracking()
             .Include(t => t.Trainer)
+            .Include(t => t.AssignedMember)
             .Include(t => t.Exercises)
                 .ThenInclude(we => we.Exercise)
             .FirstOrDefaultAsync(t => t.Id == templateId, ct);
@@ -494,6 +511,46 @@ public class WorkoutService : IWorkoutService
         );
     }
 
+    public async Task<ExercisePerformanceDto?> GetLastExercisePerformanceAsync(int athleteUserId, int exerciseId, CancellationToken ct = default)
+    {
+        var member = await _db.Members.FirstOrDefaultAsync(m => m.UserId == athleteUserId, ct);
+        if (member == null) return null;
+
+        var lastSet = await _db.SetLogs
+            .AsNoTracking()
+            .Include(s => s.ExerciseLog)
+                .ThenInclude(el => el.WorkoutLog)
+            .Include(s => s.ExerciseLog)
+                .ThenInclude(el => el.Exercise)
+            .Where(s => s.ExerciseLog.ExerciseId == exerciseId &&
+                        s.ExerciseLog.WorkoutLog.MemberId == member.Id &&
+                        s.IsCompleted &&
+                        s.WeightKg.HasValue)
+            .OrderByDescending(s => s.ExerciseLog.WorkoutLog.StartedAt)
+            .ThenByDescending(s => s.Id)
+            .FirstOrDefaultAsync(ct);
+
+        if (lastSet == null)
+        {
+            var exercise = await _db.Exercises.AsNoTracking().FirstOrDefaultAsync(e => e.Id == exerciseId, ct);
+            return new ExercisePerformanceDto(
+                ExerciseId: exerciseId,
+                ExerciseName: exercise?.Name ?? "Egzersiz",
+                LastWeightKg: null,
+                LastReps: null,
+                LastPerformedAt: null
+            );
+        }
+
+        return new ExercisePerformanceDto(
+            ExerciseId: exerciseId,
+            ExerciseName: lastSet.ExerciseLog.Exercise?.Name ?? "Egzersiz",
+            LastWeightKg: lastSet.WeightKg,
+            LastReps: lastSet.Reps,
+            LastPerformedAt: lastSet.ExerciseLog.WorkoutLog.StartedAt
+        );
+    }
+
     #endregion
 
     #region Yardımcı Metotlar
@@ -540,7 +597,9 @@ public class WorkoutService : IWorkoutService
                     e.RestSeconds,
                     e.Notes
                 ))
-                .ToList()
+                .ToList(),
+            t.AssignedMemberId,
+            t.AssignedMember?.FullName
         );
 
     private static WorkoutLogDto MapToWorkoutLogDto(WorkoutLog log) =>

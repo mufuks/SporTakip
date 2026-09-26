@@ -64,53 +64,71 @@ async function loadWorkoutTemplates() {
   const container = document.getElementById('v0-workout-templates-list');
   if (!container) return;
 
+  const user = Api.getUser();
+  const roles = user && user.roles ? user.roles : (user && user.role ? [user.role] : []);
+  const isStaff = roles.includes('Coach') || roles.includes('Admin') || roles.includes('SuperAdmin');
+  const createTemplateBtn = document.getElementById('btn-open-create-template');
+  if (createTemplateBtn) {
+    createTemplateBtn.style.display = isStaff ? 'inline-block' : 'none';
+  }
+
   container.innerHTML = '<div style="text-align:center; padding:30px; color:rgba(255,255,255,0.4); font-size:13px;">Programlar yükleniyor...</div>';
 
   try {
     const templates = await Api.getWorkoutTemplates(true);
     if (!templates || templates.length === 0) {
       container.innerHTML = `
-        <div style="text-align:center; padding:40px; color:rgba(255,255,255,0.4); font-size:13px;">
+        <div style="text-align:center; padding:40px; color:rgba(255,255,255,0.4); font-size:13px; grid-column:1 / -1;">
           Henüz yayınlanmış antrenman programı bulunmuyor.
+          ${isStaff ? '<br><button type="button" class="btn btn-primary" onclick="openTemplateBuilderModal()" style="margin-top:12px; font-size:12px;">+ İlk Programı Sen Oluştur</button>' : ''}
         </div>`;
       return;
     }
 
-    container.innerHTML = templates.map(t => `
-      <div class="v0-template-card">
-        <div>
-          <div class="v0-template-header">
-            <h4 class="v0-template-title">${t.name}</h4>
-            <span class="v0-template-category">${t.category || 'GÜÇ'}</span>
+    container.innerHTML = templates.map(t => {
+      const isPersonal = !!t.assignedMemberId;
+      return `
+        <div class="v0-template-card" style="${isPersonal ? 'border-color:rgba(255,149,0,0.5); box-shadow:0 0 16px rgba(255,149,0,0.12);' : ''}">
+          <div>
+            <div class="v0-template-header">
+              <h4 class="v0-template-title">${escapeHtml(t.name)}</h4>
+              ${isPersonal ? `
+                <span class="lesson-badge badge-amber" style="font-size:11px; padding:3px 9px; font-weight:800; border:1px solid #FF9500; background:rgba(255,149,0,0.15);">
+                  🎯 ${t.assignedMemberName ? `KİŞİYE ÖZEL: ${escapeHtml(t.assignedMemberName)}` : 'SANA ÖZEL PROGRAM'}
+                </span>
+              ` : `
+                <span class="v0-template-category">${escapeHtml(t.category || 'GÜÇ')}</span>
+              `}
+            </div>
+            <p style="font-size:12.5px; color:rgba(255,255,255,0.6); margin:0 0 10px 0; line-height:1.4;">
+              ${escapeHtml(t.description || (isPersonal ? 'Hocan tarafından senin için özel hazırlandı.' : 'Antrenör tarafından hazırlanan özel program.'))}
+            </p>
+            <div class="v0-template-meta">
+              <span>⏱ ~${t.estimatedDurationMinutes} dk</span>
+              <span>🏋️ ${t.exercises ? t.exercises.length : 0} Egzersiz</span>
+              <span>👤 ${escapeHtml(t.trainerName || 'Eğitmen')}</span>
+            </div>
+            <ul class="v0-template-exercises-list">
+              ${(t.exercises || []).slice(0, 4).map(e => `
+                <li class="v0-template-ex-item">
+                  <span>${escapeHtml(e.exerciseNameTr || e.exerciseName)}</span>
+                  <span style="font-weight:700; color:#CCFF00;">${e.targetSets} set × ${escapeHtml(e.targetReps || '10')}</span>
+                </li>
+              `).join('')}
+              ${t.exercises && t.exercises.length > 4 ? `
+                <li class="v0-template-ex-item" style="color:rgba(255,255,255,0.4); font-style:italic;">
+                  +${t.exercises.length - 4} egzersiz daha...
+                </li>` : ''}
+            </ul>
           </div>
-          <p style="font-size:12.5px; color:rgba(255,255,255,0.6); margin:0 0 10px 0; line-height:1.4;">
-            ${t.description || 'Antrenör tarafından hazırlanan özel program.'}
-          </p>
-          <div class="v0-template-meta">
-            <span>⏱ ~${t.estimatedDurationMinutes} dk</span>
-            <span>🏋️ ${t.exercises ? t.exercises.length : 0} Egzersiz</span>
-            <span>👤 ${t.trainerName || 'Eğitmen'}</span>
-          </div>
-          <ul class="v0-template-exercises-list">
-            ${(t.exercises || []).slice(0, 4).map(e => `
-              <li class="v0-template-ex-item">
-                <span>${e.exerciseNameTr || e.exerciseName}</span>
-                <span style="font-weight:700; color:#CCFF00;">${e.targetSets} set × ${e.targetReps || '10'}</span>
-              </li>
-            `).join('')}
-            ${t.exercises && t.exercises.length > 4 ? `
-              <li class="v0-template-ex-item" style="color:rgba(255,255,255,0.4); font-style:italic;">
-                +${t.exercises.length - 4} egzersiz daha...
-              </li>` : ''}
-          </ul>
+          <button type="button" class="v0-btn-submit" onclick="startNewWorkout(${t.id})" style="margin-top:12px; padding:12px; font-size:13px;">
+            <span>🚀</span> İdmanı Başlat
+          </button>
         </div>
-        <button type="button" class="v0-btn-submit" onclick="startNewWorkout(${t.id})" style="margin-top:12px; padding:12px; font-size:13px;">
-          <span>🚀</span> İdmanı Başlat
-        </button>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   } catch (err) {
-    container.innerHTML = `<div style="text-align:center; padding:30px; color:#FF453A; font-size:13px;">Yükleme Hatası: ${err.message}</div>`;
+    container.innerHTML = `<div style="text-align:center; padding:30px; color:#FF453A; font-size:13px;">Yükleme Hatası: ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -199,7 +217,10 @@ function renderLiveWorkoutView() {
         <span style="font-size:11px; font-weight:800; color:#CCFF00; letter-spacing:0.06em; text-transform:uppercase;">● CANLI İDMAN</span>
         <h3 style="font-size:18px; font-weight:800; color:#FFFFFF; margin:2px 0 0 0;">${activeWorkoutSession.templateName || 'Serbest Antrenman'}</h3>
       </div>
-      <div style="display:flex; align-items:center; gap:14px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div id="v0-rest-timer-badge" style="display:none; align-items:center; gap:6px; background:rgba(204,255,0,0.15); border:1px solid #CCFF00; color:#CCFF00; padding:6px 12px; border-radius:9999px; font-size:12px; font-weight:800; cursor:pointer;" onclick="skipRestTimer()">
+          ⏱ Dinlenme: <span id="v0-rest-timer-seconds">90</span>s (Atla)
+        </div>
         <div class="v0-live-timer" id="v0-live-timer-display">00:00</div>
         <button type="button" onclick="openFinishWorkoutModal()" style="padding:9px 18px; font-size:12.5px; border-radius:9999px; background:#FF453A; color:#FFF; border:none; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
           <span>🏁</span> Bitir
@@ -218,6 +239,11 @@ function renderLiveWorkoutView() {
               <div class="v0-live-ex-title">${el.exerciseNameTr || el.exerciseName}</div>
             </div>
             ${el.notes ? `<span style="font-size:11px; color:#CCFF00; background:rgba(204,255,0,0.1); border:1px solid rgba(204,255,0,0.25); padding:3px 8px; border-radius:6px;">${el.notes}</span>` : ''}
+          </div>
+
+          <!-- Ghost Weight / Progressive Overload Pill -->
+          <div class="v0-ghost-weight-pill" id="ghost-pill-${el.id}" style="display:none; font-size:11.5px; color:var(--cyber-cyan); background:rgba(0,242,254,0.08); border:1px solid rgba(0,242,254,0.25); border-radius:6px; padding:4px 10px; margin:4px 0 8px 0; cursor:pointer;">
+            💡 Son İdman: <strong id="ghost-text-${el.id}">-- kg × -- tekrar</strong> <span style="text-decoration:underline; margin-left:4px;">(Setlere Doldur)</span>
           </div>
 
           <table class="v0-set-table">
@@ -258,6 +284,24 @@ function renderLiveWorkoutView() {
       `).join('')}
     </div>
   `;
+
+  // Ghost Weight Verilerini Arka Planda Yükle
+  setTimeout(async () => {
+    for (const el of (activeWorkoutSession.exerciseLogs || [])) {
+      try {
+        const perf = await Api.getLastExercisePerformance(el.exerciseId);
+        if (perf && perf.lastWeightKg && perf.lastWeightKg > 0) {
+          const pill = document.getElementById(`ghost-pill-${el.id}`);
+          const text = document.getElementById(`ghost-text-${el.id}`);
+          if (pill && text) {
+            text.innerText = `${perf.lastWeightKg} kg × ${perf.lastReps || 10} tekrar`;
+            pill.style.display = 'inline-block';
+            pill.onclick = () => applyGhostWeightToExercise(el.id, perf.lastWeightKg, perf.lastReps || 10);
+          }
+        }
+      } catch {}
+    }
+  }, 100);
 }
 
 window.autoCalc1Rm = function(setId) {
@@ -313,6 +357,7 @@ window.toggleSetLog = async function(setId, exerciseLogId) {
 
     if (nextCompleted) {
       showToast(`✓ Set Kaydedildi (${weight} kg × ${reps} tekrar)`);
+      startRestTimer(90);
     }
   } catch (err) {
     showToast(`Set Kaydetme Hatası: ${err.message}`, 'error');
@@ -722,6 +767,257 @@ async function handleDeleteExercise(id, name) {
   }
 }
 
+// ==================== REST TIMER & CHIME ====================
+let restTimerInterval = null;
+let restRemainingSeconds = 0;
+
+function startRestTimer(seconds = 90) {
+  if (restTimerInterval) clearInterval(restTimerInterval);
+  restRemainingSeconds = seconds;
+
+  const badge = document.getElementById('v0-rest-timer-badge');
+  const span = document.getElementById('v0-rest-timer-seconds');
+  if (badge) badge.style.display = 'inline-flex';
+  if (span) span.innerText = restRemainingSeconds;
+
+  restTimerInterval = setInterval(() => {
+    restRemainingSeconds--;
+    if (span) span.innerText = restRemainingSeconds;
+    if (restRemainingSeconds <= 0) {
+      clearInterval(restTimerInterval);
+      restTimerInterval = null;
+      if (badge) badge.style.display = 'none';
+
+      // 1. Titreşim (Web Vibration API)
+      if ('vibrate' in navigator) {
+        try { navigator.vibrate([200, 100, 200, 100, 300]); } catch {}
+      }
+
+      // 2. Sesli Bildirim (Web Audio API - Offline & Zero Dependency)
+      playRestCompleteChime();
+
+      showToast('⏱ Dinlenme süresi bitti! Sıradaki sete hazırsın 💪', 'info');
+    }
+  }, 1000);
+}
+
+function skipRestTimer() {
+  if (restTimerInterval) clearInterval(restTimerInterval);
+  restTimerInterval = null;
+  const badge = document.getElementById('v0-rest-timer-badge');
+  if (badge) badge.style.display = 'none';
+  showToast('Dinlenme sayacı atlandı.', 'info');
+}
+
+function playRestCompleteChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1174.66, ctx.currentTime + 0.15);
+
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.6);
+  } catch {}
+}
+
+function applyGhostWeightToExercise(exerciseLogId, weight, reps) {
+  const elCard = document.getElementById(`card-el-${exerciseLogId}`);
+  if (!elCard) return;
+
+  const weightInputs = elCard.querySelectorAll('.v0-set-input[id^="set-weight-"]');
+  const repsInputs = elCard.querySelectorAll('.v0-set-input[id^="set-reps-"]');
+
+  weightInputs.forEach(input => {
+    if (!input.value) input.value = weight;
+  });
+  repsInputs.forEach(input => {
+    if (!input.value) input.value = reps;
+  });
+
+  weightInputs.forEach(input => {
+    const setId = input.id.replace('set-weight-', '');
+    autoCalc1Rm(setId);
+  });
+
+  showToast(`💡 Son performans (${weight} kg × ${reps} tekrar) setlere uygulandı!`);
+}
+
+// ==================== TEMPLATE BUILDER (HOCANIN PROGRAM ATAMASI) ====================
+let builderExercises = [];
+let availableExercisesCatalog = [];
+
+async function openTemplateBuilderModal(preselectedMemberId = null, preselectedMemberName = null) {
+  builderExercises = [];
+  const form = document.getElementById('template-builder-form');
+  if (form) form.reset();
+
+  const subSelect = document.getElementById('tb-assigned-member');
+  if (subSelect) {
+    subSelect.innerHTML = '<option value="">🌐 Genel Şablon (Tüm Sporculara Açık)</option>';
+    try {
+      const members = await Api.getMembers();
+      if (members && members.length > 0) {
+        members.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.id;
+          opt.textContent = `👤 Kişiye Özel: ${m.fullName}${m.medicalConditions ? ` (⚠️ ${m.medicalConditions})` : ''}`;
+          if (preselectedMemberId && m.id === parseInt(preselectedMemberId)) {
+            opt.selected = true;
+          }
+          subSelect.appendChild(opt);
+        });
+      }
+    } catch {}
+  }
+
+  const exSelect = document.getElementById('tb-add-exercise-select');
+  if (exSelect) {
+    exSelect.innerHTML = '<option value="">Egzersiz seçiniz...</option>';
+    try {
+      availableExercisesCatalog = await Api.getExercises();
+      availableExercisesCatalog.forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e.id;
+        opt.textContent = `${e.nameTr || e.name} (${getMuscleGroupNameTr(e.muscleGroup)})`;
+        exSelect.appendChild(opt);
+      });
+    } catch {}
+  }
+
+  if (preselectedMemberName) {
+    const nameInput = document.getElementById('tb-name');
+    if (nameInput) nameInput.value = `${preselectedMemberName} - Özel Program`;
+  }
+
+  renderBuilderExercisesList();
+  openModal('modal-template-builder');
+}
+
+function openTemplateBuilderForMember(memberId, memberName) {
+  openTemplateBuilderModal(memberId, memberName);
+}
+
+function addExerciseToBuilder() {
+  const exSelect = document.getElementById('tb-add-exercise-select');
+  const exerciseId = parseInt(exSelect?.value);
+  if (!exerciseId) {
+    showToast('Lütfen listeden bir egzersiz seçin.', 'error');
+    return;
+  }
+
+  const targetSets = parseInt(document.getElementById('tb-add-sets')?.value || 3);
+  const targetReps = document.getElementById('tb-add-reps')?.value?.trim() || '8-12';
+  const restSeconds = parseInt(document.getElementById('tb-add-rest')?.value || 90);
+
+  const found = availableExercisesCatalog.find(e => e.id === exerciseId);
+
+  builderExercises.push({
+    exerciseId,
+    exerciseName: found ? (found.nameTr || found.name) : 'Egzersiz',
+    muscleGroup: found?.muscleGroup || 'FullBody',
+    orderIndex: builderExercises.length + 1,
+    targetSets,
+    targetReps,
+    restSeconds
+  });
+
+  renderBuilderExercisesList();
+  showToast('✓ Egzersiz programa eklendi');
+}
+
+function removeExerciseFromBuilder(index) {
+  builderExercises.splice(index, 1);
+  builderExercises.forEach((e, idx) => e.orderIndex = idx + 1);
+  renderBuilderExercisesList();
+}
+
+function renderBuilderExercisesList() {
+  const container = document.getElementById('tb-selected-exercises-list');
+  const countEl = document.getElementById('tb-exercise-count');
+  if (countEl) countEl.innerText = builderExercises.length;
+  if (!container) return;
+
+  if (builderExercises.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding:16px; color:var(--text-muted); font-size:12px; border:1px dashed var(--border-subtle); border-radius:8px;">
+        Henüz hareket eklenmedi. Yukarıdan seçip ekleyin.
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = builderExercises.map((e, idx) => `
+    <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <span style="font-weight:800; font-size:13px; color:var(--text-primary);">${idx + 1}. ${escapeHtml(e.exerciseName)}</span>
+        <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">${e.targetSets} set × ${escapeHtml(e.targetReps)} (${e.restSeconds}s dinlenme)</span>
+      </div>
+      <button type="button" onclick="removeExerciseFromBuilder(${idx})" style="background:none; border:none; color:#FF453A; font-size:14px; cursor:pointer; padding:2px 6px;">✕</button>
+    </div>
+  `).join('');
+}
+
+async function handleSaveWorkoutTemplate(event) {
+  event.preventDefault();
+  if (builderExercises.length === 0) {
+    showToast('Lütfen programa en az 1 egzersiz ekleyin.', 'error');
+    return;
+  }
+
+  const saveBtn = document.getElementById('btn-save-template');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerText = 'Kaydediliyor...';
+  }
+
+  try {
+    const name = document.getElementById('tb-name').value.trim();
+    const category = document.getElementById('tb-category').value;
+    const duration = parseInt(document.getElementById('tb-duration').value || 60);
+    const description = document.getElementById('tb-description').value.trim() || null;
+    const assignedVal = document.getElementById('tb-assigned-member').value;
+    const assignedMemberId = assignedVal ? parseInt(assignedVal) : null;
+
+    await Api.createWorkoutTemplate({
+      name,
+      category,
+      estimatedDurationMinutes: duration,
+      description,
+      isPublished: true,
+      assignedMemberId,
+      exercises: builderExercises.map(e => ({
+        exerciseId: e.exerciseId,
+        orderIndex: e.orderIndex,
+        targetSets: e.targetSets,
+        targetReps: e.targetReps,
+        restSeconds: e.restSeconds
+      }))
+    });
+
+    showToast('🎉 Antrenman programı başarıyla oluşturuldu!', 'success');
+    closeModal('modal-template-builder');
+    await loadWorkoutTemplates();
+  } catch (err) {
+    showToast(err.message || 'Program kaydedilirken bir hata oluştu.', 'error');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerText = 'Kaydet & Yayınla';
+    }
+  }
+}
+
 // Global window assignments
 window.loadWorkoutTemplates = loadWorkoutTemplates;
 window.startWorkoutTimer = startWorkoutTimer;
@@ -734,10 +1030,21 @@ window.openCreateExerciseModal = openCreateExerciseModal;
 window.openEditExerciseModal = openEditExerciseModal;
 window.handleSaveExercise = handleSaveExercise;
 window.handleDeleteExercise = handleDeleteExercise;
+window.startRestTimer = startRestTimer;
+window.skipRestTimer = skipRestTimer;
+window.applyGhostWeightToExercise = applyGhostWeightToExercise;
+window.openTemplateBuilderModal = openTemplateBuilderModal;
+window.openTemplateBuilderForMember = openTemplateBuilderForMember;
+window.addExerciseToBuilder = addExerciseToBuilder;
+window.removeExerciseFromBuilder = removeExerciseFromBuilder;
+window.handleSaveWorkoutTemplate = handleSaveWorkoutTemplate;
 
 export {
   loadWorkoutHub, loadWorkoutTemplates, startWorkoutTimer,
   renderLiveWorkoutView, loadWorkoutProgress,
   loadExercisesCatalog, filterExercisesByGroup, handleExerciseSearch,
-  openCreateExerciseModal, openEditExerciseModal, handleSaveExercise, handleDeleteExercise
+  openCreateExerciseModal, openEditExerciseModal, handleSaveExercise, handleDeleteExercise,
+  startRestTimer, skipRestTimer, applyGhostWeightToExercise,
+  openTemplateBuilderModal, openTemplateBuilderForMember,
+  addExerciseToBuilder, removeExerciseFromBuilder, handleSaveWorkoutTemplate
 };

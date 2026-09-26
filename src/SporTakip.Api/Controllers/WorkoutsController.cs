@@ -44,7 +44,17 @@ public class WorkoutsController(IWorkoutService workoutService) : ControllerBase
     [ProducesResponseType(typeof(List<WorkoutTemplateDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTemplates([FromQuery] bool onlyPublished = true, CancellationToken ct = default)
     {
-        var templates = await workoutService.GetTemplatesAsync(onlyPublished, ct);
+        int? athleteUserId = null;
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            var isStaff = User.IsInRole("SuperAdmin") || User.IsInRole("Coach") || User.IsInRole("Admin");
+            if (!isStaff)
+            {
+                athleteUserId = GetCurrentUserId();
+            }
+        }
+
+        var templates = await workoutService.GetTemplatesAsync(onlyPublished, athleteUserId, ct);
         return Ok(templates);
     }
 
@@ -199,6 +209,19 @@ public class WorkoutsController(IWorkoutService workoutService) : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Sporcunun belirtilen egzersizdeki en son tamamlanmış set ve ağırlık performansını döner (Ghost Weight / Progressive Overload).
+    /// </summary>
+    [Authorize(Roles = "SuperAdmin, Athlete, Admin, Coach")]
+    [HttpGet("exercises/{exerciseId:int}/last-performance")]
+    [ProducesResponseType(typeof(ExercisePerformanceDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetLastExercisePerformance(int exerciseId, CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        var performance = await workoutService.GetLastExercisePerformanceAsync(userId, exerciseId, ct);
+        return Ok(performance);
     }
 
     #endregion

@@ -515,6 +515,40 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - `loadExercisesCatalog`, `renderExercisesCatalogList`, `filterExercisesByGroup`, `handleExerciseSearch` fonksiyonları yazıldı.
     - Rol kontrolü yapılarak `+ Yeni Egzersiz Ekle`, `✏️ Düzenle` ve `🗑️ Sil` butonları yalnızca `Coach`, `Admin` veya `SuperAdmin` rollerine görünür kılındı. Sporcular ise kataloğu arayıp inceleyebilir.
 
+---
+
+### Phase 40: Atlet & Hoca Ekosistemi Derinleştirmesi (Kişiye Özel Program, Sakatlık Takibi, Ghost Weight & Akıllı Dinlenme Sayacı)
+- **Kullanıcı Talebi & Vizyon:** Bir atlet ve antrenörün spor salonu deneyimini dünya standartlarına (Hevy / Whoop / Strong seviyesi) taşımak; hocaların öğrencilere özel program yazabilmesini, sakatlık/sağlık durumlarının anında görülmesini, önceki idmandaki ağırlıkların tek tıkla setlere doldurulabilmesini (progressive overload) ve set aralarında titreşimli/sesli dinlenme sayacı çalışmasını sağlamak.
+- **Mimari & Backend Çözümü:**
+  - **1. Kişiye Özel Antrenman Şablonları (Assigned Personal Workouts):**
+    - [WorkoutTemplate.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/Workout/WorkoutTemplate.cs): `AssignedMemberId` (int?) ve `AssignedMember` navigation özelliği eklendi.
+    - [ApplicationDbContext.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/ApplicationDbContext.cs): `WorkoutTemplate -> Member` foreign key ilişkisi (`DeleteBehavior.SetNull`) ve indeks tanımlandı.
+    - [WorkoutDtos.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/WorkoutDtos.cs): `CreateWorkoutTemplateRequest` ve `WorkoutTemplateDto` modellerine `AssignedMemberId`, `AssignedMemberName` eklendi.
+    - [WorkoutService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/WorkoutService.cs): `GetTemplatesAsync` metodunda atlet kullanıcılar için önce kendilerine özel atanmış programlar (`AssignedMemberId == member.Id`), ardından genel şablonlar (`AssignedMemberId == null`) getirilerek en üstte listelenmesi sağlandı.
+  - **2. Sağlık Durumu & Sakatlık Notu (Medical & Injury Conditions):**
+    - [Member.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/Member.cs): `MedicalConditions` (string?, max 500) alanı eklendi.
+    - [Dtos.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/Dtos.cs) & [GymService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/GymService.cs): `MemberDto`, `CreateMemberDto`, `UpdateMemberDto` modellerine ve CRUD akışlarına `MedicalConditions` entegre edildi.
+    - [DbSeeder.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/DbSeeder.cs): `EnsureSchemaUpgradesAsync` ile SQLite ve PostgreSQL veritabanlarında `ALTER TABLE ... ADD COLUMN` migrasyonu savunmacı (defensive) biçimde otomatikleştirildi.
+  - **3. Önceki Performans & Ghost Weight API:**
+    - [IWorkoutService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/IWorkoutService.cs) & [WorkoutService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/WorkoutService.cs): `GetLastExercisePerformanceAsync(memberId, exerciseId)` metodu yazıldı. Atletin tamamlanmış antrenman loglarından ilgili egzersizin en son yapıldığı tarihteki en yüksek ağırlık ve tekrarını (`ExercisePerformanceDto`) getirir.
+    - [WorkoutsController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/WorkoutsController.cs): `GET /api/workouts/exercises/{exerciseId}/last-performance` endpoint'i açıldı.
+  - **4. Birim Testleri ([WorkoutServiceTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/WorkoutServiceTests.cs)):**
+    - Kişiye özel şablon atama ve sorgulama, önceki egzersiz performansı (Ghost Weight) getirme senaryoları birim testleriyle güvenceye alındı.
+    - **Toplam 85/85 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla tamamlandı.**
+- **Frontend & UI / UX Çözümü:**
+  - **1. İnteraktif Program Yazıcı Modalı ([workout-modals.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/modals/workout-modals.html)):**
+    - Antrenör ve yöneticiler için `#modal-template-builder` arayüzü oluşturuldu. Program adı, zorluk seviyesi, genel salon şablonu veya belirli bir öğrenciye özel atama seçicisi (`#tb-target-member`), dinamik egzersiz ekleme/çıkarma, set/tekrar ve dinlenme süresi belirleme kontrolleri sunuldu.
+    - [staff.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/staff.js): Üyeler listesindeki her üye kartına hızlı `🏋️ Program Yaz` butonu yerleştirildi; tıklandığında öğrenci otomatik seçili olarak şablon oluşturucu modalı açılır.
+  - **2. Sağlık & Sakatlık Uyarı Rozeti ([member-modals.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/modals/member-modals.html) & [staff.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/staff.js)):**
+    - Üye ekleme ve düzenleme modalına `Sağlık Durumu / Sakatlık / Alerji` alanı eklendi (`#m-medical`, `#edit-m-medical`).
+    - Sakatlığı/özel durumu olan üyelerin kartlarında ve yoklama listesinde dikkat çeken kırmızı uyarı rozeti (`⚠️ Bel Fıtığı / Omuz İmpingement vb.`) gösterilerek eğitmenlerin güvenli hareket seçimi yapması sağlandı.
+  - **3. Canlı Antrenmanda Ghost Weight & Tek Tıkla Doldurma ([workouts.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/workouts.js)):**
+    - Canlı antrenman ekranında her egzersiz kartının üstünde son idmandaki performans rozeti gösterilir (`💡 Son İdman: X kg × Y tekrar (Setlere Doldur)`).
+    - Tıklandığında `applyGhostWeightToExercise` çalışarak o egzersizin henüz girilmemiş set ağırlık ve tekrarlarını otomatik doldurur, tahmini 1RM değerini anında günceller.
+  - **4. Haptik Titreşimli & Sesli Akıllı Dinlenme Sayacı ([workouts.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/workouts.js)):**
+    - Set tamamlandığında sağ alt köşede nabız gibi yanıp sönen dinamik sayaç rozeti (`#v0-rest-timer-badge`) açılır ve geri sayım başlar.
+    - Süre 0'a ulaştığında Web Audio API ile sıfır harici dosya bağımlılığıyla 2 tonlu atletik zil sesi (`880Hz -> 1175Hz chime`) çalınır ve mobil cihazlarda haptik titreşim (`navigator.vibrate`) tetiklenir.
+
 
 
 

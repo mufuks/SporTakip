@@ -13,7 +13,7 @@ public interface IWorkoutService
 
     // Antrenör Şablon İşlemleri
     Task<WorkoutTemplateDto> CreateTemplateAsync(int trainerUserId, CreateWorkoutTemplateRequest request, CancellationToken ct = default);
-    Task<List<WorkoutTemplateDto>> GetTemplatesAsync(bool onlyPublished = true, CancellationToken ct = default);
+    Task<List<WorkoutTemplateDto>> GetTemplatesAsync(bool onlyPublished = true, int? athleteUserId = null, CancellationToken ct = default);
     Task<WorkoutTemplateDto?> GetTemplateByIdAsync(int templateId, CancellationToken ct = default);
 
     // Sporcu Canlı İdman İşlemleri
@@ -23,6 +23,7 @@ public interface IWorkoutService
     Task<WorkoutLogDto?> GetWorkoutLogByIdAsync(int userId, int workoutLogId, CancellationToken ct = default);
     Task<List<WorkoutLogDto>> GetMemberWorkoutHistoryAsync(int athleteUserId, int take = 20, CancellationToken ct = default);
 
-    // Progressive Overload & 1RM
+    // Progressive Overload & 1RM & Ghost Weight
     Task<ExerciseProgressDto> GetExerciseProgressAsync(int athleteUserId, int exerciseId, CancellationToken ct = default);
+    Task<ExercisePerformanceDto?> GetLastExercisePerformanceAsync(int athleteUserId, int exerciseId, CancellationToken ct = default);
 }

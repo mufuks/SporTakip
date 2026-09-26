@@ -349,6 +349,14 @@ export const Api = {
     return this.get(`/workouts/templates/${id}`);
   },
 
+  createWorkoutTemplate(data) {
+    return this.post('/workouts/templates', data);
+  },
+
+  getLastExercisePerformance(exerciseId) {
+    return this.get(`/workouts/exercises/${exerciseId}/last-performance`);
+  },
+
   startWorkout(workoutTemplateId = null, notes = null) {
     return this.post('/workouts/start', { workoutTemplateId, notes });
   },

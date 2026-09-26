@@ -50,6 +50,7 @@ public record CreateWorkoutTemplateRequest(
     string Category = "Strength",
     int EstimatedDurationMinutes = 60,
     bool IsPublished = true,
+    int? AssignedMemberId = null,
     List<CreateWorkoutTemplateExerciseRequest>? Exercises = null
 );
 
@@ -95,7 +96,20 @@ public record WorkoutTemplateDto(
     int EstimatedDurationMinutes,
     bool IsPublished,
     DateTime CreatedAt,
-    List<WorkoutExerciseDto> Exercises
+    List<WorkoutExerciseDto> Exercises,
+    int? AssignedMemberId = null,
+    string? AssignedMemberName = null
+);
+
+/// <summary>
+/// Bir sporcunun ilgili egzersizdeki son tamamlanmış performans kaydı (Ghost Weight / Progressive Overload).
+/// </summary>
+public record ExercisePerformanceDto(
+    int ExerciseId,
+    string ExerciseName,
+    decimal? LastWeightKg,
+    int? LastReps,
+    DateTime? LastPerformedAt
 );
 
 /// <summary>

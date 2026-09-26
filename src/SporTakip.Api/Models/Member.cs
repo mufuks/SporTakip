@@ -15,6 +15,10 @@ public class Member
     public string? Phone { get; set; }
     public string? Email { get; set; }
     public string? Notes { get; set; }
+    
+    /// <summary>Sağlık / Sakatlık / Özel Durum Notu (Örn: "Bel Fıtığı, Ağır Deadlift Yasak")</summary>
+    public string? MedicalConditions { get; set; }
+    
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

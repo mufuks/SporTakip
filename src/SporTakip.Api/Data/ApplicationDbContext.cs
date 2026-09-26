@@ -94,6 +94,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(m => m.FullName).IsRequired().HasMaxLength(150);
             entity.Property(m => m.Phone).HasMaxLength(30);
             entity.Property(m => m.Email).HasMaxLength(200);
+            entity.Property(m => m.MedicalConditions).HasMaxLength(500);
             entity.HasIndex(m => m.Phone);
             
             // V2: AppUser bağlantısı (opsiyonel, geriye uyumlu)
@@ -288,11 +289,17 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(wt => wt.Id);
             entity.Property(wt => wt.Name).IsRequired().HasMaxLength(200);
             entity.Property(wt => wt.Category).HasMaxLength(50);
+            entity.HasIndex(wt => wt.AssignedMemberId);
             
             entity.HasOne(wt => wt.Trainer)
                 .WithMany(t => t.WorkoutTemplates)
                 .HasForeignKey(wt => wt.TrainerId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(wt => wt.AssignedMember)
+                .WithMany()
+                .HasForeignKey(wt => wt.AssignedMemberId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<WorkoutExercise>(entity =>

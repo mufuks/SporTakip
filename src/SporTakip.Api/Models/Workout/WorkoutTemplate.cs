@@ -23,6 +23,14 @@ public class WorkoutTemplate
     public int EstimatedDurationMinutes { get; set; } = 60;
     
     public bool IsPublished { get; set; } = false;
+    
+    /// <summary>
+    /// Eğer null ise tüm salon üyelerine açık genel şablondur.
+    /// Eğer belirli bir MemberId set edilmişse yalnızca o sporcuya özel atanmış kişisel programdır.
+    /// </summary>
+    public int? AssignedMemberId { get; set; }
+    public Member? AssignedMember { get; set; }
+    
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     
