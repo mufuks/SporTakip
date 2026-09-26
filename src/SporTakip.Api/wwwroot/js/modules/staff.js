@@ -1498,7 +1498,7 @@ window.sendWhatsAppTemplate = function(templateNum) {
 };
 
 // ==================== SEANS PLANLAMA (KAPASİTE YÖNETİMİ) ====================
-window.openScheduleSessionModal = function() {
+function openScheduleSessionModal() {
   const subSelect = document.getElementById('schedule-sub-select');
   if (activeSubscriptions.length === 0) {
     showToast('Planlama yapmak için en az bir aktif üye paketi olmalıdır.', 'warning');
@@ -1518,7 +1518,8 @@ window.openScheduleSessionModal = function() {
   if (dateInput) dateInput.value = currentCapacityDate;
 
   openModal('modal-schedule-session');
-};
+}
+window.openScheduleSessionModal = openScheduleSessionModal;
 
 window.handleScheduleSession = async function(e) {
   e.preventDefault();

@@ -1077,13 +1077,6 @@ window.handleLeadSubmit = function(event) {
   if (form) form.reset();
 };
 
-// ==================== 14. SUPERADMIN PLATFORM YÖNETİMİ ====================
-let superAdminUsers = [];
-let currentSaSortCol = 'created';
-let currentSaSortDir = 'desc';
-let currentSaRoleFilter = 'all';
-let currentSaSearchQuery = '';
-
 
 // Global window assignments
 window.loadAthleteHome = loadAthleteHome;

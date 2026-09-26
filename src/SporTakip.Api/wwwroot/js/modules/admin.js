@@ -3,10 +3,10 @@ import { state } from './state.js';
 import { showToast, openModal, closeModal, escapeHtml, escapeJsString, formatMoney } from './utils.js';
 
 let superAdminUsers = [];
-let saCurrentFilter = 'all';
-let saCurrentSortCol = 'createdAt';
-let saCurrentSortAsc = false;
-let saCurrentSearch = '';
+let currentSaRoleFilter = 'all';
+let currentSaSortCol = 'created';
+let currentSaSortDir = 'desc';
+let currentSaSearchQuery = '';
 
 async function loadSuperAdminView() {
   const statsUsers = document.getElementById('sa-stat-total-users');
@@ -162,7 +162,7 @@ function updateRoleCounts() {
   if (elAthlete) elAthlete.innerText = countAthlete;
 }
 
-window.renderSuperAdminUsersTable = function(usersList) {
+function renderSuperAdminUsersTable(usersList) {
   const tbody = document.getElementById('sa-users-table-body');
   if (!tbody) return;
 
@@ -238,7 +238,8 @@ window.renderSuperAdminUsersTable = function(usersList) {
       </tr>
     `;
   }).join('');
-};
+}
+window.renderSuperAdminUsersTable = renderSuperAdminUsersTable;
 
 window.openEditUserModal = function(userId) {
   const u = superAdminUsers.find(x => x.id === userId);
@@ -283,14 +284,15 @@ window.openEditUserModal = function(userId) {
   openModal('modal-edit-user');
 };
 
-window.toggleTrainerFields = function() {
+function toggleTrainerFields() {
   const isAdmin = document.getElementById('edit-user-role-admin')?.checked;
   const isCoach = document.getElementById('edit-user-role-coach')?.checked;
   const container = document.getElementById('edit-user-trainer-fields');
   if (container) {
     container.style.display = (isAdmin || isCoach) ? 'block' : 'none';
   }
-};
+}
+window.toggleTrainerFields = toggleTrainerFields;
 
 window.handleSaveEditUser = async function(e) {
   e.preventDefault();
@@ -324,8 +326,8 @@ window.handleSaveEditUser = async function(e) {
     showToast(`✅ "${updated.fullName}" bilgileri ve numarası başarıyla güncellendi!`);
     closeModal('modal-edit-user');
     await loadSuperAdminView();
-    await loadInitialData();
-    await getGymContactInfo(true);
+    if (window.loadInitialData) await window.loadInitialData();
+    if (window.getGymContactInfo) await window.getGymContactInfo(true);
   } catch (err) {
     showToast(`Güncelleme hatası: ${err.message}`, 'error');
   }
@@ -340,8 +342,8 @@ window.handleAssignRole = async function(userId, role, assign) {
     await Api.assignSuperAdminRole(userId, role, assign);
     showToast(`✓ Kullanıcı yetkisi başarıyla güncellendi!`);
     await loadSuperAdminView();
-    await loadInitialData();
-    await getGymContactInfo(true);
+    if (window.loadInitialData) await window.loadInitialData();
+    if (window.getGymContactInfo) await window.getGymContactInfo(true);
   } catch (err) {
     showToast(`Yetki güncelleme hatası: ${err.message}`, 'error');
   }
@@ -371,8 +373,8 @@ window.handleCreateGymOwnerSubmit = async function(event) {
     showToast(`👑 Salon Sahibi "${fullName}" başarıyla tanımlandı!`);
     closeModal('modal-create-owner');
     await loadSuperAdminView();
-    await loadInitialData();
-    await getGymContactInfo(true);
+    if (window.loadInitialData) await window.loadInitialData();
+    if (window.getGymContactInfo) await window.getGymContactInfo(true);
   } catch (err) {
     showToast(`Salon sahibi eklenemedi: ${err.message}`, 'error');
   }

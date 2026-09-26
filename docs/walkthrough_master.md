@@ -467,6 +467,22 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Tarayıcının ES modül yükleme sırasında `SyntaxError: Export '...' is not defined in module` hatası vererek tüm `app.js` betik zincirini kilitlemesi ve `openOtpDrawer is not defined` hatasına yol açması kalıcı olarak çözüldü.
     - Login çekmecesi (`#v0-otp-drawer`) `index.html` içerisindeki `#modals-root` yapısına doğrudan önceden yerleştirilerek ağ gecikmesinden bağımsız olarak ilk milisaniyeden itibaren 100% güvenilirlikle açılması sağlandı.
 
+---
+
+### Phase 37: SuperAdmin Filtreleme ve Modül Kapsam Hijyeni (Scope Variable Cleanup)
+- **Sorun:** SuperAdmin kullanıcı tablosu filtrelenmek veya sıralanmak istendiğinde `currentSaRoleFilter is not defined` ve `renderSuperAdminUsersTable is not defined` hataları alınıyordu.
+- **Kök Neden:**
+  - `athlete.js` içinden `admin.js` dosyasına taşınan SuperAdmin işlevlerinin durum değişkenleri (`currentSaRoleFilter`, `currentSaSortCol`, `currentSaSortDir`, `currentSaSearchQuery`) `athlete.js` içinde atıl kalmış, `admin.js` dosyasının başında ise farklı isimlendirilmişti (`saCurrent*`).
+  - ES modülleri `"use strict"` modunda çalıştığından bildirilmemiş değişken atamaları doğrudan çalışma zamanı `ReferenceError` fırlatıyordu.
+  - `renderSuperAdminUsersTable` ve `toggleTrainerFields` yalnızca `window` nesnesine fonksiyon olarak atanıp sözcüksel tanımlanmadığı için modül içi çağrılarda bulunamıyordu. Benzer şekilde `staff.js` içinde `openScheduleSessionModal` sözcüksel bildirilmemişti.
+- **Uygulanan Çözüm:**
+  - [admin.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/admin.js) başında `currentSaRoleFilter`, `currentSaSortCol`, `currentSaSortDir` ve `currentSaSearchQuery` değişkenleri sözcüksel olarak tanımlandı.
+  - [athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js) içindeki atıl SuperAdmin değişken blokları temizlendi.
+  - `renderSuperAdminUsersTable`, `toggleTrainerFields` ve [staff.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/staff.js) içindeki `openScheduleSessionModal` fonksiyonları sözcüksel kapsamda bildirilip `window` nesnesine bağlandı.
+  - `loadInitialData` ve `getGymContactInfo` çağrıları `admin.js` içerisinde güvenli `window.*` çağrılarına dönüştürüldü.
+  - Node.js sanal ortamında ve yerel tarayıcı konsolunda tüm pencereler ve filtre fonksiyonları 0 hata ile doğrulandı; 80/80 backend testi başarıyla geçti.
+
+
 
 
 
