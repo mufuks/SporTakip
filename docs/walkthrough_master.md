@@ -495,6 +495,26 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - [DbSeeder.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/DbSeeder.cs) içerisindeki `SeedTodaySessionsAsync` yerine `CleanDemoSessionsAsync` yazılarak var olan demo seanslar ve rezervasyonları veritabanından güvenle temizlendi.
   - `dotnet test` ile 80/80 testin başarıyla geçtiği doğrulandı.
 
+---
+
+### Phase 39: Egzersiz Tanımlama & Katalog Yönetimi (Custom Exercise Management for Coaches & Admins)
+- **Kullanıcı Talebi:** Hoca ve üst yetkililer (Coach, Admin, SuperAdmin) atletler için yeni hareket/egzersiz tanımlayabilsin; seedlenen 15 temel hareket haricinde diledikleri varyasyonları ekleyip düzenleyebilsin.
+- **Mimari & Backend Çözümü:**
+  - **DTO Katmanı ([WorkoutDtos.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/WorkoutDtos.cs)):** `CreateExerciseRequest` ve `UpdateExerciseRequest` modelleri eklendi (Name, NameTr, MuscleGroup, Equipment, Instructions, ImageUrl, VideoUrl, IsActive).
+  - **Servis Katmanı ([IWorkoutService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/IWorkoutService.cs) & [WorkoutService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/WorkoutService.cs)):**
+    - `CreateExerciseAsync`, `UpdateExerciseAsync` ve `DeleteExerciseAsync` metotları uygulandı.
+    - Hareket geçmiş antrenman loglarında kullanılmışsa (`WorkoutExercises`) veri bütünlüğünü korumak adına soft-delete (`IsActive = false`) yapılır, kullanılmamışsa hard-delete uygulanır.
+    - Her ekleme/güncelleme/silme işleminde `IMemoryCache` anahtarları (`exercises_all`, `exercises_{muscleGroup}`) geçersiz kılınarak taze verinin anında dönmesi sağlandı.
+  - **API Controller ([ExercisesController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/ExercisesController.cs)):** `POST /api/exercises`, `PUT /api/exercises/{id}` ve `DELETE /api/exercises/{id}` endpoint'leri `[Authorize(Roles = "SuperAdmin, Coach, Admin")]` kuralıyla güvence altına alındı.
+  - **Birim Testleri ([WorkoutServiceTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/WorkoutServiceTests.cs)):** Yeni egzersiz oluşturma, güncelleme ve silme senaryoları test edildi; toplam **83/83 test sıfır uyarı ve 100% başarıyla** tamamlandı.
+- **Frontend & UI Çözümü:**
+  - **API Entegrasyonu ([api.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/api.js)):** `createExercise`, `updateExercise`, `deleteExercise` istemci fonksiyonları eklendi.
+  - **Antrenman Sekmesi ([workout.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/views/athlete/workout.html)):** "Antrenman" sekmesine `Egzersizler` alt sekmesi (`btn-wsub-exercises`), kas grubu filtre çipleri (`Hepsi`, `Göğüs`, `Sırt`, `Bacak`, `Omuz`, `Kol`, `Core`, `Tüm Vücut`) ve anlık arama çubuğu eklendi.
+  - **Modal ([workout-modals.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/modals/workout-modals.html)):** `#modal-exercise` ile antrenör ve yöneticilerin hareket adı (İngilizce & Türkçe), hedef kas grubu, ekipman tipi, form talimatları, görsel ve video rehber URL'si girebileceği şık bir modal entegre edildi.
+  - **Reaktif Modül ([workouts.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/workouts.js)):**
+    - `loadExercisesCatalog`, `renderExercisesCatalogList`, `filterExercisesByGroup`, `handleExerciseSearch` fonksiyonları yazıldı.
+    - Rol kontrolü yapılarak `+ Yeni Egzersiz Ekle`, `✏️ Düzenle` ve `🗑️ Sil` butonları yalnızca `Coach`, `Admin` veya `SuperAdmin` rollerine görünür kılındı. Sporcular ise kataloğu arayıp inceleyebilir.
+
 
 
 

@@ -16,6 +16,7 @@ window.switchWorkoutSubTab = function(subtab) {
 
   const views = {
     templates: document.getElementById('v0-workout-subview-templates'),
+    exercises: document.getElementById('v0-workout-subview-exercises'),
     live: document.getElementById('v0-workout-subview-live'),
     progress: document.getElementById('v0-workout-subview-progress')
   };
@@ -25,6 +26,7 @@ window.switchWorkoutSubTab = function(subtab) {
   });
 
   if (subtab === 'templates') loadWorkoutTemplates();
+  else if (subtab === 'exercises') loadExercisesCatalog();
   else if (subtab === 'live') renderLiveWorkoutView();
   else if (subtab === 'progress') loadWorkoutProgress();
 };
@@ -471,17 +473,271 @@ async function loadWorkoutProgress() {
   }
 }
 
-// ==================== PWA INSTALL & LIFECYCLE CONTROLLER ====================
-let deferredInstallPrompt = null;
+// ==================== EXERCISE CATALOG & MANAGEMENT ====================
+let allExercisesCatalog = [];
+let currentExerciseFilterGroup = 'all';
+let currentExerciseSearchQuery = '';
 
+function getMuscleGroupNameTr(group) {
+  const map = {
+    Chest: 'Göğüs',
+    Back: 'Sırt',
+    Legs: 'Bacak',
+    Shoulders: 'Omuz',
+    Arms: 'Kol',
+    Core: 'Karın / Core',
+    Cardio: 'Kardiyo',
+    FullBody: 'Tüm Vücut'
+  };
+  return map[group] || group || 'Genel';
+}
+
+async function loadExercisesCatalog(muscleGroup = null) {
+  const container = document.getElementById('v0-exercises-catalog-list');
+  if (!container) return;
+
+  const user = Api.getUser();
+  const roles = user && user.roles ? user.roles : (user && user.role ? [user.role] : []);
+  const canManageExercises = roles.includes('Coach') || roles.includes('Admin') || roles.includes('SuperAdmin');
+
+  const createBtn = document.getElementById('btn-open-create-exercise');
+  if (createBtn) {
+    createBtn.style.display = canManageExercises ? 'inline-block' : 'none';
+  }
+
+  container.innerHTML = '<div style="text-align:center; padding:30px; color:rgba(255,255,255,0.4); font-size:13px;">Egzersizler yükleniyor...</div>';
+
+  try {
+    const list = await Api.getExercises(muscleGroup);
+    allExercisesCatalog = list || [];
+    renderExercisesCatalogList();
+  } catch (err) {
+    container.innerHTML = `<div style="text-align:center; padding:30px; color:#FF453A; font-size:13px;">Egzersizler yüklenemedi: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function filterExercisesByGroup(group) {
+  currentExerciseFilterGroup = group;
+  document.querySelectorAll('#exercise-muscle-chips .v0-chip').forEach(c => {
+    c.classList.remove('active');
+  });
+  const chip = document.getElementById(`chip-ex-${group}`);
+  if (chip) chip.classList.add('active');
+
+  renderExercisesCatalogList();
+}
+
+function handleExerciseSearch(query) {
+  currentExerciseSearchQuery = (query || '').toLowerCase().trim();
+  renderExercisesCatalogList();
+}
+
+function renderExercisesCatalogList() {
+  const container = document.getElementById('v0-exercises-catalog-list');
+  if (!container) return;
+
+  const user = Api.getUser();
+  const roles = user && user.roles ? user.roles : (user && user.role ? [user.role] : []);
+  const canManageExercises = roles.includes('Coach') || roles.includes('Admin') || roles.includes('SuperAdmin');
+
+  let filtered = allExercisesCatalog;
+
+  if (currentExerciseFilterGroup && currentExerciseFilterGroup !== 'all') {
+    filtered = filtered.filter(e => e.muscleGroup && e.muscleGroup.toLowerCase() === currentExerciseFilterGroup.toLowerCase());
+  }
+
+  if (currentExerciseSearchQuery) {
+    filtered = filtered.filter(e => {
+      const q = currentExerciseSearchQuery;
+      return (e.name && e.name.toLowerCase().includes(q)) ||
+             (e.nameTr && e.nameTr.toLowerCase().includes(q)) ||
+             (e.muscleGroup && e.muscleGroup.toLowerCase().includes(q)) ||
+             (e.equipment && e.equipment.toLowerCase().includes(q));
+    });
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding:40px; color:rgba(255,255,255,0.4); font-size:13px; grid-column:1 / -1;">
+        Kriterlere uygun egzersiz bulunamadı.
+        ${canManageExercises ? '<br><button type="button" class="btn btn-primary" onclick="openCreateExerciseModal()" style="margin-top:12px; font-size:12px;">+ Yeni Egzersiz Tanımla</button>' : ''}
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(e => `
+    <div class="v0-template-card" style="position:relative;">
+      <div>
+        <div class="v0-template-header">
+          <div>
+            <h4 class="v0-template-title" style="font-size:15px;">${escapeHtml(e.name)}</h4>
+            ${e.nameTr ? `<span style="font-size:12px; color:var(--text-secondary); display:block; margin-top:2px;">${escapeHtml(e.nameTr)}</span>` : ''}
+          </div>
+          <span class="lesson-badge badge-green" style="font-size:10.5px; padding:3px 8px; font-weight:700;">
+            ${escapeHtml(getMuscleGroupNameTr(e.muscleGroup))}
+          </span>
+        </div>
+
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 10px 0;">
+          <span class="lesson-badge badge-blue" style="font-size:10.5px; padding:2px 7px;">
+            🏋️ ${escapeHtml(e.equipment || 'Serbest')}
+          </span>
+          ${e.videoUrl ? `<a href="${escapeHtml(e.videoUrl)}" target="_blank" rel="noopener noreferrer" class="lesson-badge badge-cyan" style="font-size:10.5px; padding:2px 7px; text-decoration:none;">🎥 Video Rehber</a>` : ''}
+          ${e.imageUrl ? `<a href="${escapeHtml(e.imageUrl)}" target="_blank" rel="noopener noreferrer" class="lesson-badge badge-amber" style="font-size:10.5px; padding:2px 7px; text-decoration:none;">🖼️ Görsel</a>` : ''}
+        </div>
+
+        ${e.instructions ? `
+          <p style="font-size:12px; color:rgba(255,255,255,0.65); line-height:1.45; margin:0 0 12px 0; background:var(--bg-surface-elevated); padding:8px 10px; border-radius:8px; border:1px solid var(--border-subtle);">
+            ${escapeHtml(e.instructions)}
+          </p>
+        ` : ''}
+      </div>
+
+      ${canManageExercises ? `
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border-subtle);">
+          <button type="button" class="btn-secondary" onclick="openEditExerciseModal('${escapeJsString(e.id)}')" style="padding:4px 10px; font-size:11.5px; border-radius:8px;">
+            ✏️ Düzenle
+          </button>
+          <button type="button" class="btn-secondary" onclick="handleDeleteExercise('${escapeJsString(e.id)}', '${escapeJsString(e.name)}')" style="padding:4px 10px; font-size:11.5px; border-radius:8px; color:#FF453A; border-color:rgba(255,69,58,0.3);">
+            🗑️ Sil
+          </button>
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+}
+
+function openCreateExerciseModal() {
+  const form = document.getElementById('exercise-form');
+  if (form) form.reset();
+  const idEl = document.getElementById('ex-id');
+  if (idEl) idEl.value = '';
+  const titleEl = document.getElementById('modal-exercise-title');
+  if (titleEl) titleEl.innerText = '➕ Yeni Egzersiz Tanımla';
+  const subEl = document.getElementById('modal-exercise-subtitle');
+  if (subEl) subEl.innerText = 'Katalog ve Kas Grubu Ayarları';
+  const btn = document.getElementById('btn-save-exercise');
+  if (btn) btn.innerText = 'Kaydet';
+  openModal('modal-exercise');
+}
+
+function openEditExerciseModal(id) {
+  const ex = allExercisesCatalog.find(x => x.id === id);
+  if (!ex) {
+    showToast('Egzersiz bulunamadı.', 'error');
+    return;
+  }
+
+  document.getElementById('ex-id').value = ex.id || '';
+  document.getElementById('ex-name').value = ex.name || '';
+  document.getElementById('ex-name-tr').value = ex.nameTr || '';
+  document.getElementById('ex-muscle-group').value = ex.muscleGroup || 'Chest';
+  document.getElementById('ex-equipment').value = ex.equipment || 'Barbell';
+  document.getElementById('ex-instructions').value = ex.instructions || '';
+  document.getElementById('ex-image-url').value = ex.imageUrl || '';
+  document.getElementById('ex-video-url').value = ex.videoUrl || '';
+
+  const titleEl = document.getElementById('modal-exercise-title');
+  if (titleEl) titleEl.innerText = '✏️ Egzersizi Düzenle';
+  const subEl = document.getElementById('modal-exercise-subtitle');
+  if (subEl) subEl.innerText = ex.name;
+  const btn = document.getElementById('btn-save-exercise');
+  if (btn) btn.innerText = 'Güncelle';
+
+  openModal('modal-exercise');
+}
+
+async function handleSaveExercise(event) {
+  event.preventDefault();
+  const saveBtn = document.getElementById('btn-save-exercise');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerText = 'Kaydediliyor...';
+  }
+
+  try {
+    const id = document.getElementById('ex-id').value.trim();
+    const name = document.getElementById('ex-name').value.trim();
+    const nameTr = document.getElementById('ex-name-tr').value.trim() || null;
+    const muscleGroup = document.getElementById('ex-muscle-group').value.trim();
+    const equipment = document.getElementById('ex-equipment').value.trim() || null;
+    const instructions = document.getElementById('ex-instructions').value.trim() || null;
+    const imageUrl = document.getElementById('ex-image-url').value.trim() || null;
+    const videoUrl = document.getElementById('ex-video-url').value.trim() || null;
+
+    if (!name) {
+      showToast('Lütfen egzersiz adını girin.', 'error');
+      return;
+    }
+
+    if (id) {
+      await Api.updateExercise(id, {
+        name,
+        nameTr,
+        muscleGroup,
+        equipment,
+        instructions,
+        imageUrl,
+        videoUrl,
+        isActive: true
+      });
+      showToast('Egzersiz başarıyla güncellendi.', 'success');
+    } else {
+      await Api.createExercise({
+        name,
+        nameTr,
+        muscleGroup,
+        equipment,
+        instructions,
+        imageUrl,
+        videoUrl
+      });
+      showToast('Yeni egzersiz başarıyla kütüphaneye eklendi.', 'success');
+    }
+
+    closeModal('modal-exercise');
+    await loadExercisesCatalog(currentExerciseFilterGroup === 'all' ? null : currentExerciseFilterGroup);
+  } catch (err) {
+    showToast(err.message || 'Egzersiz kaydedilirken bir hata oluştu.', 'error');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerText = 'Kaydet';
+    }
+  }
+}
+
+async function handleDeleteExercise(id, name) {
+  if (!confirm(`"${name}" egzersizini katalogdan silmek veya arşivlemek istediğinize emin misiniz?`)) {
+    return;
+  }
+
+  try {
+    await Api.deleteExercise(id);
+    showToast(`"${name}" egzersizi silindi.`, 'info');
+    await loadExercisesCatalog(currentExerciseFilterGroup === 'all' ? null : currentExerciseFilterGroup);
+  } catch (err) {
+    showToast(err.message || 'Silme işlemi başarısız oldu.', 'error');
+  }
+}
 
 // Global window assignments
 window.loadWorkoutTemplates = loadWorkoutTemplates;
 window.startWorkoutTimer = startWorkoutTimer;
 window.renderLiveWorkoutView = renderLiveWorkoutView;
 window.loadWorkoutProgress = loadWorkoutProgress;
+window.loadExercisesCatalog = loadExercisesCatalog;
+window.filterExercisesByGroup = filterExercisesByGroup;
+window.handleExerciseSearch = handleExerciseSearch;
+window.openCreateExerciseModal = openCreateExerciseModal;
+window.openEditExerciseModal = openEditExerciseModal;
+window.handleSaveExercise = handleSaveExercise;
+window.handleDeleteExercise = handleDeleteExercise;
 
 export {
   loadWorkoutHub, loadWorkoutTemplates, startWorkoutTimer,
-  renderLiveWorkoutView, loadWorkoutProgress
+  renderLiveWorkoutView, loadWorkoutProgress,
+  loadExercisesCatalog, filterExercisesByGroup, handleExerciseSearch,
+  openCreateExerciseModal, openEditExerciseModal, handleSaveExercise, handleDeleteExercise
 };

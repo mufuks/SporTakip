@@ -1,8 +1,9 @@
 <section id="v0-view-workout" class="v0-section animate-fade-in" style="display:none;">
       <div class="v0-section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
         <h2 class="v0-section-title">Antrenman</h2>
-        <div class="v0-workout-subnav" style="display:flex; gap:6px;">
+        <div class="v0-workout-subnav" style="display:flex; gap:6px; flex-wrap:wrap;">
           <button type="button" class="v0-subtab-btn active" id="btn-wsub-templates" onclick="switchWorkoutSubTab('templates')">Programlar</button>
+          <button type="button" class="v0-subtab-btn" id="btn-wsub-exercises" onclick="switchWorkoutSubTab('exercises')">Egzersizler</button>
           <button type="button" class="v0-subtab-btn" id="btn-wsub-live" onclick="switchWorkoutSubTab('live')">Canlı İdman <span id="v0-live-pulse-dot" style="display:none; width:8px; height:8px; background:#CCFF00; border-radius:50%; display:inline-block; margin-left:4px;"></span></button>
           <button type="button" class="v0-subtab-btn" id="btn-wsub-progress" onclick="switchWorkoutSubTab('progress')">Rekorlarım (PR)</button>
         </div>
@@ -27,14 +28,46 @@
         </div>
       </div>
 
-      <!-- Sub-view 2: Canlı İdman (Hevy / Nike Training Canlı Set Kaydı) -->
+      <!-- Sub-view 2: Egzersiz Kataloğu & Yönetimi (Hoca/Admin Egzersiz Tanımlama) -->
+      <div id="v0-workout-subview-exercises" class="v0-workout-subview" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 style="font-size:16px; font-weight:800; color:var(--text-primary); margin:0;">Egzersiz Kütüphanesi</h3>
+            <span style="font-size:12px; color:var(--text-secondary);">Antrenmanlarda kullanılan hareket kataloğu</span>
+          </div>
+          <button type="button" class="btn-primary" id="btn-open-create-exercise" onclick="openCreateExerciseModal()" style="display:none; padding:8px 16px; font-size:12.5px; border-radius:10px; font-weight:800;">
+            + Yeni Egzersiz Ekle
+          </button>
+        </div>
+
+        <!-- Arama ve Filtre Çipleri -->
+        <div style="margin-bottom:16px; display:flex; flex-direction:column; gap:10px;">
+          <input type="text" id="exercise-search-input" class="form-control" placeholder="🔍 Egzersiz veya kas grubu ara..." oninput="handleExerciseSearch(this.value)" style="width:100%; border-radius:12px;">
+          <div class="v0-filter-strip" id="exercise-muscle-chips" style="display:flex; gap:6px; overflow-x:auto; padding-bottom:4px;">
+            <button type="button" class="v0-chip active" id="chip-ex-all" onclick="filterExercisesByGroup('all')">Hepsi</button>
+            <button type="button" class="v0-chip" id="chip-ex-Chest" onclick="filterExercisesByGroup('Chest')">Göğüs</button>
+            <button type="button" class="v0-chip" id="chip-ex-Back" onclick="filterExercisesByGroup('Back')">Sırt</button>
+            <button type="button" class="v0-chip" id="chip-ex-Legs" onclick="filterExercisesByGroup('Legs')">Bacak</button>
+            <button type="button" class="v0-chip" id="chip-ex-Shoulders" onclick="filterExercisesByGroup('Shoulders')">Omuz</button>
+            <button type="button" class="v0-chip" id="chip-ex-Arms" onclick="filterExercisesByGroup('Arms')">Kol</button>
+            <button type="button" class="v0-chip" id="chip-ex-Core" onclick="filterExercisesByGroup('Core')">Karın / Core</button>
+            <button type="button" class="v0-chip" id="chip-ex-FullBody" onclick="filterExercisesByGroup('FullBody')">Tüm Vücut</button>
+          </div>
+        </div>
+
+        <div id="v0-exercises-catalog-list" class="v0-templates-grid">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Sub-view 3: Canlı İdman (Hevy / Nike Training Canlı Set Kaydı) -->
       <div id="v0-workout-subview-live" class="v0-workout-subview" style="display:none;">
         <div id="v0-live-workout-container">
           <!-- Injected dynamically: Timer, Exercises, Set Inputs, Finish Button -->
         </div>
       </div>
 
-      <!-- Sub-view 3: Gelişim & 1RM Rekorları -->
+      <!-- Sub-view 4: Gelişim & 1RM Rekorları -->
       <div id="v0-workout-subview-progress" class="v0-workout-subview" style="display:none;">
         <div id="v0-progress-container">
           <!-- Injected dynamically: PR Cards & History -->

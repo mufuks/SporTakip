@@ -329,6 +329,18 @@ export const Api = {
     return this.get(`/exercises${q}`);
   },
 
+  createExercise(data) {
+    return this.post('/exercises', data);
+  },
+
+  updateExercise(id, data) {
+    return this.put(`/exercises/${id}`, data);
+  },
+
+  deleteExercise(id) {
+    return this.delete(`/exercises/${id}`);
+  },
+
   getWorkoutTemplates(onlyPublished = true) {
     return this.get(`/workouts/templates?onlyPublished=${onlyPublished}`);
   },

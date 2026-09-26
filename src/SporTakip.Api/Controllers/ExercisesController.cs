@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SporTakip.Api.Models;
 using SporTakip.Api.Services;
@@ -32,5 +33,66 @@ public class ExercisesController(IWorkoutService workoutService) : ControllerBas
             return NotFound(new { message = $"Egzersiz bulunamadı: Id={id}" });
 
         return Ok(exercise);
+    }
+
+    /// <summary>
+    /// Yeni bir egzersiz tanımlar (Yalnızca Antrenör, Salon Sahibi ve SuperAdmin).
+    /// </summary>
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
+    [HttpPost]
+    [ProducesResponseType(typeof(ExerciseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateExercise([FromBody] CreateExerciseRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var exercise = await workoutService.CreateExerciseAsync(request, ct);
+            return Created($"/api/exercises/{exercise.Id}", exercise);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Egzersiz bilgilerini günceller (Yalnızca Antrenör, Salon Sahibi ve SuperAdmin).
+    /// </summary>
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
+    [HttpPut("{id:int}")]
+    [ProducesResponseType(typeof(ExerciseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateExercise(int id, [FromBody] UpdateExerciseRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var exercise = await workoutService.UpdateExerciseAsync(id, request, ct);
+            return Ok(exercise);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Egzersizi siler veya pasife alır (Yalnızca Antrenör, Salon Sahibi ve SuperAdmin).
+    /// </summary>
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteExercise(int id, CancellationToken ct)
+    {
+        var success = await workoutService.DeleteExerciseAsync(id, ct);
+        if (!success)
+            return NotFound(new { message = $"Egzersiz bulunamadı: Id={id}" });
+
+        return Ok(new { success = true, message = "Egzersiz başarıyla kaldırıldı." });
     }
 }

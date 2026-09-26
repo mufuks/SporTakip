@@ -7,6 +7,9 @@ public interface IWorkoutService
     // Egzersiz Kataloğu
     Task<List<ExerciseDto>> GetExercisesAsync(string? muscleGroup = null, CancellationToken ct = default);
     Task<ExerciseDto?> GetExerciseByIdAsync(int id, CancellationToken ct = default);
+    Task<ExerciseDto> CreateExerciseAsync(CreateExerciseRequest request, CancellationToken ct = default);
+    Task<ExerciseDto> UpdateExerciseAsync(int id, UpdateExerciseRequest request, CancellationToken ct = default);
+    Task<bool> DeleteExerciseAsync(int id, CancellationToken ct = default);
 
     // Antrenör Şablon İşlemleri
     Task<WorkoutTemplateDto> CreateTemplateAsync(int trainerUserId, CreateWorkoutTemplateRequest request, CancellationToken ct = default);

@@ -326,4 +326,67 @@ public class WorkoutServiceTests : IDisposable
         Assert.Null(WorkoutService.CalculateOneRepMax(0, 5));
         Assert.Null(WorkoutService.CalculateOneRepMax(100, 0));
     }
+
+    [Fact]
+    public async Task CreateExerciseAsync_ValidRequest_CreatesAndReturnsExerciseDto()
+    {
+        var request = new CreateExerciseRequest(
+            Name: "Incline Dumbbell Press",
+            NameTr: "Eğik Sehpa Dumbbell Göğüs Presi",
+            MuscleGroup: "Chest",
+            Equipment: "Dumbbell",
+            Instructions: "Sehpayı 30-45 dereceye ayarlayın ve göğsü sıkarak itin."
+        );
+
+        var dto = await _workoutService.CreateExerciseAsync(request);
+
+        Assert.NotNull(dto);
+        Assert.True(dto.Id > 0);
+        Assert.Equal("Incline Dumbbell Press", dto.Name);
+        Assert.Equal("Chest", dto.MuscleGroup);
+
+        var inDb = await _db.Exercises.FindAsync(dto.Id);
+        Assert.NotNull(inDb);
+        Assert.True(inDb.IsActive);
+    }
+
+    [Fact]
+    public async Task UpdateExerciseAsync_ExistingExercise_UpdatesProperties()
+    {
+        var createRequest = new CreateExerciseRequest(
+            Name: "Lat Pulldown",
+            MuscleGroup: "Back"
+        );
+        var created = await _workoutService.CreateExerciseAsync(createRequest);
+
+        var updateRequest = new UpdateExerciseRequest(
+            Name: "Wide Grip Lat Pulldown",
+            NameTr: "Geniş Tutuş Lat Çekiş",
+            MuscleGroup: "Back",
+            Equipment: "Cable",
+            Instructions: "Geniş tutuşla göğse doğru çekin."
+        );
+
+        var updated = await _workoutService.UpdateExerciseAsync(created.Id, updateRequest);
+
+        Assert.Equal("Wide Grip Lat Pulldown", updated.Name);
+        Assert.Equal("Geniş Tutuş Lat Çekiş", updated.NameTr);
+        Assert.Equal("Cable", updated.Equipment);
+    }
+
+    [Fact]
+    public async Task DeleteExerciseAsync_UnusedExercise_RemovesFromDatabase()
+    {
+        var createRequest = new CreateExerciseRequest(
+            Name: "Temporary Exercise",
+            MuscleGroup: "Arms"
+        );
+        var created = await _workoutService.CreateExerciseAsync(createRequest);
+
+        var deleted = await _workoutService.DeleteExerciseAsync(created.Id);
+        Assert.True(deleted);
+
+        var inDb = await _db.Exercises.FindAsync(created.Id);
+        Assert.Null(inDb);
+    }
 }

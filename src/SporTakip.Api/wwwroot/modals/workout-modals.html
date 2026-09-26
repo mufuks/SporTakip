@@ -28,3 +28,72 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal: Egzersiz Tanımla / Düzenle (Hoca, Admin, SuperAdmin) -->
+    <div class="modal-backdrop" id="modal-exercise">
+      <div class="modal-content" style="max-width:520px;">
+        <div class="modal-header">
+          <div>
+            <h3 id="modal-exercise-title" style="margin:0; font-size:17px; font-weight:800;">➕ Yeni Egzersiz Tanımla</h3>
+            <span class="text-volt" style="font-weight:700; font-size:12px;" id="modal-exercise-subtitle">Katalog ve Kas Grubu Ayarları</span>
+          </div>
+          <button class="modal-close" onclick="closeModal('modal-exercise')">✕</button>
+        </div>
+        <form id="exercise-form" onsubmit="handleSaveExercise(event)">
+          <input type="hidden" id="ex-id">
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Egzersiz Adı (İngilizce / Global) *</label>
+            <input type="text" id="ex-name" class="form-control" placeholder="Örn: Incline Dumbbell Press" required>
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Türkçe Adı / Açıklayıcı İsim</label>
+            <input type="text" id="ex-name-tr" class="form-control" placeholder="Örn: Eğimli Sehpa Dambıl Göğüs İtiş">
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Hedef Kas Grubu *</label>
+              <select id="ex-muscle-group" class="form-control" required>
+                <option value="Chest">Göğüs (Chest)</option>
+                <option value="Back">Sırt (Back)</option>
+                <option value="Legs">Bacak (Legs)</option>
+                <option value="Shoulders">Omuz (Shoulders)</option>
+                <option value="Arms">Kol (Arms)</option>
+                <option value="Core">Karın / Core</option>
+                <option value="Cardio">Kardiyo</option>
+                <option value="FullBody">Tüm Vücut (Full Body)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Ekipman Türü</label>
+              <select id="ex-equipment" class="form-control">
+                <option value="Barbell">Barbell (Halter)</option>
+                <option value="Dumbbell">Dumbbell (Dambıl)</option>
+                <option value="Kettlebell">Kettlebell</option>
+                <option value="Cable">Kablo / Makara</option>
+                <option value="Machine">Makine</option>
+                <option value="Bodyweight">Vücut Ağırlığı</option>
+                <option value="Band">Direnç Bandı</option>
+                <option value="Serbest Ağırlık">Serbest Ağırlık</option>
+                <option value="Diğer">Diğer</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Açıklama / Form İpuçları (İsteğe Bağlı)</label>
+            <textarea id="ex-instructions" class="form-control" rows="3" placeholder="Örn: 30 derece açıyla ayarlanmış sehpada dirsekleri kırmadan kontrollü indirin..."></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Görsel URL (İsteğe Bağlı)</label>
+            <input type="url" id="ex-image-url" class="form-control" placeholder="https://...">
+          </div>
+          <div class="form-group" style="margin-bottom:16px;">
+            <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Video / Rehber URL (İsteğe Bağlı)</label>
+            <input type="url" id="ex-video-url" class="form-control" placeholder="https://...">
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('modal-exercise')">İptal</button>
+            <button type="submit" class="btn btn-primary" id="btn-save-exercise">Kaydet</button>
+          </div>
+        </form>
+      </div>
+    </div>

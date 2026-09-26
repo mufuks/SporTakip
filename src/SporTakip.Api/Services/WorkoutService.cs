@@ -57,6 +57,91 @@ public class WorkoutService : IWorkoutService
         return ex == null ? null : MapToExerciseDto(ex);
     }
 
+    public async Task<ExerciseDto> CreateExerciseAsync(CreateExerciseRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+            throw new ArgumentException("Egzersiz adı zorunludur.", nameof(request));
+
+        var exercise = new Exercise
+        {
+            Name = request.Name.Trim(),
+            NameTr = string.IsNullOrWhiteSpace(request.NameTr) ? null : request.NameTr.Trim(),
+            MuscleGroup = string.IsNullOrWhiteSpace(request.MuscleGroup) ? "FullBody" : request.MuscleGroup.Trim(),
+            Equipment = string.IsNullOrWhiteSpace(request.Equipment) ? null : request.Equipment.Trim(),
+            Instructions = string.IsNullOrWhiteSpace(request.Instructions) ? null : request.Instructions.Trim(),
+            ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? null : request.ImageUrl.Trim(),
+            VideoUrl = string.IsNullOrWhiteSpace(request.VideoUrl) ? null : request.VideoUrl.Trim(),
+            IsActive = true
+        };
+
+        _db.Exercises.Add(exercise);
+        await _db.SaveChangesAsync(ct);
+
+        InvalidateExerciseCache();
+        _logger.LogInformation("✅ [EXERCISE CREATED] #{Id} {Name} oluşturuldu.", exercise.Id, exercise.Name);
+
+        return MapToExerciseDto(exercise);
+    }
+
+    public async Task<ExerciseDto> UpdateExerciseAsync(int id, UpdateExerciseRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+            throw new ArgumentException("Egzersiz adı zorunludur.", nameof(request));
+
+        var exercise = await _db.Exercises.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (exercise == null)
+            throw new KeyNotFoundException($"Egzersiz bulunamadı: Id={id}");
+
+        exercise.Name = request.Name.Trim();
+        exercise.NameTr = string.IsNullOrWhiteSpace(request.NameTr) ? null : request.NameTr.Trim();
+        exercise.MuscleGroup = string.IsNullOrWhiteSpace(request.MuscleGroup) ? "FullBody" : request.MuscleGroup.Trim();
+        exercise.Equipment = string.IsNullOrWhiteSpace(request.Equipment) ? null : request.Equipment.Trim();
+        exercise.Instructions = string.IsNullOrWhiteSpace(request.Instructions) ? null : request.Instructions.Trim();
+        exercise.ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? null : request.ImageUrl.Trim();
+        exercise.VideoUrl = string.IsNullOrWhiteSpace(request.VideoUrl) ? null : request.VideoUrl.Trim();
+        exercise.IsActive = request.IsActive;
+
+        await _db.SaveChangesAsync(ct);
+
+        InvalidateExerciseCache();
+        _logger.LogInformation("✅ [EXERCISE UPDATED] #{Id} {Name} güncellendi.", exercise.Id, exercise.Name);
+
+        return MapToExerciseDto(exercise);
+    }
+
+    public async Task<bool> DeleteExerciseAsync(int id, CancellationToken ct = default)
+    {
+        var exercise = await _db.Exercises.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (exercise == null) return false;
+
+        var isUsed = await _db.WorkoutExercises.AnyAsync(we => we.ExerciseId == id, ct);
+        if (isUsed)
+        {
+            exercise.IsActive = false;
+        }
+        else
+        {
+            _db.Exercises.Remove(exercise);
+        }
+
+        await _db.SaveChangesAsync(ct);
+        InvalidateExerciseCache();
+        _logger.LogInformation("✅ [EXERCISE REMOVED/DEACTIVATED] #{Id} {Name}", id, exercise.Name);
+        return true;
+    }
+
+    private void InvalidateExerciseCache()
+    {
+        if (_cache is MemoryCache mc)
+        {
+            var groups = new[] { "all", "chest", "back", "legs", "shoulders", "arms", "core", "cardio", "fullbody" };
+            foreach (var g in groups)
+            {
+                _cache.Remove($"exercises_{g}");
+            }
+        }
+    }
+
     #endregion
 
     #region Antrenör Şablon İşlemleri

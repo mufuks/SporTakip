@@ -15,6 +15,33 @@ public record ExerciseDto(
 );
 
 /// <summary>
+/// Antrenör veya Admin tarafından yeni egzersiz oluşturma isteği.
+/// </summary>
+public record CreateExerciseRequest(
+    string Name,
+    string? NameTr = null,
+    string MuscleGroup = "FullBody",
+    string? Equipment = null,
+    string? Instructions = null,
+    string? ImageUrl = null,
+    string? VideoUrl = null
+);
+
+/// <summary>
+/// Egzersiz güncelleme isteği.
+/// </summary>
+public record UpdateExerciseRequest(
+    string Name,
+    string? NameTr = null,
+    string MuscleGroup = "FullBody",
+    string? Equipment = null,
+    string? Instructions = null,
+    string? ImageUrl = null,
+    string? VideoUrl = null,
+    bool IsActive = true
+);
+
+/// <summary>
 /// Antrenör tarafından yeni şablon oluşturma isteği.
 /// </summary>
 public record CreateWorkoutTemplateRequest(
