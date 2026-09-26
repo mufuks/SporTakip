@@ -238,15 +238,21 @@ async function renderSessionsList(containerId, dateStr) {
       console.warn('API seansları çekilemedi:', e);
     }
 
-    // Dynamic, day-specific realistic slots if API has no slots for this date
-    if (!slots || slots.length === 0) {
-      slots = getRealisticSlotsForDate(dateStr);
-    }
-
     const selectedCount = document.getElementById('v0-cal-selected-count');
     if (selectedCount) {
       const availableCount = (slots || []).length;
       selectedCount.innerText = availableCount > 0 ? `· ${availableCount} Seans Mevcut` : '· Seans Bulunmuyor';
+    }
+
+    if (!slots || slots.length === 0) {
+      container.innerHTML = `
+        <div class="v0-empty-slots-state" style="text-align:center; padding:44px 16px; background:rgba(255,255,255,0.02); border:1px dashed rgba(255,255,255,0.08); border-radius:16px; margin:14px 0;">
+          <div style="font-size:32px; margin-bottom:8px;">📅</div>
+          <div style="font-weight:700; font-size:14.5px; color:var(--text-primary); margin-bottom:4px;">Planlanmış Seans Bulunmuyor</div>
+          <div style="font-size:12.5px; color:var(--text-muted); max-width:320px; margin:0 auto;">Bu tarih için henüz bir antrenman veya seans planlanmamış.</div>
+        </div>
+      `;
+      return;
     }
 
     // Check my reservations if logged in
@@ -418,69 +424,7 @@ async function renderSessionsList(containerId, dateStr) {
   }
 }
 
-// Dynamic realistic fallback for days beyond API data
-function getRealisticSlotsForDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  const dayOfWeek = d.getDay(); // 0: Pazar, 1: Pzt, 2: Sal, 3: Çar, 4: Per, 5: Cum, 6: Cmt
 
-  switch (dayOfWeek) {
-    case 1: // Pazartesi
-      return [
-        { id: 201, startTime: `${dateStr}T10:00:00`, endTime: `${dateStr}T11:00:00`, title: 'Haftalık Başlangıç Güç', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 221, startTime: `${dateStr}T12:30:00`, endTime: `${dateStr}T13:30:00`, title: 'Öğle Fonksiyonel & Core', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 222, startTime: `${dateStr}T14:30:00`, endTime: `${dateStr}T15:30:00`, title: 'Kuvvet & Mobilite', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
-        { id: 202, startTime: `${dateStr}T18:00:00`, endTime: `${dateStr}T19:00:00`, title: 'Hipertrofi & Kuvvet', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
-        { id: 203, startTime: `${dateStr}T19:00:00`, endTime: `${dateStr}T20:00:00`, title: 'Fonksiyonel Güç & Kondisyon', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 5, capacityStatus: 'Filling', waitlistCount: 0 }
-      ];
-    case 2: // Salı
-      return [
-        { id: 204, startTime: `${dateStr}T11:00:00`, endTime: `${dateStr}T12:00:00`, title: 'Postür & Omurga Esnekliği', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 1, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 223, startTime: `${dateStr}T13:00:00`, endTime: `${dateStr}T14:00:00`, title: 'Öğle Hızlı Kondisyon', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 224, startTime: `${dateStr}T15:00:00`, endTime: `${dateStr}T16:00:00`, title: 'Atletik Güç', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
-        { id: 205, startTime: `${dateStr}T18:30:00`, endTime: `${dateStr}T19:30:00`, title: 'Metabolic Conditioning & HIIT', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 206, startTime: `${dateStr}T19:30:00`, endTime: `${dateStr}T20:30:00`, title: 'Athletic Performance & Hız', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 5, capacityStatus: 'Filling', waitlistCount: 0 }
-      ];
-    case 3: // Çarşamba
-      return [
-        { id: 207, startTime: `${dateStr}T10:00:00`, endTime: `${dateStr}T11:00:00`, title: 'Sabah Güç & Kondisyon', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 225, startTime: `${dateStr}T12:00:00`, endTime: `${dateStr}T13:00:00`, title: 'Core & Omurga Sağlığı', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 226, startTime: `${dateStr}T14:00:00`, endTime: `${dateStr}T15:00:00`, title: 'Kuvvet Gelişimi', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
-        { id: 208, startTime: `${dateStr}T17:30:00`, endTime: `${dateStr}T18:30:00`, title: 'Functional Hypertrophy', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 209, startTime: `${dateStr}T19:00:00`, endTime: `${dateStr}T20:00:00`, title: 'Fonksiyonel Güç & Kondisyon', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
-        { id: 210, startTime: `${dateStr}T20:00:00`, endTime: `${dateStr}T21:00:00`, title: 'Core & Mobilite', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 6, capacityStatus: 'Critical', waitlistCount: 1 }
-      ];
-    case 4: // Perşembe
-      return [
-        { id: 211, startTime: `${dateStr}T11:00:00`, endTime: `${dateStr}T12:00:00`, title: 'Postür & Omurga Esnekliği', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 1, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 227, startTime: `${dateStr}T13:30:00`, endTime: `${dateStr}T14:30:00`, title: 'Öğle Mobilite & Güç', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 228, startTime: `${dateStr}T15:30:00`, endTime: `${dateStr}T16:30:00`, title: 'Fonksiyonel Kondisyon', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 212, startTime: `${dateStr}T18:30:00`, endTime: `${dateStr}T19:30:00`, title: 'Metabolic Conditioning & HIIT', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 213, startTime: `${dateStr}T19:30:00`, endTime: `${dateStr}T20:30:00`, title: 'Athletic Performance & Hız', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 5, capacityStatus: 'Filling', waitlistCount: 0 }
-      ];
-    case 5: // Cuma
-      return [
-        { id: 214, startTime: `${dateStr}T10:00:00`, endTime: `${dateStr}T11:00:00`, title: 'Sabah Kondisyon & Güç', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 229, startTime: `${dateStr}T12:30:00`, endTime: `${dateStr}T13:30:00`, title: 'Full Body HIIT & Core', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 230, startTime: `${dateStr}T14:30:00`, endTime: `${dateStr}T15:30:00`, title: 'Power & Kettlebell', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
-        { id: 215, startTime: `${dateStr}T17:30:00`, endTime: `${dateStr}T18:30:00`, title: 'Friday Functional Blast', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
-        { id: 216, startTime: `${dateStr}T19:00:00`, endTime: `${dateStr}T20:00:00`, title: 'Total Body Resistance', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 6, capacityStatus: 'Critical', waitlistCount: 2 },
-        { id: 217, startTime: `${dateStr}T20:00:00`, endTime: `${dateStr}T21:00:00`, title: 'Foam Roller & Doku Mobilite', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 }
-      ];
-    case 6: // Cumartesi
-      return [
-        { id: 218, startTime: `${dateStr}T11:00:00`, endTime: `${dateStr}T12:30:00`, title: 'Compound Weekend Bootcamp', trainerName: 'Gülçin & Sinan', capacity: 8, confirmedCount: 6, capacityStatus: 'Filling', waitlistCount: 0 },
-        { id: 231, startTime: `${dateStr}T13:00:00`, endTime: `${dateStr}T14:00:00`, title: 'Mobilite & Esneklik', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 219, startTime: `${dateStr}T14:00:00`, endTime: `${dateStr}T15:00:00`, title: 'Squat & Deadlift Teknik Kliniği', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 4, capacityStatus: 'Filling', waitlistCount: 0 },
-        { id: 232, startTime: `${dateStr}T15:30:00`, endTime: `${dateStr}T16:30:00`, title: 'Serbest Ağırlık Seansı', trainerName: 'Sinan Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 }
-      ];
-    case 0: // Pazar
-    default:
-      return [
-        { id: 220, startTime: `${dateStr}T12:00:00`, endTime: `${dateStr}T13:00:00`, title: 'Active Recovery & Yoga Mobilite', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 2, capacityStatus: 'Comfortable', waitlistCount: 0 },
-        { id: 233, startTime: `${dateStr}T14:00:00`, endTime: `${dateStr}T15:00:00`, title: 'Hafif Kondisyon & Stretching', trainerName: 'Gülçin Hoca', capacity: 6, confirmedCount: 3, capacityStatus: 'Comfortable', waitlistCount: 0 }
-      ];
-  }
-}
 
 // ==================== CALENDAR ENGINE (BULUNDUĞU VE SONRAKİ HAFTA) ====================
 let currentCalendarWeekMode = 'all';
@@ -1081,14 +1025,13 @@ window.handleLeadSubmit = function(event) {
 // Global window assignments
 window.loadAthleteHome = loadAthleteHome;
 window.renderSessionsList = renderSessionsList;
-window.getRealisticSlotsForDate = getRealisticSlotsForDate;
 window.loadAthleteSessionsView = loadAthleteSessionsView;
 window.renderAthleteProfile = renderAthleteProfile;
 window.updatePushUi = updatePushUi;
 window.renderNotificationItems = renderNotificationItems;
 
 export {
-  loadAthleteHome, renderSessionsList, getRealisticSlotsForDate,
+  loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile, updatePushUi,
   renderNotificationItems
 };

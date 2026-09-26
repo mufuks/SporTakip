@@ -22,7 +22,7 @@ import {
   loadCalendarView, renderCalendarGrid
 } from './modules/staff.js';
 import { 
-  loadAthleteHome, renderSessionsList, getRealisticSlotsForDate,
+  loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,
   updatePushUi, renderNotificationItems
 } from './modules/athlete.js';

@@ -31,8 +31,8 @@ public static class DbSeeder
         // 5. Tek Örnek Sporcu (Atlet_1)
         await SeedDemoAthleteAsync(db);
 
-        // 6. Günün Örnek Seansları (Yalnızca bugün için 2 sade seans)
-        await SeedTodaySessionsAsync(db);
+        // 6. Örnek Seansları Temizle
+        await CleanDemoSessionsAsync(db);
     }
 
     // ── 1. SuperAdmin ────────────────────────────────────────────────────────────
@@ -296,41 +296,26 @@ public static class DbSeeder
         }
     }
 
-    // ── 6. Günün Örnek Seansları ─────────────────────────────────────────────────
-    private static async Task SeedTodaySessionsAsync(ApplicationDbContext db)
+    // ── 6. Örnek Seansları Temizleme ─────────────────────────────────────────────
+    private static async Task CleanDemoSessionsAsync(ApplicationDbContext db)
     {
-        if (await db.SessionSlots.AnyAsync())
-            return;
+        var demoTitles = new[] { "Core & Omurga Sağlığı", "Fonksiyonel Güç & Kondisyon" };
+        var demoSlots = await db.SessionSlots
+            .Include(s => s.Reservations)
+            .Where(s => demoTitles.Contains(s.Title))
+            .ToListAsync();
 
-        var trainerSinan = await db.Trainers.FirstOrDefaultAsync(t => t.Role == "Salon Sahibi");
-        var trainerGulcin = await db.Trainers.FirstOrDefaultAsync(t => t.Role == "Eğitmen") ?? trainerSinan;
-
-        if (trainerSinan == null || trainerGulcin == null) return;
-
-        var today = DateTime.UtcNow.Date;
-
-        db.SessionSlots.AddRange(
-            new SessionSlot
+        if (demoSlots.Count > 0)
+        {
+            foreach (var slot in demoSlots)
             {
-                TrainerId = trainerSinan.Id,
-                StartTime = today.AddHours(12),
-                EndTime = today.AddHours(13),
-                Capacity = 6,
-                Title = "Core & Omurga Sağlığı",
-                SessionType = "GRUP",
-                Status = "Scheduled"
-            },
-            new SessionSlot
-            {
-                TrainerId = trainerGulcin.Id,
-                StartTime = today.AddHours(18),
-                EndTime = today.AddHours(19),
-                Capacity = 6,
-                Title = "Fonksiyonel Güç & Kondisyon",
-                SessionType = "GRUP",
-                Status = "Scheduled"
+                if (slot.Reservations.Count > 0)
+                {
+                    db.Reservations.RemoveRange(slot.Reservations);
+                }
             }
-        );
-        await db.SaveChangesAsync();
+            db.SessionSlots.RemoveRange(demoSlots);
+            await db.SaveChangesAsync();
+        }
     }
 }

@@ -482,6 +482,20 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - `loadInitialData` ve `getGymContactInfo` çağrıları `admin.js` içerisinde güvenli `window.*` çağrılarına dönüştürüldü.
   - Node.js sanal ortamında ve yerel tarayıcı konsolunda tüm pencereler ve filtre fonksiyonları 0 hata ile doğrulandı; 80/80 backend testi başarıyla geçti.
 
+---
+
+### Phase 38: Örnek / Demo Seansların Temizlenmesi (Sample Sessions Elimination)
+- **Sorun:** Takvimde ve ana ekranda gerçekte veritabanında bulunmayan ya da tohumlanan örnek seanslar ("Haftalık Başlangıç Güç", "Öğle Fonksiyonel & Core", "Core & Omurga Sağlığı" vb.) gösteriliyordu.
+- **Kök Neden:**
+  - **Frontend:** [athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js) içerisindeki `renderSessionsList`, API'den seans dönmediğinde (`slots.length === 0`) `getRealisticSlotsForDate(dateStr)` fonksiyonunu çağırarak her gün için 5-6 adet sahte/mock seans türetiyordu.
+  - **Backend:** [DbSeeder.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/DbSeeder.cs) içindeki `SeedTodaySessionsAsync` metodu her temiz kurulumda veritabanına 2 adet demo seans ekliyordu.
+- **Uygulanan Çözüm:**
+  - [athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js) içindeki `getRealisticSlotsForDate` sahte veri fonksiyonu tamamen kaldırıldı. Boş günlerde şık bir boş durum kartı (`v0-empty-slots-state` - "Planlanmış Seans Bulunmuyor") gösterilmesi sağlandı.
+  - [app.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/app.js) ve [athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js) export/import listelerinden `getRealisticSlotsForDate` çıkarıldı.
+  - [DbSeeder.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/DbSeeder.cs) içerisindeki `SeedTodaySessionsAsync` yerine `CleanDemoSessionsAsync` yazılarak var olan demo seanslar ve rezervasyonları veritabanından güvenle temizlendi.
+  - `dotnet test` ile 80/80 testin başarıyla geçtiği doğrulandı.
+
+
 
 
 
