@@ -9,8 +9,9 @@
   [![.NET 10](https://img.shields.io/badge/.NET-10.0%20(C%23%2013)-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
   [![SQLite](https://img.shields.io/badge/Database-SQLite%20%2B%20EF%20Core%2010-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
   [![PWA Ready](https://img.shields.io/badge/PWA-iOS%20%26%20Android-CCFF00?logo=pwa&logoColor=black)](#)
-  [![Tests](https://img.shields.io/badge/Tests-56%2F56%20Passed%20(100%25)-10B981?logo=checkmarx&logoColor=white)](#)
+  [![Tests](https://img.shields.io/badge/Tests-85%2F85%20Passed%20(100%25)-10B981?logo=checkmarx&logoColor=white)](#)
   [![Architecture](https://img.shields.io/badge/Architecture-Clean%20%26%20Zero--Framework%20JS-F7DF1E?logo=javascript&logoColor=black)](#)
+  [![Kullanım Kılavuzu](https://img.shields.io/badge/Rehber-Kullanım%20Kılavuzu-CCFF00?logo=readme&logoColor=black)](docs/kullanim_kilavuzu.md)
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 </div>
 
@@ -22,11 +23,26 @@
 
 Ağır ve hantal harici kütüphaneler yerine; **.NET 10 ASP.NET Core Web API**, **Entity Framework Core 10** ve **Vanilla JavaScript (ES Modules) + CSS3** mimarisiyle sıfırdan geliştirilmiştir. Tasarım dilinde **Hevy, Whoop ve Nike Training Club** esintili **Volt Lime (`#CCFF00`) & Obsidian Dark** atletik renk paleti kullanılmıştır.
 
+📖 **Detaylı adım adım kullanım rehberi için:** [👉 docs/kullanim_kilavuzu.md](docs/kullanim_kilavuzu.md)
+
 ---
 
-## 🎯 4 Rol Bazlı Ekran Denetimi ve Ekran Görüntüleri
+## ⚡ Hızlı Kullanım Kılavuzu (Cheat-Sheet)
 
-Sistem; **Misafir**, **Atlet / Sporcu**, **Koç / Eğitmen** ve **Salon Sahibi** olmak üzere 4 temel rol üzerinden tam yetki izolasyonu (RBAC) ile çalışır.
+Sisteme giriş yaptığınız role göre öne çıkan 1 dakikalık kısayollar:
+
+| Rol | En Önemli 3 Aksiyon | Giriş Numarası (Kod: `123456`) |
+| :--- | :--- | :--- |
+| **🏃‍♂️ Sporcu** | • 2 haftalık takvimden seans rezerve etme<br>• Hocanın yazdığı **Kişiye Özel Programı** başlatma<br>• **Ghost Weight** ile önceki ağırlıkları tek tıkla çekme & akıllı sayaç | `+90 555 123 45 67` |
+| **🏋️ Koç / Eğitmen** | • Seans kartında tek dokunuşla **Kilitli Yoklama** (`✓ Geldi`) alma<br>• Üyeler listesinden öğrenciye **`🏋️ Program Yaz`** ile özel şablon atama<br>• Egzersiz kataloğuna salona özel hareket ekleme ve kişisel prim takibi | `+90 532 444 55 66` |
+| **🏢 Salon Sahibi** | • Kasa, Ciro, Alacak ve Net Salon Payı göstergeleri<br>• Üye kayıtlarında **Sağlık/Sakatlık Uyarısı (`⚠️`)** tanımlama<br>• Standart paketler, esnek fiyatlı üye satışı ve aylık hoca bordroları | `+90 532 111 22 33` |
+| **🛡️ Süper Admin** | • Platformdaki tüm kullanıcıların rollerini değiştirme (`Admin`, `Coach`, `Athlete`)<br>• Eğitmen profili açma/kapama ve sistem ayarları | `+90 555 000 00 00` |
+
+---
+
+## 🎯 5 Rol Bazlı Ekran Denetimi ve Ekran Görüntüleri
+
+Sistem; **Misafir**, **Atlet / Sporcu**, **Koç / Eğitmen**, **Salon Sahibi** ve **Süper Admin** olmak üzere 5 temel rol üzerinden tam yetki izolasyonu (RBAC) ile çalışır.
 
 ---
 
@@ -56,7 +72,9 @@ Kayıtlı sporcunun kendi antrenman yolculuğunu, kalan ders haklarını ve sean
 * **2 Haftalık Kesintisiz Takvim:** Bulunduğu hafta ve gelecek hafta olmak üzere 14 günlük interaktif seans gridi.
 * **Sosyal Kanıt & Katılımcı Baloncukları:** *"Can D., Meltem Y. ve +1 kişi katılıyor"* rozetleri ve eğitmen atamaları.
 * **3 Saat İptal Kuralı:** Seansa 3 saatten az kala yapılan iptallerde ders hakkının yanacağını belirten akıllı geri sayım.
-* **Hevy Tarzı Canlı İdman:** Canlı kronometre, set, tekrar ve ağırlık loglama, kişisel rekorlar (1RM PR).
+* **🎯 Kişiye Özel Antrenman:** Antrenörün öğrenciye özel yazdığı programlar en üstte altın rozetle listelenir.
+* **💡 Ghost Weight (Progressive Overload):** Son idmanda girilen ağırlıklar tek tıkla setlere doldurulur.
+* **⏱️ Haptik Titreşimli Dinlenme Sayacı:** Set bitiminde geri sayım başlar, süre bitince telefon titreşir ve zil çalar.
 * **Beden Kitle İndeksi (VKİ):** Boy ve kilo güncellendiğinde anlık dinamik hesaplanan fitlik rozeti (*"Fit / Normal"*, *"Fazla Kilolu"* vb.).
 
 ---
@@ -73,6 +91,8 @@ Antrenörlerin salonda cep telefonundan 1 saniyede yoklama almasını, saatlik k
 * **Saatlik Doluluk Şeridi (09:00 - 21:00):** Seans Takvimi tasarımıyla bütünleşik 7 günlük interaktif gün şeridi, `◀` / `▶` gün değiştirme ve anlık slot doluluk filtreleme.
 * **Kilitli Yoklama ("Geldiyse Gelmiştir"):** Yoklaması alınan sporcu için kart kilitlenir (`✓ BU SEANSTA GELDİ`); çelişkili `Gelmedi` ve `Telafi` butonları gizlenerek veri güvenliği sağlanır.
 * **İkame Eğitmen ve %40 Hak Ediş:** Başka bir hocanın üyesine derse girildiğinde otomatik beliren `🦁 İkame Seans: %40 Hak Ediş Yazılacak` rozeti.
+* **🏋️ Öğrenciye Özel Program Yazma:** Üye kartındaki `🏋️ Program Yaz` butonuyla öğrenciye özel hareketler, setler ve dinlenme süreleri atanabilir.
+* **Egzersiz Kataloğu Yönetimi:** Salona özel egzersiz varyasyonları, video linkleri ve hedef kas grubu ekleme.
 * **Finansal Gizlilik (RBAC İzolasyonu):** Koç sadece kendi verdiği derslerin hakedişini görür; salon sahibinin cirosu ve genel kasa koça kesinlikle gösterilmez.
 
 ---
@@ -90,7 +110,14 @@ Salon sahibine genel ciro, tahsil edilen kasa, hoca bordroları, paket tanımlam
 * **Aylık Eğitmen Bordroları:** Antrenör bazında girilen seanslar, ders başı primler, paket payları ve net hakediş dökümü.
 * **Paket & Fiyat Yönetimi (`+ Yeni Paket`):** Salon sahibinin paket adı, seans sayısı, geçerlilik günü ve liste fiyatı tanımlayabilmesi.
 * **Atlete Özel Esnek Fiyatlandırma:** Üyeye paket satışı yaparken liste fiyatı otomatik gelir; ancak o sporcuya özel dilediğiniz gibi farklı/indirimli bir fiyat belirlenebilir.
-* **Sporcu Düzenleme (`✏️ Düzenle`):** Boy, kilo, yaş, cinsiyet, telefon ve sağlık/sakatlık kısıt notlarının güncellenebilmesi.
+* **⚠️ Sağlık & Sakatlık Uyarısı (Medical Conditions):** Üyeye özel fıtık, eklem, sakatlık notları girilebilir; bu not tüm hocalara kırmızı uyarı rozeti olarak gösterilir.
+
+---
+
+### 🛡️ 5. Süper Admin Platform Paneli (SuperAdmin)
+
+* **Rol Yönetim Masası:** Sistemdeki tüm kullanıcıların rolleri (`Admin`, `Coach`, `Athlete`) anında değiştirilebilir.
+* **Kadro & Antrenör Yetkilendirme:** Kullanıcılara tek tıkla eğitmen statüsü ve varsayılan prim yüzdesi atanabilir.
 
 ---
 
@@ -122,12 +149,12 @@ graph LR
     subgraph Frontend["Frontend (PWA / Mobile-First)"]
         UI["Vanilla JS ES Modules"]
         CSS["Modern CSS3 / Volt Lime Theme"]
-        SW["Service Worker & Manifest PWA"]
+        SW["Service Worker App-Shell Cache"]
     end
 
     subgraph Backend[".NET 10 Web API"]
         API["REST Controllers (JWT + OTP)"]
-        Services["GymService / SessionService / AuthService"]
+        Services["GymService / SessionService / WorkoutService"]
         EF["Entity Framework Core 10"]
     end
 
@@ -144,12 +171,12 @@ graph LR
 | Katman | Teknoloji | Açıklama |
 | :--- | :--- | :--- |
 | **Backend** | .NET 10 (C# 13) | ASP.NET Core Web API, katı Nullable Reference Types (`CS8600` temiz) |
-| **ORM & Veritabanı** | EF Core 10 + SQLite | Sıfır kurulum gerektiren taşınabilir `sportakip.db` |
-| **Kimlik & Güvenlik** | JWT Bearer + SMS/OTP | SHA-256 hash'li OTP doğrulama, RBAC rol denetimi (Admin, Coach, Athlete) |
+| **ORM & Veritabanı** | EF Core 10 + SQLite | Sıfır kurulum gerektiren taşınabilir `sportakip.db` (PostgreSQL uyumlu) |
+| **Kimlik & Güvenlik** | JWT Bearer + SMS/OTP | SHA-256 hash'li OTP doğrulama, RBAC rol denetimi (SuperAdmin, Admin, Coach, Athlete) |
 | **Frontend** | Vanilla JavaScript (ESM) | Ağır JS framework bağımlılığı yok, <100ms ilk yükleme süresi |
 | **Tasarım & UI** | CSS3 Custom Properties | Obsidian Dark & Neon Volt renk paleti, 390px mobil sıfır kayma (Zero-Drift) |
-| **Mobil Dağıtım** | PWA (Progressive Web App) | iOS Safari ve Android Chrome ana ekrana yüklenebilir yerel uygulama hissiyatı |
-| **Test Paketi** | xUnit + EF InMemory / SQLite | **56/56 Birim ve Entegrasyon Testi (%100 Başarı)** |
+| **Mobil Dağıtım** | PWA (Progressive Web App) | Cache-first App-Shell mimarisi, offline ses/titreşim dinlenme sayacı |
+| **Test Paketi** | xUnit + EF InMemory / SQLite | **85/85 Birim ve Entegrasyon Testi (%100 Başarı)** |
 
 ---
 
@@ -168,7 +195,7 @@ cd SporTakip
 ```bash
 dotnet test
 ```
-*(Tüm 56 birim ve entegrasyon testinin yeşil yandığını doğrulayın)*
+*(Tüm 85 birim ve entegrasyon testinin yeşil yandığını doğrulayın)*
 
 ### 3. API & Web Arayüzünü Başlatın
 ```bash
@@ -188,11 +215,11 @@ Sistem ilk kez çalıştırıldığında veritabanı örnek verilerle otomatik o
 
 | Rol | Kullanıcı | Telefon Numarası | SMS / OTP Kodu | Açıklama |
 | :--- | :--- | :--- | :---: | :--- |
-| **Misafir** | Ziyaretçi | *(Oturumsuz)* | - | Genel tanıtım, antrenman şablonları, kilitli takvim |
-| **Sporcu** | Meltem Yılmaz | `+90 555 123 45 67` | `123456` | 8 Seans Fonksiyonel Grup paketi, aktif seanslar |
-| **Sporcu** | Can Demir | `+90 555 987 65 43` | `123456` | Bireysel PT paketi, bakiye borcu |
-| **Koç** | Gülçin | `+90 532 444 55 66` | `123456` | Mod anahtarı, yoklama alma, kişisel hakediş |
-| **Salon Sahibi** | Sinan | `+90 532 111 22 33` | `123456` | Ciro, kasa, bordrolar, kadro, paket/fiyat yönetimi |
+| **🛡️ Süper Admin** | Platform Yöneticisi | `+90 555 000 00 00` | `123456` | Tüm sistem kullanıcıları ve rol yetkilendirme masası |
+| **🏢 Salon Sahibi** | SalonSahibi_1 (Sinan) | `+90 532 111 22 33` | `123456` | Ciro, kasa, bordrolar, kadro, paket/fiyat yönetimi |
+| **🏋️ Koç / Eğitmen** | Hoca_1 (Gülçin) | `+90 532 444 55 66` | `123456` | Mod anahtarı, yoklama alma, öğrenciye program yazma |
+| **🏃‍♂️ Sporcu / Atlet** | Atlet_1 | `+90 555 123 45 67` | `123456` | 8 Seans Fonksiyonel Grup paketi, aktif seanslar, idman kaydı |
+| **🌐 Misafir** | Ziyaretçi | *(Oturumsuz)* | - | Genel tanıtım, antrenman şablonları, kilitli takvim |
 
 ---
 
