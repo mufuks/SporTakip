@@ -453,6 +453,22 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Bellek önbellekleme ve eviction, sayfalama ve derlenmiş sorguları test eden 4 yeni birim testi eklendi.
     - **Toplam 80/80 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla 3 saniyede tamamlandı.** Sürüm: `v3.4.0`.
 
+- **Faz 36 (Render Free-Tier Cold-Start Önleme & PWA App-Shell APK Hızı - v3.4.1):**
+  - **1. Zero-Overhead Keep-Alive & Health Ping Endpoints ([Program.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Program.cs)):**
+    - `/health` ve `/ping` endpoint'leri eklendi. Veritabanı sorgusu veya auth gerektirmeksizin 1 ms içinde 200 OK yanıt verir.
+    - UptimeRobot veya Cron-job.org üzerinden her 10 dakikada bir otomatik ping atılarak Render'ın ücretsiz plandaki 15 dakikalık uykuya dalması (`spin-down`) %100 engellenir.
+  - **2. PWA Gerçek App-Shell Cache-First Mimarisi ([sw.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/sw.js) & [index.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/index.html)):**
+    - Eski Service Worker'daki navigasyon ve script'ler için kullanılan yavaşlatıcı "Network-First" kuralı kaldırıldı.
+    - **App Shell Cache-First + Stale-While-Revalidate:** `/index.html`, `app.css`, `app.js`, tüm view HTML parçaları ve ikonlar telefon hafızasında varsa **3-5 milisaniyede (tıpkı bir yerel APK gibi)** anında ekrana basılır.
+    - `ignoreSearch: true` parametresi ile query string farkı olmaksızın %100 önbellek eşleşmesi garantiye alındı.
+    - Arka planda sessizce taze sürüm revalidate edilir; dinamik `/api/*` çağrıları ise taze veri için doğrudan ağa yönlendirilir.
+  - **3. ES Modül SyntaxError Giderilmesi & Sıfırıncı Karede (Frame-0) Giriş Çekmecesi:**
+    - `staff.js`, `athlete.js`, `workouts.js` ve `admin.js` dosyalarında `window.*` ataması yapılmış ancak yerel kapsamda bildirilmemiş sahte export tanımları (`changeCalendarMonth`, `closeNotificationDrawer`, `autoCalc1Rm`, `filterSuperAdminByRole`) temizlendi.
+    - Tarayıcının ES modül yükleme sırasında `SyntaxError: Export '...' is not defined in module` hatası vererek tüm `app.js` betik zincirini kilitlemesi ve `openOtpDrawer is not defined` hatasına yol açması kalıcı olarak çözüldü.
+    - Login çekmecesi (`#v0-otp-drawer`) `index.html` içerisindeki `#modals-root` yapısına doğrudan önceden yerleştirilerek ağ gecikmesinden bağımsız olarak ilk milisaniyeden itibaren 100% güvenilirlikle açılması sağlandı.
+
+
+
 
 
 

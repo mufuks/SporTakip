@@ -13,47 +13,27 @@ import {
   handleAvatarClick, handleAvatarFileUpload, resetAvatarToDefault 
 } from './modules/auth.js';
 import { 
-  loadAttendanceView, renderCapacityWeekStrip, selectCapacityDate, changeCapacityDay,
-  jumpCapacityToday, handleCapacityDateChange, loadCapacitySlots, renderCapacitySlots,
-  selectSlotHour, clearSlotFilter, setAttendanceFilter, applyAttendanceFilter,
-  renderAttendanceList, handleTrainerSelectionChange, handleQuickAttendance, filterAttendance,
-  loadDashboardView, loadMembersView, handleMemberSearch, getRoleBadgeHtml,
-  loadKasaView, handleHakedisMonthChange, loadMyEarningsView,
-  loadTrainers, renderTrainersTable, openEditTrainerModal, handleUpdateTrainerSubmit,
-  updateTrainerSelects, openNewTrainerModal, handleCreateTrainer,
-  loadPackagesAdmin, renderPackagesTable, openCreatePackageModal, openEditPackageModal,
-  handleSavePackage, handleDeletePackage,
-  changeCalendarMonth, goToTodayCalendar, loadCalendarView, renderCalendarGrid,
-  selectCalendarDay, closeCalendarDayDetails, openScheduleModalForSelectedDate,
-  openNewMemberModal, handleCreateMember, openEditMemberModal, handleUpdateMember,
-  openEditMemberNotesModal, handleSaveMemberNotes, openNewSubModalForMember,
-  updatePackagePriceField, handleCreateSubscription, openPaymentModal, handleAddPayment,
-  openWhatsAppModal, sendWhatsAppTemplate,
-  openScheduleSessionModal, handleScheduleSession, openEditSessionModal, handleSaveEditSession,
-  handleDeleteSessionClick
+  loadAttendanceView, renderCapacityWeekStrip, loadCapacitySlots, renderCapacitySlots,
+  applyAttendanceFilter, renderAttendanceList,
+  loadDashboardView, loadMembersView, getRoleBadgeHtml,
+  loadKasaView, loadMyEarningsView,
+  loadTrainers, renderTrainersTable, updateTrainerSelects,
+  loadPackagesAdmin, renderPackagesTable,
+  loadCalendarView, renderCalendarGrid
 } from './modules/staff.js';
 import { 
   loadAthleteHome, renderSessionsList, getRealisticSlotsForDate,
-  setCalendarWeekView, selectCalendarToday, selectCalendarDate,
-  loadAthleteSessionsView, handleBookSession, handleCancelReservation,
-  renderAthleteProfile, recalcProfileBmi, submitSaveAthleteMetrics,
-  handleNotificationClick, openNotificationDrawer, closeNotificationDrawer,
-  handleNotificationBackdropClick, togglePushPermission, updatePushUi,
-  renderNotificationItems, markAllNotificationsRead,
-  openLeadModal, handleLeadSubmit
+  loadAthleteSessionsView, renderAthleteProfile,
+  updatePushUi, renderNotificationItems
 } from './modules/athlete.js';
 import { 
-  switchWorkoutSubTab, loadWorkoutHub, loadWorkoutTemplates,
-  startNewWorkout, startWorkoutTimer, renderLiveWorkoutView,
-  autoCalc1Rm, toggleSetLog, openFinishWorkoutModal,
-  setWorkoutRating, submitFinishWorkout, loadWorkoutProgress 
+  loadWorkoutHub, loadWorkoutTemplates,
+  startWorkoutTimer, renderLiveWorkoutView,
+  loadWorkoutProgress 
 } from './modules/workouts.js';
 import { 
-  loadSuperAdminView, sortSuperAdminUsers, filterSuperAdminByRole,
-  filterSuperAdminUsers, filterAndRenderSuperAdminUsers,
-  updateSortIcons, updateRoleCounts, renderSuperAdminUsersTable,
-  openEditUserModal, toggleTrainerFields, handleSaveEditUser,
-  handleAssignRole, openCreateGymOwnerModal, handleCreateGymOwnerSubmit 
+  loadSuperAdminView, filterAndRenderSuperAdminUsers,
+  updateSortIcons, updateRoleCounts
 } from './modules/admin.js';
 import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js';
 
@@ -374,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('[PWA] ServiceWorker registration failed:', err);
     });
   }
+  setupOtpBoxListeners();
   preloadModals().catch(() => {});
   updateAppAvatars();
   updateNavForUserRole();

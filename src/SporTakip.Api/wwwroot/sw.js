@@ -1,12 +1,12 @@
-const CACHE_NAME = 'sportakip-shell-v3.1.0';
+const CACHE_NAME = 'sportakip-shell-v3.4.0';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon.ico',
-  '/css/app.css?v=3.1.0',
-  '/js/app.js?v=3.1.0',
+  '/css/app.css?v=3.4.0',
+  '/js/app.js?v=3.4.0',
   '/js/api.js?v=3.1.0',
   '/js/modules/state.js',
   '/js/modules/utils.js',
@@ -53,13 +53,13 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS).catch((err) => {
-        console.warn('[PWA SW] Precache partial error:', err);
+        console.warn('[PWA SW] Precache partial warning:', err);
       });
     })
   );
 });
 
-// Activate: Purge ALL old caches immediately
+// Activate: Purge old caches immediately & claim clients
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -75,52 +75,49 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Smart Strategy Dispatcher
+// Fetch: Smart Strategy Dispatcher (App-Shell First for Instant Native App Speed)
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // 1. Dynamic API calls: Network only (never cache)
-  if (url.pathname.startsWith('/api/')) {
+  // 1. Dynamic API calls & Health/Ping: Network only (never cache)
+  if (url.pathname.startsWith('/api/') || url.pathname === '/health' || url.pathname === '/ping') {
     return;
   }
 
-  // 2. Navigation & HTML: Network-first, fallback to cached index.html
+  // 2. Navigation (Opening app / typing URL): Stale-While-Revalidate App Shell
+  // Returns cached /index.html in ~5ms so the phone display never sees a white screen or spinner!
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .catch(() => caches.match('/index.html'))
+      caches.match('/index.html', { ignoreSearch: true }).then((cachedShell) => {
+        // Revalidate in background to fetch latest version if online
+        const networkFetch = fetch(request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', clone));
+          }
+          return networkResponse;
+        }).catch(() => null);
+
+        return cachedShell || networkFetch || caches.match('/index.html');
+      })
     );
     return;
   }
 
-  // 3. Scripts and Styles: Network-first to prevent stale code bugs, fallback to cache
-  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
-    event.respondWith(
-      fetch(request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
-        return networkResponse;
-      }).catch(() => caches.match(request))
-    );
-    return;
-  }
-
-  // 4. Images & Static media: Cache-first with network fallback
+  // 3. Static App Shell: Scripts (.js), Styles (.css), Views/Modals (.html), Icons/Images
+  // Cache-First with Stale-While-Revalidate: Immediate 0ms local response + silent background refresh
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+    caches.match(request, { ignoreSearch: true }).then((cachedResponse) => {
+      const fetchPromise = fetch(request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
           const clone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
         return networkResponse;
-      }).catch(() => {});
+      }).catch(() => null);
+
+      return cachedResponse || fetchPromise;
     })
   );
 });

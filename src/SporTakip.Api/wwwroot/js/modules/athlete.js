@@ -659,7 +659,7 @@ window.handleCancelReservation = async function(reservationId) {
 };
 
 // Athlete Profile View
-window.renderAthleteProfile = async function() {
+async function renderAthleteProfile() {
   const container = document.getElementById('v0-profile-content');
   if (!container) return;
 
@@ -845,7 +845,8 @@ window.renderAthleteProfile = async function() {
       Çıkış Yap
     </button>
   `;
-};
+}
+window.renderAthleteProfile = renderAthleteProfile;
 
 window.recalcProfileBmi = function() {
   const h = parseFloat(document.getElementById('athlete-input-height')?.value || 0);
@@ -1095,11 +1096,6 @@ window.renderNotificationItems = renderNotificationItems;
 
 export {
   loadAthleteHome, renderSessionsList, getRealisticSlotsForDate,
-  setCalendarWeekView, selectCalendarToday, selectCalendarDate,
-  loadAthleteSessionsView, handleBookSession, handleCancelReservation,
-  renderAthleteProfile, recalcProfileBmi, submitSaveAthleteMetrics,
-  handleNotificationClick, openNotificationDrawer, closeNotificationDrawer,
-  handleNotificationBackdropClick, togglePushPermission, updatePushUi,
-  renderNotificationItems, markAllNotificationsRead,
-  openLeadModal, handleLeadSubmit
+  loadAthleteSessionsView, renderAthleteProfile, updatePushUi,
+  renderNotificationItems
 };

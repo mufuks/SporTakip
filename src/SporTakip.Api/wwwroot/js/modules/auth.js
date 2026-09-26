@@ -108,8 +108,27 @@ export function renderStudioContactCardHtml(gym) {
 window.renderStudioContactCardHtml = renderStudioContactCardHtml;
 
 // ==================== OTP DRAWER & AUTH ====================
-export function openOtpDrawer() {
-  const drawer = document.getElementById('v0-otp-drawer');
+export async function openOtpDrawer() {
+  let drawer = document.getElementById('v0-otp-drawer');
+  if (!drawer) {
+    try {
+      const res = await fetch('/modals/auth-modals.html');
+      if (res.ok) {
+        const html = await res.text();
+        const root = document.getElementById('modals-root') || document.body;
+        const temp = document.createElement('div');
+        temp.innerHTML = html.trim();
+        while (temp.firstChild) {
+          root.appendChild(temp.firstChild);
+        }
+        setupOtpBoxListeners();
+        drawer = document.getElementById('v0-otp-drawer');
+      }
+    } catch (e) {
+      console.warn('Failed to dynamically load auth modal:', e);
+    }
+  }
+
   if (drawer) drawer.classList.add('open');
   goToPhoneStep();
 }

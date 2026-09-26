@@ -8,7 +8,7 @@ let saCurrentSortCol = 'createdAt';
 let saCurrentSortAsc = false;
 let saCurrentSearch = '';
 
-window.loadSuperAdminView = async function() {
+async function loadSuperAdminView() {
   const statsUsers = document.getElementById('sa-stat-total-users');
   const statsMeta = document.getElementById('sa-stat-users-meta');
   const statsCoachesAthletes = document.getElementById('sa-stat-coaches-athletes');
@@ -41,7 +41,8 @@ window.loadSuperAdminView = async function() {
     }
     showToast(`SuperAdmin verileri alınamadı: ${err.message}`, 'error');
   }
-};
+}
+window.loadSuperAdminView = loadSuperAdminView;
 
 window.sortSuperAdminUsers = function(col) {
   if (currentSaSortCol === col) {
@@ -382,12 +383,7 @@ window.handleCreateGymOwnerSubmit = async function(event) {
 window.filterAndRenderSuperAdminUsers = filterAndRenderSuperAdminUsers;
 window.updateSortIcons = updateSortIcons;
 window.updateRoleCounts = updateRoleCounts;
-window.renderSuperAdminUsersTable = renderSuperAdminUsersTable;
-
 export {
-  loadSuperAdminView, sortSuperAdminUsers, filterSuperAdminByRole,
-  filterSuperAdminUsers, filterAndRenderSuperAdminUsers,
-  updateSortIcons, updateRoleCounts, renderSuperAdminUsersTable,
-  openEditUserModal, toggleTrainerFields, handleSaveEditUser,
-  handleAssignRole, openCreateGymOwnerModal, handleCreateGymOwnerSubmit
+  loadSuperAdminView, filterAndRenderSuperAdminUsers,
+  updateSortIcons, updateRoleCounts
 };

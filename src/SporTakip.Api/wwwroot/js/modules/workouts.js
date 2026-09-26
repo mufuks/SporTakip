@@ -29,7 +29,7 @@ window.switchWorkoutSubTab = function(subtab) {
   else if (subtab === 'progress') loadWorkoutProgress();
 };
 
-window.loadWorkoutHub = async function() {
+async function loadWorkoutHub() {
   const activeId = localStorage.getItem('sportakip_active_workout_id');
   const dot = document.getElementById('v0-live-pulse-dot');
 
@@ -55,7 +55,8 @@ window.loadWorkoutHub = async function() {
 
   if (dot) dot.style.display = 'none';
   window.switchWorkoutSubTab('templates');
-};
+}
+window.loadWorkoutHub = loadWorkoutHub;
 
 async function loadWorkoutTemplates() {
   const container = document.getElementById('v0-workout-templates-list');
@@ -481,8 +482,6 @@ window.renderLiveWorkoutView = renderLiveWorkoutView;
 window.loadWorkoutProgress = loadWorkoutProgress;
 
 export {
-  switchWorkoutSubTab, loadWorkoutHub, loadWorkoutTemplates,
-  startNewWorkout, startWorkoutTimer, renderLiveWorkoutView,
-  autoCalc1Rm, toggleSetLog, openFinishWorkoutModal,
-  setWorkoutRating, submitFinishWorkout, loadWorkoutProgress
+  loadWorkoutHub, loadWorkoutTemplates, startWorkoutTimer,
+  renderLiveWorkoutView, loadWorkoutProgress
 };

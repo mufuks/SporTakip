@@ -1692,22 +1692,9 @@ window.renderCalendarGrid = renderCalendarGrid;
 window.openScheduleModal = openScheduleSessionModal;
 
 export {
-  loadAttendanceView, renderCapacityWeekStrip, selectCapacityDate, changeCapacityDay,
-  jumpCapacityToday, handleCapacityDateChange, loadCapacitySlots, renderCapacitySlots,
-  selectSlotHour, clearSlotFilter, setAttendanceFilter, applyAttendanceFilter,
-  renderAttendanceList, handleTrainerSelectionChange, handleQuickAttendance, filterAttendance,
-  loadDashboardView, loadMembersView, handleMemberSearch, getRoleBadgeHtml,
-  loadKasaView, handleHakedisMonthChange, loadMyEarningsView,
-  loadTrainers, renderTrainersTable, openEditTrainerModal, handleUpdateTrainerSubmit,
-  updateTrainerSelects, openNewTrainerModal, handleCreateTrainer,
-  loadPackagesAdmin, renderPackagesTable, openCreatePackageModal, openEditPackageModal,
-  handleSavePackage, handleDeletePackage,
-  changeCalendarMonth, goToTodayCalendar, loadCalendarView, renderCalendarGrid,
-  selectCalendarDay, closeCalendarDayDetails, openScheduleModalForSelectedDate,
-  openNewMemberModal, handleCreateMember, openEditMemberModal, handleUpdateMember,
-  openEditMemberNotesModal, handleSaveMemberNotes, openNewSubModalForMember,
-  updatePackagePriceField, handleCreateSubscription, openPaymentModal, handleAddPayment,
-  openWhatsAppModal, sendWhatsAppTemplate,
-  openScheduleSessionModal, handleScheduleSession, openEditSessionModal, handleSaveEditSession,
-  handleDeleteSessionClick
+  loadAttendanceView, renderCapacityWeekStrip, loadCapacitySlots, renderCapacitySlots,
+  applyAttendanceFilter, renderAttendanceList, loadDashboardView, renderMembersTable,
+  loadMembersView, getRoleBadgeHtml, loadKasaView, loadMyEarningsView,
+  loadTrainers, renderTrainersTable, updateTrainerSelects, loadPackagesAdmin,
+  renderPackagesTable, loadCalendarView, renderCalendarGrid
 };

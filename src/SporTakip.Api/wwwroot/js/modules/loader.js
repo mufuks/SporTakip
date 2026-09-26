@@ -67,8 +67,13 @@ export async function preloadModals() {
       const html = await fetchPartial(file);
       const temp = document.createElement('div');
       temp.innerHTML = html.trim();
-      while (temp.firstChild) {
-        container.appendChild(temp.firstChild);
+      while (temp.firstElementChild) {
+        const child = temp.firstElementChild;
+        if (child.id && document.getElementById(child.id)) {
+          child.remove();
+        } else {
+          container.appendChild(child);
+        }
       }
     } catch (err) {
       console.warn('[Loader] Modal preload failed for', file, err);

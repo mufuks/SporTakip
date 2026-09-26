@@ -179,6 +179,16 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Keep-Alive & Health Check Endpoints (Render Free-Tier Spin-Down Önleme)
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "healthy",
+    version = "v3.4.0",
+    serverTime = DateTime.UtcNow
+}));
+
+app.MapGet("/ping", () => Results.Text("pong", "text/plain"));
+
 app.MapControllers();
 
 // SPA Fallback (Tüm bilinmeyen rotaları index.html'e yönlendir)

@@ -29,7 +29,7 @@
   <meta name="apple-mobile-web-app-title" content="SporTakip">
   
   <!-- CSS -->
-  <link rel="stylesheet" href="/css/app.css?v=3.0.0">
+  <link rel="stylesheet" href="/css/app.css?v=3.4.0">
 </head>
 <body>
 
@@ -341,13 +341,69 @@
   </div> <!-- /#app-root -->
 
   <!-- Dynamic Modals Mount Point -->
-  <div id="modals-root"></div>
+  <div id="modals-root">
+    <!-- SMS OTP Drawer (Pre-rendered for Instant Login on Frame 0) -->
+    <div class="v0-otp-backdrop" id="v0-otp-drawer" onclick="handleOtpBackdropClick(event)">
+      <div class="v0-otp-sheet">
+        <div class="v0-sheet-handle"></div>
+        <button type="button" class="v0-sheet-close" onclick="closeOtpDrawer()" aria-label="Kapat">✕</button>
+
+        <div class="v0-sheet-header">
+          <div class="v0-sheet-shield">📱</div>
+          <div>
+            <h2 class="v0-sheet-title">SMS ile Hızlı Giriş</h2>
+            <p class="v0-sheet-subtitle" id="v0-otp-step-subtitle">Telefon numaranızı girerek hemen giriş yapın</p>
+          </div>
+        </div>
+
+        <!-- Step 1: Phone Entry -->
+        <div id="v0-otp-step-phone" class="animate-rise-in">
+          <label for="v0-input-phone" style="display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:8px;">
+            Telefon Numarası
+          </label>
+          <div class="v0-phone-wrapper">
+            <span class="v0-phone-prefix">+90</span>
+            <input type="tel" id="v0-input-phone" class="v0-phone-input" placeholder="5XX XXX XX XX" maxlength="14" oninput="handlePhoneInput(this)">
+          </div>
+          <button type="button" id="v0-btn-send-otp" class="v0-btn-submit" disabled onclick="submitSendOtp()">
+            <span>Kod Gönder</span>
+            <span style="font-size:16px;">→</span>
+          </button>
+        </div>
+
+        <!-- Step 2: 6-Digit Code Entry -->
+        <div id="v0-otp-step-code" class="animate-rise-in" style="display:none;">
+          <div class="v0-otp-boxes">
+            <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="0">
+            <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="1">
+            <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="2">
+            <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="3">
+            <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="4">
+            <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="5">
+          </div>
+
+          <div class="v0-otp-timer-row">
+            <span>Kalan Süre: <span class="v0-otp-timer-val" id="v0-otp-timer">03:00</span></span>
+            <button type="button" class="v0-otp-resend-btn" onclick="resendOtp()">Tekrar Gönder</button>
+          </div>
+
+          <button type="button" id="v0-btn-verify-otp" class="v0-btn-submit" disabled onclick="submitVerifyOtp()">
+            Kodu Onayla
+          </button>
+
+          <button type="button" class="v0-btn-back-phone" onclick="goToPhoneStep()">
+            Numarayı değiştir
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Javascript -->
-  <script type="module" src="/js/app.js?v=3.1.0"></script>
+  <script type="module" src="/js/app.js?v=3.4.0"></script>
 </body>
 </html>
 
