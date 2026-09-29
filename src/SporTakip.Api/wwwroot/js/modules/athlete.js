@@ -92,18 +92,21 @@ async function loadAthleteHome() {
     // Üyenin gerçek aktif paketini yükle ve arka planda güncelle (revalidate)
     try {
       let memberId = user.memberId;
-      if (!memberId && user.phoneNumber) {
-        const members = await Api.getMembers().catch(() => []);
-        const m = members.find(x => x.phone === user.phoneNumber || x.phone === user.phoneNumber.replace('+90', '0') || x.phone === user.phoneNumber.replace('+90', ''));
-        if (m) {
-          memberId = m.id;
-          user.memberId = m.id;
+      if (!memberId) {
+        const me = await Api.getMe().catch(() => null);
+        if (me && me.memberId) {
+          memberId = me.memberId;
+          user.memberId = me.memberId;
           Api.setUser(user);
         }
       }
 
-      if (memberId) {
-        const member = await Api.getMember(memberId);
+      const member = await (memberId ? Api.getMember(memberId) : Api.getMyProfile()).catch(() => null);
+      if (member) {
+        if (!user.memberId && member.id) {
+          user.memberId = member.id;
+          Api.setUser(user);
+        }
         if (member && member.subscriptions && member.subscriptions.length > 0) {
           const activeSub = member.subscriptions.find(s => s.status === 'Active') || member.subscriptions[0];
           renderAthleteActivePackage(activeSub);
@@ -648,9 +651,13 @@ async function renderAthleteProfile() {
   try {
     const [myRes, memberData] = await Promise.all([
       Api.getMyReservations(true).catch(() => []),
-      user.memberId ? Api.getMember(user.memberId).catch(() => null) : Promise.resolve(null)
+      user.memberId ? Api.getMember(user.memberId).catch(() => null) : Api.getMyProfile().catch(() => null)
     ]);
     memberDetails = memberData;
+    if (memberDetails && !user.memberId && memberDetails.id) {
+      user.memberId = memberDetails.id;
+      Api.setUser(user);
+    }
     if (myRes && myRes.length > 0) {
       reservationsHtml = myRes.map(r => `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-radius:12px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); margin-top:8px;">

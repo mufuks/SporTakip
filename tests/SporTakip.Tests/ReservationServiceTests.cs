@@ -418,4 +418,59 @@ public class ReservationServiceTests : IDisposable
         Assert.Single(myReservations);
         Assert.Equal(booking.Id, myReservations[0].Id);
     }
+
+    [Fact]
+    public async Task BookSlot_When_CancelledPreviously_ReactivatesWithoutUniqueConstraintViolation()
+    {
+        // Arrange
+        var (_, _, member, _, slot) = await SetupStandardScenarioAsync(capacity: 5, hoursFromNow: 10);
+        var athleteUser = await _db.Users.FindAsync(member.UserId!.Value);
+        Assert.NotNull(athleteUser);
+
+        // 1. İlk rezervasyon
+        var initialBooking = await _reservationService.BookSlotAsync(athleteUser.Id, slot.Id);
+        Assert.Equal("Confirmed", initialBooking.Status);
+
+        // 2. İptal et
+        var cancelResult = await _reservationService.CancelReservationAsync(athleteUser.Id, initialBooking.Id, "İş toplantısı");
+        Assert.True(cancelResult.Success);
+
+        var cancelledRow = await _db.Reservations.FindAsync(initialBooking.Id);
+        Assert.NotNull(cancelledRow);
+        Assert.Equal("CancelledByAthlete", cancelledRow.Status);
+
+        // 3. Tekrar aynı seansa rezerve et (BUG-01 Unique Constraint kontrolü)
+        var rebooked = await _reservationService.BookSlotAsync(athleteUser.Id, slot.Id);
+
+        // Assert
+        Assert.NotNull(rebooked);
+        Assert.Equal("Confirmed", rebooked.Status);
+        Assert.Equal(initialBooking.Id, rebooked.Id); // Aynı satır güvenle re-aktive edildi
+        
+        var totalSlotReservations = await _db.Reservations.CountAsync(r => r.SessionSlotId == slot.Id);
+        Assert.Equal(1, totalSlotReservations);
+    }
+
+    [Fact]
+    public async Task CancelReservation_When_DifferentUserAttempts_ThrowsUnauthorizedAccessException()
+    {
+        // Arrange
+        var (_, _, member, _, slot) = await SetupStandardScenarioAsync(capacity: 5, hoursFromNow: 10);
+        var booking = await _reservationService.BookSlotAsync(member.UserId!.Value, slot.Id);
+
+        // Başka bir sporcu oluştur
+        var otherUser = new AppUser
+        {
+            PhoneNumber = "+905328887766",
+            FullName = "Başka Sporcu",
+            Roles = UserRole.Athlete,
+            PhoneVerified = true
+        };
+        _db.Users.Add(otherUser);
+        await _db.SaveChangesAsync();
+
+        // Act & Assert (BUG-02 IDOR koruması)
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            _reservationService.CancelReservationAsync(otherUser.Id, booking.Id));
+    }
 }

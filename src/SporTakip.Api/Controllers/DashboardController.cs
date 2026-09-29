@@ -10,6 +10,10 @@ namespace SporTakip.Api.Controllers;
 [Route("api/[controller]")]
 public class DashboardController(GymService gymService) : ControllerBase
 {
+    /// <summary>
+    /// Salon geneli anlık yönetim ve finans istatistikleri (Yalnızca Salon Sahibi / Admin ve SuperAdmin).
+    /// </summary>
+    [Authorize(Roles = "SuperAdmin, Admin")]
     [HttpGet("stats")]
     public async Task<ActionResult<DashboardStatsDto>> GetStats(CancellationToken ct)
     {

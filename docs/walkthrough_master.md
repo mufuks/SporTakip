@@ -549,6 +549,42 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Set tamamlandığında sağ alt köşede nabız gibi yanıp sönen dinamik sayaç rozeti (`#v0-rest-timer-badge`) açılır ve geri sayım başlar.
     - Süre 0'a ulaştığında Web Audio API ile sıfır harici dosya bağımlılığıyla 2 tonlu atletik zil sesi (`880Hz -> 1175Hz chime`) çalınır ve mobil cihazlarda haptik titreşim (`navigator.vibrate`) tetiklenir.
 
+### Phase 41: Güvenlik Sıkılaştırma, IDOR & KVKK İzolasyonu ve Veri Bütünlüğü İyileştirmeleri (Security Hardening & Integrity Audit)
+- **Kullanıcı Talebi & Kapsam:** Projenin derinlemesine güvenlik, veri bütünlüğü, yetkilendirme (RBAC) ve gizlilik (KVKK) denetimi sonucunda tespit edilen tüm bulguların giderilmesi ve uçtan uca testlerle güvenceye alınması.
+- **Backend Güvenlik ve RBAC Çözümleri:**
+  - **1. Yetki Yükseltme (Privilege Escalation) Önleme (SEC-04):**
+    - [SuperAdminController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/SuperAdminController.cs): `UpdateUser` metodunda yetki denetimi güçlendirildi. Çağıran kullanıcının `SuperAdmin` rolünde olup olmadığı kontrol edilerek, `SuperAdmin` olmayan kullanıcıların kendilerine veya başkalarına `SuperAdmin` rolü atamaları engellendi (`Forbid()`).
+  - **2. Anonim Finansal & İstatistik Veri Sızıntısı Engelleme (SEC-05):**
+    - [DashboardController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/DashboardController.cs): Anonim erişime açık olan `GetStats` endpoint'i `[Authorize(Roles = "SuperAdmin, Admin")]` ile sınırlandırılarak hassas ciro, üye sayısı ve doluluk istatistikleri koruma altına alındı.
+  - **3. Üye Modülü RBAC & IDOR İzolasyonu (SEC-06):**
+    - [MembersController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/MembersController.cs): `GetMembers` ve `CreateMember` endpoint'lerine `[Authorize(Roles = "SuperAdmin, Coach, Admin")]` zorunluluğu getirildi. `GetMember` ve `UpdateMetrics` endpoint'lerine IDOR kontrolü eklenerek atletlerin yalnızca kendi profillerine ve ölçümlerine erişebilmesi (`member.UserId == currentUserId`) sağlandı.
+    - Atletlerin kendi profil bilgilerine güvenle ulaşabilmesi için `GET /api/members/me` (`GetMyProfile`) endpoint'i geliştirildi.
+    - [Dtos.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/Dtos.cs) & [GymService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/GymService.cs): `MemberDto` modeline `UserId` alanı dahil edildi.
+  - **4. Aktif Abonelik Listesi Rol Kısıtı (SEC-07):**
+    - [SubscriptionsController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/SubscriptionsController.cs): Tüm aktif salon aboneliklerini listeleyen `GetActiveSubscriptions` metoduna `[Authorize(Roles = "SuperAdmin, Coach, Admin")]` eklendi.
+- **Veri Bütünlüğü ve İş Mantığı Düzeltmeleri:**
+  - **1. Rezervasyon İptali Sonrası Tekrar Kayıtta Unique Constraint Çökmesi (BUG-01):**
+    - [ReservationService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/ReservationService.cs): `(SessionSlotId, MemberId)` üzerindeki benzersiz dizin nedeniyle daha önce iptal edilmiş bir rezervasyonun tekrar kaydedilmek istendiğinde 500 hatası üretmesi engellendi. Mevcut iptal kaydı tespit edilerek re-aktivasyon (`Status = status`, iptal sebebi ve zamanı sıfırlanarak) uygulandı.
+  - **2. IDOR ve athleteUserId / Member.Id Çakışması (BUG-02):**
+    - [ReservationService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/ReservationService.cs): `BookSlotAsync` ve `GetMyReservationsAsync` içindeki tehlikeli `?? await db.Members.FindAsync([athleteUserId])` fallback'i kaldırıldı. `CancelReservationAsync` metodunda `reservation.Member.UserId != requestingUserId` kontrolü yapılarak yetkisiz kullanıcıların başkalarının rezervasyonunu iptal etmesi engellendi.
+  - **3. Salon Sahibi Oluşturulurken Telefon Normalizasyonu (BUG-03):**
+    - [SuperAdminController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/SuperAdminController.cs): `CreateGymOwner` metodunda telefon numaraları `AuthService.NormalizePhoneNumber` ile normalize edilerek veritabanı tutarlılığı sağlandı.
+  - **4. Birebir Seans Planlamasında Ders Numarası Artışı (LOGIC-01):**
+    - [GymService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/GymService.cs): `ScheduleSessionAsync` metodunda ileri tarihli planlanan seanslar sayılarak `subscription.CompletedLessons + pendingScheduledCount + 1` formülüyle ardışık ders numarası ataması sağlandı.
+- **Gizlilik (KVKK) ve Frontend Temizliği:**
+  - **1. Seans Listesinde Atlet Telefon Numarası Gizleme (PRIV-01):**
+    - [SessionsController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/SessionsController.cs): Genel slot listesinde (`GetSlots` ve `GetSlotById`) çağıran kullanıcı personel (`SuperAdmin, Admin, Coach`) değilse katılımcı telefon numaraları `null` olarak maskelendi.
+  - **2. Atlet Panelinde Üye Verisi Çekilmesinin Önlenmesi (PRIV-02):**
+    - [athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js) & [api.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/api.js): Atlet profil yükleme akışında `getMembers()` çağrısı kaldırılarak `getMe()` / `getMyProfile()` kullanımına geçildi.
+  - **3. Standart API Çağrıları (CLN-03):**
+    - [api.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/api.js): `deleteSession` içerisindeki ham `fetch` kaldırılıp `this.delete('/sessions/' + id)` standart yardımcısına bağlandı.
+- **Doğrulama & Test Kapsamı:**
+  - [MembersControllerTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/MembersControllerTests.cs): RBAC yetkilendirmesi, IDOR izolasyonu, profil sorgulama ve seans numaralandırma senaryoları için 5 yeni test eklendi.
+  - [ReservationServiceTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/ReservationServiceTests.cs): İptal sonrası tekrar kayıt (re-booking) ve IDOR iptal reddi için 2 yeni test eklendi.
+  - [SuperAdminControllerTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/SuperAdminControllerTests.cs): Yetki yükseltme engelleme ve telefon normalizasyonu için 2 yeni test eklendi.
+  - **Toplam 95/95 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla tamamlandı.**
+
+
 
 
 

@@ -162,6 +162,12 @@ public class SuperAdminController(ApplicationDbContext db, ILogger<SuperAdminCon
         if (user == null)
             return NotFound(new { error = "Kullanıcı bulunamadı." });
 
+        // SuperAdmin yetkisi yalnızca mevcut bir SuperAdmin tarafından düzenlenebilir
+        if (user.Roles.HasFlag(UserRole.SuperAdmin) && !User.IsInRole("SuperAdmin"))
+        {
+            return Forbid();
+        }
+
         var oldPhone = user.PhoneNumber;
         user.FullName = req.FullName.Trim();
         user.PhoneNumber = normalizedPhone;
@@ -180,6 +186,13 @@ public class SuperAdminController(ApplicationDbContext db, ILogger<SuperAdminCon
                 }
             }
             if (newRoles == 0) newRoles = UserRole.Athlete;
+
+            // SuperAdmin rolü ekleme veya kaldırma işlemi SuperAdmin olmayanlar tarafından yapılamaz
+            if (newRoles.HasFlag(UserRole.SuperAdmin) != user.Roles.HasFlag(UserRole.SuperAdmin) && !User.IsInRole("SuperAdmin"))
+            {
+                return Forbid();
+            }
+
             user.Roles = newRoles;
         }
 
@@ -327,7 +340,10 @@ public class SuperAdminController(ApplicationDbContext db, ILogger<SuperAdminCon
         if (string.IsNullOrWhiteSpace(req.FullName) || string.IsNullOrWhiteSpace(req.PhoneNumber))
             return BadRequest(new { error = "Ad Soyad ve Telefon zorunludur." });
 
-        var phone = req.PhoneNumber.Trim();
+        var phone = AuthService.NormalizePhoneNumber(req.PhoneNumber);
+        if (string.IsNullOrWhiteSpace(phone))
+            return BadRequest(new { error = "Geçersiz telefon numarası formatı." });
+
         var existing = await db.Users
             .Include(u => u.TrainerProfile)
             .FirstOrDefaultAsync(u => u.PhoneNumber == phone, ct);

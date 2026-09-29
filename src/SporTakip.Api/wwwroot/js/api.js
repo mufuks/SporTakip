@@ -190,12 +190,12 @@ export const Api = {
     return this.put(`/sessions/${id}`, data);
   },
 
-  async deleteSession(id) {
-    const res = await fetch(`${API_BASE}/sessions/${id}`, {
-      method: 'DELETE',
-      headers: this.getHeaders()
-    });
-    return this._handleResponse(res);
+  deleteSession(id) {
+    return this.delete(`/sessions/${id}`);
+  },
+
+  getMyProfile() {
+    return this.get('/members/me');
   },
 
   // Reservations & Waitlist (Faz 3)

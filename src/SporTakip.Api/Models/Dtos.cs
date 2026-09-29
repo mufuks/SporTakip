@@ -16,7 +16,8 @@ public record MemberDto(
     string? Gender = null,
     decimal? Bmi = null,
     string? BmiCategory = null,
-    string? MedicalConditions = null
+    string? MedicalConditions = null,
+    int? UserId = null
 );
 
 public record UpdateAthleteMetricsDto(

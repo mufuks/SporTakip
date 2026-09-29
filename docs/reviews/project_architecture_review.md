@@ -31,6 +31,17 @@
 | **PERF-11**| Veritabanı / Havuz| PostgreSQL (Neon) bağlantı dizesinde bağlantı havuzu (connection pool) ayarları optimize edilmemişti. | 🟡 Orta | `[Resolved]` |
 | **PERF-12**| Frontend / Hissiyat | Sekme geçişlerinde (`staff.js`, `athlete.js`) mevcut hafızadaki veri yok sayılarak arayüz "Yükleniyor..." ekranına sıfırlanıyordu (UI flicker). | 🟡 Orta | `[Resolved]` |
 | **PERF-13**| Statik Varlık | `wwwroot/images` dizininde kullanılmayan ~1.65 MB yüksek çözünürlüklü artık görsel dosyaları bulunuyordu. | 🟢 Düşük | `[Resolved]` |
+| **SEC-04** | Güvenlik / RBAC | `SuperAdminController.UpdateUser` metodunda `SuperAdmin` rol kontrolü eksik; Salon Sahibi (`Admin`) rolü yetkisini `SuperAdmin` seviyesine yükseltebilir. | 🔴 Yüksek | `[Resolved]` |
+| **SEC-05** | Güvenlik / Gizlilik | `DashboardController.GetStats` üzerinde `[Authorize]` eksik; anonim ziyaretçiler salonun tüm ciro, hakediş ve borçlu üye listesini görebilir. | 🔴 Yüksek | `[Resolved]` |
+| **SEC-06** | Güvenlik / RBAC | `MembersController` (`GetMembers`, `GetMember`, `CreateMember`, `UpdateMetrics`) endpoint'lerinde `[Authorize]` ve IDOR sahiplik denetimi eksik. | 🔴 Yüksek | `[Resolved]` |
+| **SEC-07** | Güvenlik / RBAC | `SubscriptionsController.GetActiveSubscriptions` üzerinde rol kısıtı eksik; sisteme kayıtlı bir sporcu tüm salonun aktif paketlerini okuyabilir. | 🟡 Orta | `[Resolved]` |
+| **BUG-01** | Veritabanı / Hata | `Reservations` tablosundaki `(SessionSlotId, MemberId)` unique indeksi nedeniyle, iptal edilen bir seansa sporcu yeniden rezervasyon yaparken veritabanı kısıt hatası vererek çöker. | 🔴 Yüksek | `[Resolved]` |
+| **BUG-02** | Güvenlik / IDOR | `ReservationService` içinde `athleteUserId` ile `Member.Id` eşleştirilmeye çalışılıyor (`FindAsync([athleteUserId])` ve `reservation.MemberId != requestingUserId`); yabancı profil ve yetki aşımı riski taşıyor. | 🔴 Yüksek | `[Resolved]` |
+| **BUG-03** | Veri Tutarlılığı | `SuperAdminController.CreateGymOwner` telefon numarasını normalize etmeden kaydettiği için OTP girişinde kullanıcı bulunamama riski oluşuyor. | 🟡 Orta | `[Resolved]` |
+| **PRIV-01**| Gizlilik / KVKK | `SessionsController.GetSlots` herkese açık listelemede her seans slottaki kayıtlı sporcuların cep telefonlarını (`Member.Phone`) sızdırıyor. | 🟡 Orta | `[Resolved]` |
+| **PRIV-02**| Frontend / Performans| `athlete.js` aktif paket tespiti sırasında `memberId` boşsa `getMembers()` ile tüm üyeleri çekip istemcide filtreliyor. | 🟡 Orta | `[Resolved]` |
+| **CLN-03** | Kod Hijyeni | `api.js` içerisindeki `deleteSession` merkezi `this.delete` yerine doğrudan `fetch` kullanarak 401 token yenileme mekanizmasını bypass ediyor. | 🟢 Düşük | `[Resolved]` |
+| **LOGIC-01**| İş Mantığı | `ScheduleSessionAsync` peş peşe birden fazla seans planlandığında tamamlanan ders sayısını baz aldığı için mükerrer `LessonNumber` veriyor. | 🟢 Düşük | `[Resolved]` |
 
 ---
 
@@ -68,3 +79,59 @@
    - **Frontend Stale-While-Revalidate (SWR) & Instant UI (PERF-12):** `staff.js` ve `athlete.js` içinde sekme geçişlerinde önbellekteki veriler (üyeler, yoklama, sporcu paketi) anında (0ms) render edilecek ve ağ isteği arka planda sessizce yürütülecek şekilde refactor edildi. Arayüz beyaz ekran / yükleniyor titreşimi tamamen ortadan kalktı.
    - **Gereksiz Statik Varlık Temizliği (PERF-13):** Projede doğrudan referans verilmeyen ~1.65 MB boyutundaki artık görseller (`athlete-woman-portrait-dark.png`, `tiger2_trans.png`) silinerek dağıtım paketi boyutu hafifletildi.
    - **Test Doğrulaması:** 16 yeni performans, önbellek ve sayfalama birim testi eklenerek toplam **80/80 test %100 başarıyla ve 0 derleme uyarısıyla** tamamlandı.
+
+---
+
+## 3. Yeni Tespit Edilen Bulgular ve İnceleme Raporu (29 Eylül 2026)
+
+### 🔴 1. Güvenlik & Yetkilendirme (RBAC & IDOR)
+1. **SEC-04: `SuperAdminController.UpdateUser` Yetki Yükseltme (Privilege Escalation):**
+   - **Kök Neden:** `AssignRole` metodunda `targetRole == SuperAdmin` kontrolü `User.IsInRole("SuperAdmin")` ile korunurken, `UpdateUser` metodunda `req.Roles` doğrudan atanmaktadır. `[Authorize(Roles = "SuperAdmin,Admin")]` nedeniyle herhangi bir Salon Sahibi (`Admin`), kendi rolüne veya bir başkasına `SuperAdmin` ekleyebilir.
+   - **Öneri:** `UpdateUser` metodunda gelen roller `SuperAdmin` içeriyorsa ve çağıran kullanıcı `SuperAdmin` değilse `Forbid()` dönmeli; ayrıca mevcut `SuperAdmin` kullanıcısının rolü Admin tarafından düşürülememelidir.
+
+2. **SEC-05: `DashboardController.GetStats` Anonim Finansal Veri Sızıntısı:**
+   - **Kök Neden:** `GET /api/dashboard/stats` üzerinde hiçbir `[Authorize]` niteleyicisi bulunmamaktadır. Salonun aylık cirosu, salon sahibi payı, hoca payları, toplam tahsilat, bekleyen alacaklar ve borçlu üyelerin açık isimleri/kalan ders bilgileri şifresiz herkese açıktır.
+   - **Öneri:** `[Authorize(Roles = "SuperAdmin,Admin")]` eklenmelidir. (Koçlar yalnızca kendi `my-earnings` hakedişlerini görmelidir).
+
+3. **SEC-06: `MembersController` Eksik Yetkilendirme & IDOR Açıkları:**
+   - **Kök Neden:** `GetMembers` (tüm liste), `GetMember` (tekil üye ve tüm geçmişi), `CreateMember` ve `UpdateMetrics` üzerinde `[Authorize]` yoktur. Anonim herhangi biri tüm sporcuların telefon ve notlarını çekebilir, sahte üye açabilir veya başkasının boy/kilosunu değiştirebilir.
+   - **Öneri:**
+     - `GetMembers`: `[Authorize(Roles = "SuperAdmin,Coach,Admin")]`
+     - `CreateMember`: `[Authorize(Roles = "SuperAdmin,Coach,Admin")]`
+     - `GetMember`: `[Authorize]`. Staff değilse yalnızca kendi profili (`member.UserId == currentUserId`) okunabilir.
+     - `UpdateMetrics`: `[Authorize]`. Staff değilse yalnızca kendi profili güncellenebilir.
+
+4. **SEC-07: `SubscriptionsController.GetActiveSubscriptions` Rol Kısıtı Eksikliği:**
+   - **Kök Neden:** Sınıfta `[Authorize]` var fakat rol kısıtı yok; sisteme kayıtlı bir sporcu tüm salonun aktif paketlerini çekebilir.
+   - **Öneri:** `[Authorize(Roles = "SuperAdmin,Coach,Admin")]` ile sınırlandırılmalıdır.
+
+### 🔴 2. Veritabanı & Rezervasyon Bütünlüğü (Data Integrity & Runtime Bug)
+1. **BUG-01: İptal Edilen Seansa Yeniden Rezervasyonda Çökme (Unique Constraint Violation):**
+   - **Kök Neden:** `ApplicationDbContext` içinde `Reservations` için `entity.HasIndex(r => new { r.SessionSlotId, r.MemberId }).IsUnique();` tanımlıdır. Bir üye seansı iptal ettiğinde satır silinmeyip `Status = "CancelledByAthlete"` yapılmaktadır. Aynı üye fikrini değiştirip tekrar "Rezerve Et" butonuna bastığında `BookSlotAsync` yeni kayıt eklemeye çalışmakta ve veritabanı `UNIQUE constraint failed: Reservations.SessionSlotId, Reservations.MemberId` hatası ile 500 hatası fırlatmaktadır.
+   - **Öneri:** `BookSlotAsync` içerisinde mevcut bir rezervasyon satırı varsa (iptal edilmiş durumdaysa), yeni satır eklemek yerine var olan satır "Confirmed" / "Waitlisted" statüsüne yeniden re-aktive edilmelidir.
+
+2. **BUG-02: `ReservationService` İçinde `athleteUserId` ile `Member.Id` Karışıklığı (IDOR Riski):**
+   - **Kök Neden:** `BookSlotAsync` ve `GetMyReservationsAsync` içinde `db.Members.FindAsync([athleteUserId])` çağrısı yer almaktadır. `AppUser.Id` ile `Member.Id` farklı tablolardır. Kullanıcı ID'si 5 olan bir sporcu, tesadüfen ID'si 5 olan başka bir üyenin profiline bağlanabilir. Ayrıca `CancelReservationAsync` içinde `if (reservation.Member.UserId != requestingUserId && reservation.MemberId != requestingUserId)` kontrolünde `requestingUserId` (User ID) ile `MemberId` kıyaslanmaktadır.
+   - **Öneri:** Sporcu profili `m.UserId == athleteUserId` veya telefon numarasıyla aranmalı, asla `FindAsync([athleteUserId])` yapılmamalıdır. İptal yetkisinde de kullanıcının `member.UserId == requestingUserId` doğrulaması yapılmalıdır.
+
+3. **BUG-03: `SuperAdminController.CreateGymOwner` Telefon Normalizasyonu Eksikliği:**
+   - **Kök Neden:** Numarayı `AuthService.NormalizePhoneNumber` ile normalize etmeden kaydetmekte; bu durum kullanıcının OTP ile giriş yaparken sistemde bulunamamasına yol açmaktadır.
+   - **Öneri:** `AuthService.NormalizePhoneNumber(req.PhoneNumber)` kullanılmalıdır.
+
+### 🟡 3. Gizlilik, Performans & Temizlik (KVKK & Clean Code)
+1. **PRIV-01: `SessionsController.GetSlots` Üye Telefon Numaraları Sızıntısı:**
+   - **Kök Neden:** Herkese açık seans listeleme endpoint'inde her slottaki rezervasyonların `ReservationSummaryDto` nesnesinde sporcuların cep telefonları (`Member.Phone`) dönmektedir. Arayüzde yalnızca ad/soyad baş harfi kullanılırken telefonun açıkta kalması veri güvenliği açığıdır.
+   - **Öneri:** İstek yapan kullanıcı yetkili personel (`SuperAdmin, Admin, Coach`) değilse `Phone` alanı `null` dönmelidir.
+
+2. **PRIV-02: `athlete.js` Aktif Paket Tespitinde Tüm Üyeleri Çekme Girişimi:**
+   - **Kök Neden:** `athlete.js` içinde `memberId` boşsa `getMembers()` ile tüm salon listesi çekilip taranmaktadır.
+   - **Öneri:** `Api.getMe()` çağrılarak kullanıcının kendi `memberId`'si anında alınmalıdır.
+
+3. **CLN-03: `api.js` `deleteSession` Doğrudan Fetch Kullanımı:**
+   - **Kök Neden:** `this.delete` yerine `fetch` çağrısı yapıldığı için token yenileme mekanizmasından faydalanamamaktadır.
+   - **Öneri:** `return this.delete('/sessions/' + id);` şeklinde güncellenmelidir.
+
+4. **LOGIC-01: `ScheduleSessionAsync` Çoklu Seans Planlamasında `LessonNumber`:**
+   - **Kök Neden:** Bir sporcuya peş peşe 2 seans planlandığında her ikisine de tamamlanan ders sayısına göre aynı numara atanmaktadır.
+   - **Öneri:** `subscription.CompletedLessons + aktif bekleyen seans sayısı + 1` olarak hesaplanmalıdır.
+

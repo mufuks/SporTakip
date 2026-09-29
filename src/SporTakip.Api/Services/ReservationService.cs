@@ -13,8 +13,7 @@ public class ReservationService(
     {
         // 1. Sporcu profilini bul veya Kullanıcı Eğitmen/Yönetici ise otomatik oluştur
         var member = await db.Members
-            .FirstOrDefaultAsync(m => m.UserId == athleteUserId, ct)
-            ?? await db.Members.FindAsync([athleteUserId], ct);
+            .FirstOrDefaultAsync(m => m.UserId == athleteUserId, ct);
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == athleteUserId, ct);
 
@@ -123,12 +122,11 @@ public class ReservationService(
             throw new InvalidOperationException("Geçmiş bir seansa rezervasyon yapılamaz.");
         }
 
-        // 4. Mükerrer rezervasyon kontrolü
-        var existingBooking = await db.Reservations
-            .AnyAsync(r => r.SessionSlotId == slotId && r.MemberId == member.Id && 
-                (r.Status == "Confirmed" || r.Status == "Waitlisted"), ct);
+        // 4. Mükerrer rezervasyon & Re-aktivasyon kontrolü
+        var existingReservation = await db.Reservations
+            .FirstOrDefaultAsync(r => r.SessionSlotId == slotId && r.MemberId == member.Id, ct);
 
-        if (existingBooking)
+        if (existingReservation != null && (existingReservation.Status == "Confirmed" || existingReservation.Status == "Waitlisted" || existingReservation.Status == "CheckedIn"))
         {
             throw new InvalidOperationException("Bu seansa zaten aktif bir rezervasyonunuz bulunmaktadır.");
         }
@@ -159,18 +157,34 @@ public class ReservationService(
             waitlistPosition = currentMaxWaitlist + 1;
         }
 
-        var reservation = new Reservation
+        Reservation reservation;
+        if (existingReservation != null)
         {
-            SessionSlotId = slotId,
-            MemberId = member.Id,
-            SubscriptionId = subscription.Id,
-            BookedBy = isStaff ? "Coach" : "Athlete",
-            Status = status,
-            WaitlistPosition = waitlistPosition,
-            CreatedAt = DateTime.UtcNow
-        };
+            // İptal edilmiş eski kaydı re-aktive et (Unique constraint ihlalini önler)
+            existingReservation.Status = status;
+            existingReservation.WaitlistPosition = waitlistPosition;
+            existingReservation.SubscriptionId = subscription.Id;
+            existingReservation.BookedBy = isStaff ? "Coach" : "Athlete";
+            existingReservation.CancellationReason = null;
+            existingReservation.CancelledAt = null;
+            existingReservation.CreatedAt = DateTime.UtcNow;
+            reservation = existingReservation;
+        }
+        else
+        {
+            reservation = new Reservation
+            {
+                SessionSlotId = slotId,
+                MemberId = member.Id,
+                SubscriptionId = subscription.Id,
+                BookedBy = isStaff ? "Coach" : "Athlete",
+                Status = status,
+                WaitlistPosition = waitlistPosition,
+                CreatedAt = DateTime.UtcNow
+            };
+            db.Reservations.Add(reservation);
+        }
 
-        db.Reservations.Add(reservation);
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
@@ -191,7 +205,7 @@ public class ReservationService(
             ?? throw new KeyNotFoundException("Rezervasyon bulunamadı.");
 
         // Yetki kontrolü: Kendi rezervasyonu veya Eğitmen/Admin olmalı
-        if (reservation.Member.UserId != requestingUserId && reservation.MemberId != requestingUserId)
+        if (reservation.Member.UserId != requestingUserId)
         {
             var isStaff = await db.Users.AnyAsync(u => u.Id == requestingUserId && 
                 (u.Roles.HasFlag(UserRole.Coach) || u.Roles.HasFlag(UserRole.Admin) || u.Roles.HasFlag(UserRole.SuperAdmin)), ct);
@@ -407,8 +421,7 @@ public class ReservationService(
     public async Task<List<ReservationDto>> GetMyReservationsAsync(int athleteUserId, bool includePast = false, CancellationToken ct = default)
     {
         var member = await db.Members
-            .FirstOrDefaultAsync(m => m.UserId == athleteUserId, ct)
-            ?? await db.Members.FindAsync([athleteUserId], ct);
+            .FirstOrDefaultAsync(m => m.UserId == athleteUserId, ct);
 
         if (member == null)
         {
@@ -416,6 +429,11 @@ public class ReservationService(
             if (user != null && !string.IsNullOrWhiteSpace(user.PhoneNumber))
             {
                 member = await db.Members.FirstOrDefaultAsync(m => m.Phone == user.PhoneNumber, ct);
+                if (member != null && member.UserId == null)
+                {
+                    member.UserId = user.Id;
+                    await db.SaveChangesAsync(ct);
+                }
             }
         }
 

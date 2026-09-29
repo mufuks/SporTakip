@@ -51,7 +51,17 @@ public class SessionsController(ISessionService sessionService) : ControllerBase
             ? (endDate.Value.TimeOfDay == TimeSpan.Zero ? endDate.Value.Date.AddDays(1).AddTicks(-1) : endDate.Value)
             : start.AddDays(7);
 
+        var isStaff = User.Identity?.IsAuthenticated == true && 
+            (User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("Coach"));
+
         var slots = await sessionService.GetSlotsAsync(start, end, trainerId, ct);
+        if (!isStaff)
+        {
+            slots = slots.Select(s => s with
+            {
+                Reservations = s.Reservations.Select(r => r with { MemberPhone = null }).ToList()
+            }).ToList();
+        }
         return Ok(slots);
     }
 
@@ -63,8 +73,19 @@ public class SessionsController(ISessionService sessionService) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetSlotById(int id, CancellationToken ct)
     {
+        var isStaff = User.Identity?.IsAuthenticated == true && 
+            (User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("Coach"));
+
         var slot = await sessionService.GetSlotByIdAsync(id, ct);
         if (slot == null) return NotFound(new { message = "Seans bulunamadı." });
+
+        if (!isStaff)
+        {
+            slot = slot with
+            {
+                Reservations = slot.Reservations.Select(r => r with { MemberPhone = null }).ToList()
+            };
+        }
         return Ok(slot);
     }
 

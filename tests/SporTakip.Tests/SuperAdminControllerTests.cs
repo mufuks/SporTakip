@@ -159,6 +159,65 @@ public class SuperAdminControllerTests : IDisposable
         Assert.Equal(0.50m, refreshedTrainer.DefaultShareRate);
     }
 
+    [Fact]
+    public async Task UpdateUser_WhenNonSuperAdminAttemptsToGrantSuperAdminRole_ReturnsForbid()
+    {
+        // Arrange: Controller kullanıcısını sadece "Admin" yap
+        var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+        httpContext.User = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity([
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, "99"),
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Admin")
+            ], "TestAuth"));
+
+        _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        var user = new AppUser
+        {
+            PhoneNumber = "+905321119988",
+            FullName = "Koç Kullanıcı",
+            Roles = UserRole.Coach,
+            PhoneVerified = true
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        var req = new SuperAdminController.UpdateUserRequest(
+            FullName: "Koç Kullanıcı",
+            PhoneNumber: "05321119988",
+            IsActive: true,
+            PhoneVerified: true,
+            Roles: new List<string> { "Coach", "SuperAdmin" } // Admin, SuperAdmin yetkisi vermeye çalışıyor!
+        );
+
+        // Act
+        var result = await _controller.UpdateUser(user.Id, req, default);
+
+        // Assert
+        Assert.IsType<ForbidResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task CreateGymOwner_NormalizesPhoneNumberProperly()
+    {
+        // Arrange
+        var req = new SuperAdminController.CreateGymOwnerRequest(
+            FullName: "Yeni Salon Sahibi",
+            PhoneNumber: "0533 111 22 33",
+            DefaultShareRate: 0.35m
+        );
+
+        // Act
+        var result = await _controller.CreateGymOwner(req, default);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var createdUser = await _db.Users.FirstOrDefaultAsync(u => u.PhoneNumber == "+905331112233");
+        Assert.NotNull(createdUser);
+        Assert.Equal("+905331112233", createdUser.PhoneNumber);
+        Assert.Equal("Yeni Salon Sahibi", createdUser.FullName);
+    }
+
     public void Dispose()
     {
         _db.Dispose();

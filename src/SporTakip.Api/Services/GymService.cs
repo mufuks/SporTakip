@@ -276,19 +276,42 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
             m.Gender,
             bmi,
             bmiCategory,
-            m.MedicalConditions
+            m.MedicalConditions,
+            m.UserId
         );
+    }
+
+    public async Task<MemberDto?> GetMemberByUserIdAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var member = await db.Members
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.UserId == userId, cancellationToken);
+
+        if (member == null) return null;
+        return await GetMemberByIdAsync(member.Id, cancellationToken);
     }
 
     public async Task<MemberDto> CreateMemberAsync(CreateMemberDto dto, CancellationToken cancellationToken = default)
     {
+        var normalizedPhone = string.IsNullOrWhiteSpace(dto.Phone) ? null : AuthService.NormalizePhoneNumber(dto.Phone);
+        int? linkedUserId = null;
+        if (!string.IsNullOrWhiteSpace(normalizedPhone))
+        {
+            var existingUser = await db.Users.FirstOrDefaultAsync(u => u.PhoneNumber == normalizedPhone, cancellationToken);
+            if (existingUser != null)
+            {
+                linkedUserId = existingUser.Id;
+            }
+        }
+
         var member = new Member
         {
             FullName = dto.FullName.Trim(),
-            Phone = dto.Phone?.Trim(),
+            Phone = normalizedPhone ?? dto.Phone?.Trim(),
             Email = dto.Email?.Trim(),
             Notes = dto.Notes?.Trim(),
             MedicalConditions = dto.MedicalConditions?.Trim(),
+            UserId = linkedUserId,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -296,7 +319,7 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
         db.Members.Add(member);
         await db.SaveChangesAsync(cancellationToken);
 
-        return new MemberDto(member.Id, member.FullName, member.Phone, member.Email, member.Notes, member.IsActive, member.CreatedAt, null, 0, null, null, null, null, null, null, member.MedicalConditions);
+        return new MemberDto(member.Id, member.FullName, member.Phone, member.Email, member.Notes, member.IsActive, member.CreatedAt, null, 0, null, null, null, null, null, null, member.MedicalConditions, member.UserId);
     }
 
     public async Task<MemberDto?> UpdateMemberAsync(int memberId, UpdateMemberDto dto, CancellationToken cancellationToken = default)
@@ -1089,10 +1112,13 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
                 ? await db.Trainers.FindAsync([subscription.PrimaryTrainerId.Value], cancellationToken)
                 : await db.Trainers.FirstOrDefaultAsync(t => t.Role == "Eğitmen", cancellationToken));
 
+        var pendingScheduledCount = await db.AttendanceRecords
+            .CountAsync(a => a.SubscriptionId == subscription.Id && a.Status == "Scheduled", cancellationToken);
+
         var scheduled = new AttendanceRecord
         {
             SubscriptionId = subscription.Id,
-            LessonNumber = subscription.CompletedLessons + 1,
+            LessonNumber = subscription.CompletedLessons + pendingScheduledCount + 1,
             LessonDate = dto.SessionTime,
             TrainerId = trainer?.Id,
             Status = "Scheduled",

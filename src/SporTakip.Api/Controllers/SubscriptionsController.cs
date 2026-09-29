@@ -10,6 +10,7 @@ namespace SporTakip.Api.Controllers;
 [Authorize]
 public class SubscriptionsController(GymService gymService) : ControllerBase
 {
+    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
     [HttpGet("active")]
     public async Task<ActionResult<List<SubscriptionSummaryDto>>> GetActiveSubscriptions(CancellationToken ct)
     {
