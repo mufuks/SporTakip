@@ -186,10 +186,23 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
         var member = await db.Members.FirstOrDefaultAsync(m => m.Id == memberId, cancellationToken);
         if (member == null) return null;
 
+        var oldWeight = member.WeightKg;
         member.HeightCm = dto.HeightCm;
         member.WeightKg = dto.WeightKg;
         member.Age = dto.Age;
         member.Gender = dto.Gender?.Trim();
+
+        if (dto.WeightKg.HasValue && dto.WeightKg > 0 && dto.WeightKg != oldWeight)
+        {
+            db.BodyMetricLogs.Add(new BodyMetricLog
+            {
+                MemberId = member.Id,
+                RecordedAt = DateTime.UtcNow,
+                WeightKg = dto.WeightKg.Value,
+                Notes = "Profil güncellemesi",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -204,6 +217,121 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
             bmi,
             category
         );
+    }
+
+    public async Task<BodyMetricsProgressDto?> GetMemberBodyMetricsProgressAsync(int memberId, CancellationToken cancellationToken = default)
+    {
+        var member = await db.Members
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.Id == memberId, cancellationToken);
+            
+        if (member == null) return null;
+
+        var logs = await db.BodyMetricLogs
+            .AsNoTracking()
+            .Where(b => b.MemberId == memberId)
+            .OrderBy(b => b.RecordedAt)
+            .Select(b => new BodyMetricLogDto(
+                b.Id,
+                b.MemberId,
+                b.RecordedAt,
+                b.WeightKg,
+                b.BodyFatPercentage,
+                b.MuscleMassKg,
+                b.Notes,
+                b.CreatedAt
+            ))
+            .ToListAsync(cancellationToken);
+
+        var startingWeight = logs.Count > 0 ? logs[0].WeightKg : member.WeightKg;
+        var currentWeight = logs.Count > 0 ? logs[^1].WeightKg : member.WeightKg;
+        var totalChange = (currentWeight.HasValue && startingWeight.HasValue) ? currentWeight.Value - startingWeight.Value : (decimal?)null;
+        var minWeight = logs.Count > 0 ? logs.Min(l => l.WeightKg) : member.WeightKg;
+        var maxWeight = logs.Count > 0 ? logs.Max(l => l.WeightKg) : member.WeightKg;
+        var (bmi, bmiCategory) = CalculateBmi(member.HeightCm, currentWeight);
+
+        return new BodyMetricsProgressDto(
+            member.Id,
+            member.FullName,
+            member.HeightCm,
+            currentWeight,
+            startingWeight,
+            totalChange,
+            minWeight,
+            maxWeight,
+            bmi,
+            bmiCategory,
+            logs
+        );
+    }
+
+    public async Task<BodyMetricLogDto?> AddBodyMetricLogAsync(int memberId, CreateBodyMetricLogDto dto, CancellationToken cancellationToken = default)
+    {
+        var member = await db.Members.FirstOrDefaultAsync(m => m.Id == memberId, cancellationToken);
+        if (member == null) return null;
+
+        var recordedAt = dto.RecordedAt ?? DateTime.UtcNow;
+
+        var log = new BodyMetricLog
+        {
+            MemberId = memberId,
+            RecordedAt = recordedAt,
+            WeightKg = dto.WeightKg,
+            BodyFatPercentage = dto.BodyFatPercentage,
+            MuscleMassKg = dto.MuscleMassKg,
+            Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim(),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        db.BodyMetricLogs.Add(log);
+
+        var latestLogDate = await db.BodyMetricLogs
+            .Where(b => b.MemberId == memberId)
+            .MaxAsync(b => (DateTime?)b.RecordedAt, cancellationToken);
+
+        if (latestLogDate == null || recordedAt >= latestLogDate.Value)
+        {
+            member.WeightKg = dto.WeightKg;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new BodyMetricLogDto(
+            log.Id,
+            log.MemberId,
+            log.RecordedAt,
+            log.WeightKg,
+            log.BodyFatPercentage,
+            log.MuscleMassKg,
+            log.Notes,
+            log.CreatedAt
+        );
+    }
+
+    public async Task<bool> DeleteBodyMetricLogAsync(int memberId, int logId, CancellationToken cancellationToken = default)
+    {
+        var log = await db.BodyMetricLogs.FirstOrDefaultAsync(b => b.MemberId == memberId && b.Id == logId, cancellationToken);
+        if (log == null) return false;
+
+        db.BodyMetricLogs.Remove(log);
+        await db.SaveChangesAsync(cancellationToken);
+
+        var latestRemainingLog = await db.BodyMetricLogs
+            .Where(b => b.MemberId == memberId)
+            .OrderByDescending(b => b.RecordedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var member = await db.Members.FirstOrDefaultAsync(m => m.Id == memberId, cancellationToken);
+        if (member != null)
+        {
+            if (latestRemainingLog != null)
+            {
+                member.WeightKg = latestRemainingLog.WeightKg;
+            }
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        return true;
     }
 
     public async Task<MemberDto?> UpdateMemberNotesAsync(int memberId, string? notes, CancellationToken cancellationToken = default)

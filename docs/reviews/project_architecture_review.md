@@ -1,8 +1,8 @@
 # SporTakip: Kapsamlı Kod Tabanı Denetimi & Mimari İyileştirme Raporu
 
-**Tarih:** 24 Eylül 2026  
-**Durum:** `[Active]`  
-**Kapsam:** Güvenlik (Yetkilendirme & Paket Açıkları), Veritabanı (DbContext & Sorgu Performansı), Kod Tabanı Temizliği ve Kullanıcı Deneyimi.
+**Tarih:** 24 - 29 Eylül 2026  
+**Durum:** `[All Resolved]`  
+**Kapsam:** Güvenlik (Yetkilendirme, RBAC & IDOR), Veritabanı Bütünlüğü & Performans, KVKK & Veri Gizliliği, Kod Hijyeni ve Kullanıcı Deneyimi.
 
 ---
 
@@ -134,4 +134,47 @@
 4. **LOGIC-01: `ScheduleSessionAsync` Çoklu Seans Planlamasında `LessonNumber`:**
    - **Kök Neden:** Bir sporcuya peş peşe 2 seans planlandığında her ikisine de tamamlanan ders sayısına göre aynı numara atanmaktadır.
    - **Öneri:** `subscription.CompletedLessons + aktif bekleyen seans sayısı + 1` olarak hesaplanmalıdır.
+
+---
+
+## 4. Uygulanan Çözümler & Doğrulamalar (29 Eylül 2026 - Phase 41)
+
+1. **Yetki Yükseltme Koruması (SEC-04):**
+   - [SuperAdminController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/SuperAdminController.cs): `UpdateUser` metodunda yetki denetimi güçlendirildi. Çağıran kullanıcının `SuperAdmin` rolünde olup olmadığı kontrol edilerek, `SuperAdmin` olmayan kullanıcıların kendilerine veya başkalarına `SuperAdmin` rolü atamaları engellendi (`Forbid()`).
+
+2. **Finansal & İstatistik Veri İzolasyonu (SEC-05):**
+   - [DashboardController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/DashboardController.cs): Anonim erişime açık olan `GetStats` endpoint'i `[Authorize(Roles = "SuperAdmin, Admin")]` ile sınırlandırılarak hassas ciro, üye sayısı ve doluluk istatistikleri koruma altına alındı.
+
+3. **Üye Modülü RBAC & IDOR İzolasyonu (SEC-06):**
+   - [MembersController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/MembersController.cs): `GetMembers` ve `CreateMember` endpoint'lerine `[Authorize(Roles = "SuperAdmin, Coach, Admin")]` zorunluluğu getirildi. `GetMember` ve `UpdateMetrics` endpoint'lerine IDOR kontrolü eklenerek atletlerin yalnızca kendi profillerine ve ölçümlerine erişebilmesi (`member.UserId == currentUserId`) sağlandı.
+   - Atletlerin kendi profil bilgilerine güvenle ulaşabilmesi için `GET /api/members/me` (`GetMyProfile`) endpoint'i geliştirildi.
+   - [Dtos.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/Dtos.cs) & [GymService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/GymService.cs): `MemberDto` modeline `UserId` alanı dahil edildi.
+
+4. **Aktif Abonelik Listesi Rol Kısıtı (SEC-07):**
+   - [SubscriptionsController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/SubscriptionsController.cs): Tüm aktif salon aboneliklerini listeleyen `GetActiveSubscriptions` metoduna `[Authorize(Roles = "SuperAdmin, Coach, Admin")]` eklendi.
+
+5. **Rezervasyon İptali Sonrası Re-booking Çökmesi (BUG-01):**
+   - [ReservationService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/ReservationService.cs): `(SessionSlotId, MemberId)` üzerindeki benzersiz dizin nedeniyle daha önce iptal edilmiş bir rezervasyonun tekrar kaydedilmek istendiğinde 500 hatası üretmesi engellendi. Mevcut iptal kaydı tespit edilerek re-aktivasyon (`Status = status`, iptal sebebi ve zamanı sıfırlanarak) uygulandı.
+
+6. **IDOR ve athleteUserId / Member.Id Çakışması (BUG-02):**
+   - [ReservationService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/ReservationService.cs): `BookSlotAsync` ve `GetMyReservationsAsync` içindeki tehlikeli `?? await db.Members.FindAsync([athleteUserId])` fallback'i kaldırıldı. `CancelReservationAsync` metodunda `reservation.Member.UserId != requestingUserId` kontrolü yapılarak yetkisiz kullanıcıların başkalarının rezervasyonunu iptal etmesi engellendi.
+
+7. **Salon Sahibi Oluşturulurken Telefon Normalizasyonu (BUG-03):**
+   - [SuperAdminController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/SuperAdminController.cs): `CreateGymOwner` metodunda telefon numaraları `AuthService.NormalizePhoneNumber` ile normalize edilerek veritabanı tutarlılığı sağlandı.
+
+8. **Seans Listesinde Atlet Telefon Numarası Maskelemesi (PRIV-01 & KVKK):**
+   - [SessionsController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/SessionsController.cs): Genel slot listesinde (`GetSlots` ve `GetSlotById`) çağıran kullanıcı personel (`SuperAdmin, Admin, Coach`) değilse katılımcı telefon numaraları `null` olarak maskelendi.
+
+9. **Frontend Güvenliği ve Temizliği (PRIV-02 & CLN-03):**
+   - [athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js) & [api.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/api.js): Atlet profil yükleme akışında `getMembers()` çağrısı kaldırılarak `getMe()` / `getMyProfile()` kullanımına geçildi. `deleteSession` içerisindeki ham `fetch` kaldırılarak `this.delete('/sessions/' + id)` standart yardımcısına bağlandı.
+
+10. **Birebir Seans Planlamasında Ders Numarası Artışı (LOGIC-01):**
+    - [GymService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/GymService.cs): `ScheduleSessionAsync` metodunda ileri tarihli planlanan seanslar sayılarak `subscription.CompletedLessons + pendingScheduledCount + 1` formülüyle ardışık ders numarası ataması sağlandı.
+
+11. **Doğrulama & Test Kapsamı:**
+    - [MembersControllerTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/MembersControllerTests.cs): RBAC yetkilendirmesi, IDOR izolasyonu, profil sorgulama ve seans numaralandırma senaryoları için 5 yeni test eklendi.
+    - [ReservationServiceTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/ReservationServiceTests.cs): İptal sonrası tekrar kayıt (re-booking) ve IDOR iptal reddi için 2 yeni test eklendi.
+    - [SuperAdminControllerTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/SuperAdminControllerTests.cs): Yetki yükseltme engelleme ve telefon normalizasyonu için 2 yeni test eklendi.
+    - **Toplam 95/95 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla tamamlandı.**
+
 

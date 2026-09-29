@@ -584,6 +584,65 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - [SuperAdminControllerTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/SuperAdminControllerTests.cs): Yetki yükseltme engelleme ve telefon normalizasyonu için 2 yeni test eklendi.
   - **Toplam 95/95 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla tamamlandı.**
 
+### Phase 42: Kilo & Vücut Ölçüm Takip Çizelgesi (Progress Timeline & Interactive Weight Tracker)
+- **Kullanıcı Talebi & Kapsam:** Sporcuların yalnızca anlık tek bir boy/kilo değeriyle sınırlı kalmayıp, zaman içindeki tartı, vücut yağ oranı ve kas kütlesi değişimlerini kaydedebilmesi; interaktif SVG gelişim grafiği (Progress Timeline), değişim eğrisi ve ölçüm geçmişi ile motivasyonlarının artırılması.
+- **Backend & Mimari Çözümü:**
+  - **1. Vücut Ölçüm Modeli ([BodyMetricLog.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/BodyMetricLog.cs)):**
+    - `MemberId`, `RecordedAt`, `WeightKg` (decimal(5,2)), `BodyFatPercentage`, `MuscleMassKg`, `Notes` alanlarını içeren entity ve `(MemberId, RecordedAt)` bileşik B-Tree indeksi tanımlandı.
+    - [Member.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/Member.cs): `BodyMetricLogs` koleksiyonu eklendi.
+    - [ApplicationDbContext.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/ApplicationDbContext.cs): `DbSet<BodyMetricLog>` eklendi ve cascade silme kuralı bağlandı.
+    - [DbSeeder.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/DbSeeder.cs): SQLite ve PostgreSQL veritabanlarında `CREATE TABLE IF NOT EXISTS BodyMetricLogs` migrasyonu savunmacı biçimde otomatikleştirildi.
+  - **2. DTO Modelleri ([Dtos.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/Dtos.cs)):**
+    - `BodyMetricLogDto`, `CreateBodyMetricLogDto` ve `BodyMetricsProgressDto` (StartingWeight, CurrentWeight, TotalChange, MinWeight, MaxWeight, Bmi, History) modelleri eklendi.
+  - **3. İş Mantığı ([GymService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/GymService.cs)):**
+    - `GetMemberBodyMetricsProgressAsync`: Sporcunun tüm ölçüm geçmişini kronolojik sırayla çeker, başlangıç/güncel kilo ve toplam değişimi hesaplar.
+    - `AddBodyMetricLogAsync`: Yeni ölçüm kaydeder ve en güncel tartı ise `Member.WeightKg` değerini otomatik senkronize eder.
+    - `UpdateAthleteMetricsAsync`: Profil formundan kilo güncellendiğinde otomatik olarak bir `BodyMetricLog` oluşturarak eğriyi besler.
+    - `DeleteBodyMetricLogAsync`: Hatalı girilen bir kaydı siler; silinen kayıt son ölçümse üyenin kilosu bir önceki geçerli ölçüme geri alınır.
+  - **4. API Endpoint'leri ([MembersController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/MembersController.cs)):**
+    - `GET /api/members/{id}/metrics/progress`: Gelişim özeti ve geçmiş listesi (RBAC & IDOR korumalı).
+    - `POST /api/members/{id}/metrics/logs`: Yeni tartı ekleme (RBAC & IDOR korumalı).
+    - `DELETE /api/members/{id}/metrics/logs/{logId}`: Tartı kaydı silme (RBAC & IDOR korumalı).
+- **Frontend & UI / UX Çözümü:**
+  - **1. İnteraktif SVG Kilo Grafiği ([athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js)):**
+    - Sıfır harici kütüphane bağımlılığıyla pürüzsüz SVG çizgi grafiği, Volt Lime neon degrade dolgu (`linearGradient`), grid çizgileri ve dokunmatik/hover destekli veri noktası rozetleri oluşturuldu.
+    - Başlangıç Kilosu, Güncel Kilo, Toplam Değişim (`▼ -X kg` yeşil / `▲ +X kg` amber rozet) ve Min/Max özet kutucukları sunuldu.
+  - **2. Hızlı Tartı Ekleme Modalı ([athlete-modals.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/modals/athlete-modals.html)):**
+    - `#modal-add-metric`: Kilo, tarih seçici, opsiyonel yağ oranı (%), kas kütlesi ve serbest not girişi.
+  - **3. Geçmiş Ölçümler Listesi & Silme Kontrolü ([athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js)):**
+    - Katlanabilir akordeon (`details/summary`) altında tüm tartı geçmişi, tarih, yağ oranı ve tek tıkla silme (`🗑️`) imkanı.
+  - **4. API İstemcisi ([api.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/api.js)):**
+    - `getMemberMetricProgress`, `addMemberMetricLog`, `deleteMemberMetricLog` metotları merkezi `Api` nesnesine bağlandı.
+- **Doğrulama & Test Kapsamı ([MembersControllerTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/MembersControllerTests.cs)):**
+  - Kendi profiline ölçüm ekleme ve üyenin anlık kilosunun güncellenmesi testi.
+  - Kronolojik gelişim geçmişi ve net kilo değişimi hesaplama testi.
+  - IDOR koruması: Bir sporcunun başka bir sporcunun profiline ölçüm eklemesinin engellenmesi (`Forbid`) testi.
+  - Ölçüm kaydı silindiğinde üyenin kilosunun önceki ölçüme geri dönmesi testi.
+  - **Toplam 99/99 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla tamamlandı.**
+
+---
+
+## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)
+
+Aşağıdaki özellikler, SporTakip ekosistemini bir sonraki seviyeye taşımak üzere paydaş (Atlet, Antrenör, İşletmeci) geri bildirimlerinden derlenmiş potansiyel geliştirme fikirleridir:
+
+1. **Atlet Deneyimi:**
+   - **Kişisel Takvim Senkronizasyonu (.ics):** Rezervasyon onayında Google / Apple Calendar senkronizasyonu ve seansa 1 saat kala cihaz bildirimi.
+   - **Kilo & Vücut Ölçüm Çizelgesi:** [Resolved - Phase 42] Zaman içindeki kilo, yağ oranı değişimi ve interaktif SVG ilerleme grafiği tamamlandı.
+   - **Paket Dondurma Talebi:** Tatile veya iş seyahatine giden sporcular için arayüzden tek tıkla 7/14 gün paket dondurma isteği.
+   - **İdman Sonu Mikro Değerlendirme:** Tamamlanan antrenman sonrası RPE (Zorluk Derecesi 1-10) ve koça yıldız geri bildirimi.
+
+2. **Antrenör & Saha Operasyonu:**
+   - **Günün Antrenman Programını (WOD) Seansa Bağlama:** Günün programı girildiğinde, o günkü seanslara kayıtlı sporcuların panosunda otomatik gösterim.
+   - **Yedek Listeden Hızlı Çağrı:** İptal durumunda yedek listedeki ilk sporcuya otomatik/WhatsApp kontenjan bildirim desteği.
+
+3. **İşletmeci & Finans (Admin):**
+   - **Paket Bitiş & Churn Alarmı:** Son 1-2 dersi kalan veya paketi o hafta dolacak üyeler için otomatik WhatsApp yenileme hatırlatıcısı.
+   - **Salon Doluluk Isı Haritası (Heatmap):** Haftalık doluluk oranları üzerinden boş saatler için özel kampanya analitiği.
+   - **Online Sanal POS (iyzico / PayTR):** Sporcunun PWA üzerinden kredi kartı ile paket veya borç ödemesi.
+   - **Sabit Giderler & Net Kâr Defteri:** Salon kirası, aidat ve ekipman bakım giderleri düşülerek tek tıkla net kâr raporu.
+
+
 
 
 

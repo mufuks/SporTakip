@@ -309,6 +309,18 @@ export const Api = {
     return this.put(`/members/${id}/notes`, { notes });
   },
 
+  getMemberMetricProgress(id) {
+    return this.get(`/members/${id}/metrics/progress`);
+  },
+
+  addMemberMetricLog(id, data) {
+    return this.post(`/members/${id}/metrics/logs`, data);
+  },
+
+  deleteMemberMetricLog(id, logId) {
+    return this.delete(`/members/${id}/metrics/logs/${logId}`);
+  },
+
   getMyEarnings(year = null, month = null) {
     const params = new URLSearchParams();
     if (year) params.append('year', year);

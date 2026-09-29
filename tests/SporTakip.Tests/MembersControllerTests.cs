@@ -279,6 +279,130 @@ public class MembersControllerTests : IDisposable
         Assert.Equal(5, res2.LessonNumber); // 3 tamamlandı + 1 bekleyen + 1 = 5. Ders
     }
 
+    [Fact]
+    public async Task AddMetricLog_WhenOwnProfile_AddsLogAndUpdatesCurrentWeight()
+    {
+        // Arrange
+        var user = new AppUser { PhoneNumber = "+905321113344", FullName = "Kilo Takip Eden Sporcu", Roles = UserRole.Athlete };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        var member = new Member { FullName = user.FullName, UserId = user.Id, HeightCm = 180, WeightKg = 85.0m, IsActive = true };
+        _db.Members.Add(member);
+        await _db.SaveChangesAsync();
+
+        SetUserContext(user.Id, "Athlete");
+
+        // Act
+        var dto = new CreateBodyMetricLogDto(82.5m, 16.2m, 38.0m, DateTime.UtcNow, "Sabah aç karnına");
+        var result = await _controller.AddMetricLog(member.Id, dto, default);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var logDto = Assert.IsType<BodyMetricLogDto>(okResult.Value);
+        Assert.Equal(82.5m, logDto.WeightKg);
+        Assert.Equal(16.2m, logDto.BodyFatPercentage);
+
+        // Member'ın anlık kilosu da güncellenmeli
+        var updatedMember = await _db.Members.FindAsync(member.Id);
+        Assert.Equal(82.5m, updatedMember!.WeightKg);
+    }
+
+    [Fact]
+    public async Task GetMetricsProgress_ReturnsChronologicalHistoryAndCalculatesChange()
+    {
+        // Arrange
+        var user = new AppUser { PhoneNumber = "+905321115566", FullName = "Grafik Sporcusu", Roles = UserRole.Athlete };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        var member = new Member { FullName = user.FullName, UserId = user.Id, HeightCm = 175, WeightKg = 80.0m, IsActive = true };
+        _db.Members.Add(member);
+        await _db.SaveChangesAsync();
+
+        // 3 farklı tarihte ölçüm ekle
+        var now = DateTime.UtcNow;
+        _db.BodyMetricLogs.AddRange(
+            new BodyMetricLog { MemberId = member.Id, RecordedAt = now.AddDays(-10), WeightKg = 85.0m, Notes = "Başlangıç" },
+            new BodyMetricLog { MemberId = member.Id, RecordedAt = now.AddDays(-5), WeightKg = 83.5m, Notes = "1. Hafta" },
+            new BodyMetricLog { MemberId = member.Id, RecordedAt = now, WeightKg = 81.0m, Notes = "Güncel" }
+        );
+        await _db.SaveChangesAsync();
+
+        SetUserContext(user.Id, "Athlete");
+
+        // Act
+        var result = await _controller.GetMetricsProgress(member.Id, default);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var progress = Assert.IsType<BodyMetricsProgressDto>(okResult.Value);
+        Assert.Equal(3, progress.History.Count);
+        Assert.Equal(85.0m, progress.StartingWeightKg);
+        Assert.Equal(81.0m, progress.CurrentWeightKg);
+        Assert.Equal(-4.0m, progress.TotalChangeKg); // 81 - 85 = -4 kg
+        Assert.Equal(81.0m, progress.MinWeightKg);
+        Assert.Equal(85.0m, progress.MaxWeightKg);
+        Assert.NotNull(progress.Bmi);
+    }
+
+    [Fact]
+    public async Task AddMetricLog_WhenOtherAthlete_ReturnsForbid()
+    {
+        // Arrange
+        var userA = new AppUser { PhoneNumber = "+905321117788", FullName = "Sporcu A", Roles = UserRole.Athlete };
+        var userB = new AppUser { PhoneNumber = "+905321119900", FullName = "Sporcu B", Roles = UserRole.Athlete };
+        _db.Users.AddRange(userA, userB);
+        await _db.SaveChangesAsync();
+
+        var memberB = new Member { FullName = userB.FullName, UserId = userB.Id, WeightKg = 75.0m, IsActive = true };
+        _db.Members.Add(memberB);
+        await _db.SaveChangesAsync();
+
+        // User A olarak bağlanıp Member B'ye ölçüm girmeye çalış
+        SetUserContext(userA.Id, "Athlete");
+
+        // Act
+        var dto = new CreateBodyMetricLogDto(70.0m);
+        var result = await _controller.AddMetricLog(memberB.Id, dto, default);
+
+        // Assert
+        Assert.IsType<ForbidResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task DeleteMetricLog_RemovesLogAndRestoresPreviousWeight()
+    {
+        // Arrange
+        var user = new AppUser { PhoneNumber = "+905323334455", FullName = "Silme Testi Sporcusu", Roles = UserRole.Athlete };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        var member = new Member { FullName = user.FullName, UserId = user.Id, WeightKg = 78.0m, IsActive = true };
+        _db.Members.Add(member);
+        await _db.SaveChangesAsync();
+
+        var log1 = new BodyMetricLog { MemberId = member.Id, RecordedAt = DateTime.UtcNow.AddDays(-2), WeightKg = 80.0m };
+        var log2 = new BodyMetricLog { MemberId = member.Id, RecordedAt = DateTime.UtcNow, WeightKg = 78.0m };
+        _db.BodyMetricLogs.AddRange(log1, log2);
+        await _db.SaveChangesAsync();
+
+        SetUserContext(user.Id, "Athlete");
+
+        // Act: En son girilen 78kg ölçümünü sil
+        var result = await _controller.DeleteMetricLog(member.Id, log2.Id, default);
+
+        // Assert
+        Assert.IsType<NoContentResult>(result);
+        var remainingLogs = await _db.BodyMetricLogs.Where(b => b.MemberId == member.Id).ToListAsync();
+        Assert.Single(remainingLogs);
+        Assert.Equal(80.0m, remainingLogs[0].WeightKg);
+
+        // Üyenin mevcut kilosu bir önceki ölçüme dönmeli
+        var updatedMember = await _db.Members.FindAsync(member.Id);
+        Assert.Equal(80.0m, updatedMember!.WeightKg);
+    }
+
     public void Dispose()
     {
         _db.Dispose();

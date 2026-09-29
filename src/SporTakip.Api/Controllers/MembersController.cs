@@ -108,6 +108,80 @@ public class MembersController(GymService gymService) : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Sporcunun kilo, yağ oranı ve gelişim geçmişini (Progress Timeline) döner.
+    /// </summary>
+    [Authorize]
+    [HttpGet("{id:int}/metrics/progress")]
+    public async Task<ActionResult<BodyMetricsProgressDto>> GetMetricsProgress(int id, CancellationToken ct)
+    {
+        var isStaff = User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("Coach");
+        if (!isStaff)
+        {
+            var member = await gymService.GetMemberByIdAsync(id, ct);
+            if (member == null) return NotFound("Sporcu bulunamadı.");
+            if (member.UserId != GetCurrentUserId())
+            {
+                return Forbid();
+            }
+        }
+
+        var progress = await gymService.GetMemberBodyMetricsProgressAsync(id, ct);
+        if (progress == null) return NotFound("Sporcu bulunamadı.");
+        return Ok(progress);
+    }
+
+    /// <summary>
+    /// Sporcuya yeni bir tartı / vücut ölçüm kaydı ekler.
+    /// </summary>
+    [Authorize]
+    [HttpPost("{id:int}/metrics/logs")]
+    public async Task<ActionResult<BodyMetricLogDto>> AddMetricLog(int id, [FromBody] CreateBodyMetricLogDto dto, CancellationToken ct)
+    {
+        if (dto.WeightKg <= 0 || dto.WeightKg > 400)
+        {
+            return BadRequest("Geçerli bir kilo değeri giriniz.");
+        }
+
+        var isStaff = User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("Coach");
+        if (!isStaff)
+        {
+            var member = await gymService.GetMemberByIdAsync(id, ct);
+            if (member == null) return NotFound("Sporcu bulunamadı.");
+            if (member.UserId != GetCurrentUserId())
+            {
+                return Forbid();
+            }
+        }
+
+        var log = await gymService.AddBodyMetricLogAsync(id, dto, ct);
+        if (log == null) return NotFound("Sporcu bulunamadı.");
+        return Ok(log);
+    }
+
+    /// <summary>
+    /// Sporcunun hatalı girilen bir ölçüm kaydını siler.
+    /// </summary>
+    [Authorize]
+    [HttpDelete("{id:int}/metrics/logs/{logId:int}")]
+    public async Task<IActionResult> DeleteMetricLog(int id, int logId, CancellationToken ct)
+    {
+        var isStaff = User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("Coach");
+        if (!isStaff)
+        {
+            var member = await gymService.GetMemberByIdAsync(id, ct);
+            if (member == null) return NotFound("Sporcu bulunamadı.");
+            if (member.UserId != GetCurrentUserId())
+            {
+                return Forbid();
+            }
+        }
+
+        var success = await gymService.DeleteBodyMetricLogAsync(id, logId, ct);
+        if (!success) return NotFound("Ölçüm kaydı bulunamadı.");
+        return NoContent();
+    }
+
     private int GetCurrentUserId()
     {
         var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("uid");

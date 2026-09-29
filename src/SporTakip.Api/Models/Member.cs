@@ -42,4 +42,7 @@ public class Member
     
     // V2: Antrenman logları
     public ICollection<WorkoutLog> WorkoutLogs { get; set; } = [];
+
+    // V2.5: Kilo ve vücut ölçüm geçmişi
+    public ICollection<BodyMetricLog> BodyMetricLogs { get; set; } = [];
 }

@@ -38,6 +38,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<WorkoutLog> WorkoutLogs => Set<WorkoutLog>();
     public DbSet<ExerciseLog> ExerciseLogs => Set<ExerciseLog>();
     public DbSet<SetLog> SetLogs => Set<SetLog>();
+    public DbSet<BodyMetricLog> BodyMetricLogs => Set<BodyMetricLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -363,6 +364,24 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(sl => sl.ExerciseLog)
                 .WithMany(el => el.Sets)
                 .HasForeignKey(sl => sl.ExerciseLogId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ══════════════════════════════════════════════════════════
+        //  BODY METRIC LOGS (PROGRESS TIMELINE)
+        // ══════════════════════════════════════════════════════════
+        modelBuilder.Entity<BodyMetricLog>(entity =>
+        {
+            entity.HasKey(b => b.Id);
+            entity.Property(b => b.WeightKg).HasPrecision(5, 2);
+            entity.Property(b => b.BodyFatPercentage).HasPrecision(4, 2);
+            entity.Property(b => b.MuscleMassKg).HasPrecision(5, 2);
+            entity.Property(b => b.Notes).HasMaxLength(300);
+            entity.HasIndex(b => new { b.MemberId, b.RecordedAt });
+
+            entity.HasOne(b => b.Member)
+                .WithMany(m => m.BodyMetricLogs)
+                .HasForeignKey(b => b.MemberId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

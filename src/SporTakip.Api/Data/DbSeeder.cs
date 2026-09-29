@@ -329,11 +329,46 @@ public static class DbSeeder
             {
                 try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE WorkoutTemplates ADD COLUMN AssignedMemberId INTEGER NULL;"); } catch { }
                 try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN MedicalConditions TEXT NULL;"); } catch { }
+                try
+                {
+                    await db.Database.ExecuteSqlRawAsync(@"
+                        CREATE TABLE IF NOT EXISTS BodyMetricLogs (
+                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            MemberId INTEGER NOT NULL,
+                            RecordedAt TEXT NOT NULL,
+                            WeightKg TEXT NOT NULL,
+                            BodyFatPercentage TEXT NULL,
+                            MuscleMassKg TEXT NULL,
+                            Notes TEXT NULL,
+                            CreatedAt TEXT NOT NULL,
+                            CONSTRAINT FK_BodyMetricLogs_Members_MemberId FOREIGN KEY (MemberId) REFERENCES Members (Id) ON DELETE CASCADE
+                        );
+                        CREATE INDEX IF NOT EXISTS IX_BodyMetricLogs_MemberId_RecordedAt ON BodyMetricLogs (MemberId, RecordedAt);
+                    ");
+                }
+                catch { }
             }
             else
             {
                 try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkoutTemplates\" ADD COLUMN IF NOT EXISTS \"AssignedMemberId\" INTEGER NULL;"); } catch { }
                 try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"Members\" ADD COLUMN IF NOT EXISTS \"MedicalConditions\" VARCHAR(500) NULL;"); } catch { }
+                try
+                {
+                    await db.Database.ExecuteSqlRawAsync(@"
+                        CREATE TABLE IF NOT EXISTS ""BodyMetricLogs"" (
+                            ""Id"" SERIAL PRIMARY KEY,
+                            ""MemberId"" INTEGER NOT NULL REFERENCES ""Members""(""Id"") ON DELETE CASCADE,
+                            ""RecordedAt"" TIMESTAMP WITH TIME ZONE NOT NULL,
+                            ""WeightKg"" NUMERIC NOT NULL,
+                            ""BodyFatPercentage"" NUMERIC NULL,
+                            ""MuscleMassKg"" NUMERIC NULL,
+                            ""Notes"" VARCHAR(300) NULL,
+                            ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS ""IX_BodyMetricLogs_MemberId_RecordedAt"" ON ""BodyMetricLogs"" (""MemberId"", ""RecordedAt"");
+                    ");
+                }
+                catch { }
             }
         }
         catch

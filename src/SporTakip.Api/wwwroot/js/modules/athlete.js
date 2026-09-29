@@ -648,15 +648,21 @@ async function renderAthleteProfile() {
 
   let reservationsHtml = '<p style="font-size:12px; color:var(--text-muted);">Kayıtlı rezervasyon bulunmuyor.</p>';
   let memberDetails = null;
+  let progressData = null;
   try {
-    const [myRes, memberData] = await Promise.all([
+    const [myRes, memberData, metricsProgress] = await Promise.all([
       Api.getMyReservations(true).catch(() => []),
-      user.memberId ? Api.getMember(user.memberId).catch(() => null) : Api.getMyProfile().catch(() => null)
+      user.memberId ? Api.getMember(user.memberId).catch(() => null) : Api.getMyProfile().catch(() => null),
+      user.memberId ? Api.getMemberMetricProgress(user.memberId).catch(() => null) : null
     ]);
     memberDetails = memberData;
+    progressData = metricsProgress;
     if (memberDetails && !user.memberId && memberDetails.id) {
       user.memberId = memberDetails.id;
       Api.setUser(user);
+      if (!progressData) {
+        progressData = await Api.getMemberMetricProgress(memberDetails.id).catch(() => null);
+      }
     }
     if (myRes && myRes.length > 0) {
       reservationsHtml = myRes.map(r => `
@@ -762,6 +768,9 @@ async function renderAthleteProfile() {
       </button>
     </div>
 
+    <!-- 2.5 Kilo & Vücut Gelişim Çizelgesi (Weight & Progress Tracker) -->
+    ${buildProgressChartCardHtml(progressData, user.memberId || (memberDetails && memberDetails.id))}
+
     <!-- 3. Rezervasyonlarım -->
     <div class="v0-card">
       <h4 style="font-size:13px; font-weight:700; color:var(--text-secondary); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.05em;">Rezervasyonlarım</h4>
@@ -848,6 +857,261 @@ window.submitSaveAthleteMetrics = async function(memberId) {
     renderAthleteProfile();
   } catch (err) {
     showToast(`Kayıt Hatası: ${err.message}`, 'error');
+  }
+};
+
+window.buildProgressChartCardHtml = function(progress, memberId) {
+  if (!memberId) return '';
+
+  const logs = progress?.history || [];
+  const currentWeight = progress?.currentWeightKg != null ? Number(progress.currentWeightKg).toFixed(1) : (logs.length > 0 ? Number(logs[logs.length - 1].weightKg).toFixed(1) : null);
+  const startingWeight = progress?.startingWeightKg != null ? Number(progress.startingWeightKg).toFixed(1) : null;
+  const totalChange = progress?.totalChangeKg != null ? Number(progress.totalChangeKg).toFixed(1) : null;
+  const minWeight = progress?.minWeightKg != null ? Number(progress.minWeightKg).toFixed(1) : null;
+  const maxWeight = progress?.maxWeightKg != null ? Number(progress.maxWeightKg).toFixed(1) : null;
+
+  let changePill = '';
+  if (totalChange != null && startingWeight != null) {
+    const num = parseFloat(totalChange);
+    if (num < 0) {
+      changePill = `<span style="font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; background:rgba(16,185,129,0.15); color:#10B981; border:1px solid rgba(16,185,129,0.3);">▼ ${num} kg</span>`;
+    } else if (num > 0) {
+      changePill = `<span style="font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; background:rgba(245,158,11,0.15); color:#F59E0B; border:1px solid rgba(245,158,11,0.3);">▲ +${num} kg</span>`;
+    } else {
+      changePill = `<span style="font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; background:rgba(255,255,255,0.1); color:var(--text-secondary);">0.0 kg</span>`;
+    }
+  }
+
+  let chartContentHtml = '';
+  if (logs.length >= 2) {
+    const w = 460;
+    const h = 150;
+    const padL = 35;
+    const padR = 25;
+    const padT = 20;
+    const padB = 30;
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+
+    const weights = logs.map(l => Number(l.weightKg));
+    const minW = Math.min(...weights) - 0.5;
+    const maxW = Math.max(...weights) + 0.5;
+    const range = (maxW - minW) || 1;
+
+    const points = logs.map((l, i) => {
+      const x = padL + (i / (logs.length - 1)) * plotW;
+      const y = padT + ((maxW - Number(l.weightKg)) / range) * plotH;
+      return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, log: l };
+    });
+
+    const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const areaD = `${pathD} L ${points[points.length - 1].x} ${h - padB} L ${points[0].x} ${h - padB} Z`;
+
+    const firstDate = new Date(logs[0].recordedAt).toLocaleDateString('tr-TR', { day:'numeric', month:'short' });
+    const lastDate = new Date(logs[logs.length - 1].recordedAt).toLocaleDateString('tr-TR', { day:'numeric', month:'short' });
+    const midDate = logs.length > 2 ? new Date(logs[Math.floor(logs.length / 2)].recordedAt).toLocaleDateString('tr-TR', { day:'numeric', month:'short' }) : '';
+
+    const dotsSvg = points.map(p => {
+      const dStr = new Date(p.log.recordedAt).toLocaleDateString('tr-TR', { day:'numeric', month:'short' });
+      const tipText = `${dStr}: ${Number(p.log.weightKg).toFixed(1)} kg${p.log.bodyFatPercentage ? ` · %${p.log.bodyFatPercentage} Yağ` : ''}${p.log.notes ? ` (${p.log.notes})` : ''}`;
+      return `
+        <g class="chart-point" style="cursor:pointer;" onclick="showToast('${tipText}')">
+          <circle cx="${p.x}" cy="${p.y}" r="6" fill="#0E0E12" stroke="#CCFF00" stroke-width="2.5" />
+          <circle cx="${p.x}" cy="${p.y}" r="2.5" fill="#CCFF00" />
+          <title>${tipText}</title>
+        </g>
+      `;
+    }).join('');
+
+    chartContentHtml = `
+      <div style="position:relative; width:100%; overflow:hidden; border-radius:12px; background:rgba(0,0,0,0.25); border:1px solid var(--border-subtle); padding:10px 8px 6px 8px; box-sizing:border-box;">
+        <svg viewBox="0 0 ${w} ${h}" style="width:100%; height:auto; display:block;" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="weight-area-gradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#CCFF00" stop-opacity="0.32" />
+              <stop offset="100%" stop-color="#CCFF00" stop-opacity="0.0" />
+            </linearGradient>
+          </defs>
+          <line x1="${padL}" y1="${padT}" x2="${w - padR}" y2="${padT}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
+          <line x1="${padL}" y1="${padT + plotH / 2}" x2="${w - padR}" y2="${padT + plotH / 2}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
+          <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="rgba(255,255,255,0.12)" />
+
+          <text x="${padL - 6}" y="${padT + 4}" fill="var(--text-muted)" font-size="9" text-anchor="end" font-weight="600">${Math.round(maxW)}k</text>
+          <text x="${padL - 6}" y="${h - padB + 3}" fill="var(--text-muted)" font-size="9" text-anchor="end" font-weight="600">${Math.round(minW)}k</text>
+
+          <path d="${areaD}" fill="url(#weight-area-gradient)" />
+          <path d="${pathD}" fill="none" stroke="#CCFF00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+          ${dotsSvg}
+
+          <text x="${padL}" y="${h - 10}" fill="var(--text-muted)" font-size="10" font-weight="600">${firstDate}</text>
+          ${midDate ? `<text x="${w / 2}" y="${h - 10}" fill="var(--text-muted)" font-size="10" text-anchor="middle" font-weight="600">${midDate}</text>` : ''}
+          <text x="${w - padR}" y="${h - 10}" fill="var(--text-muted)" font-size="10" text-anchor="end" font-weight="600">${lastDate}</text>
+        </svg>
+      </div>
+    `;
+  } else if (logs.length === 1) {
+    const singleLog = logs[0];
+    const sDate = new Date(singleLog.recordedAt).toLocaleDateString('tr-TR', { day:'numeric', month:'long' });
+    chartContentHtml = `
+      <div style="text-align:center; padding:18px 14px; border-radius:12px; background:rgba(0,0,0,0.2); border:1px dashed var(--border-medium);">
+        <span style="font-size:24px;">🎯</span>
+        <div style="font-size:13px; font-weight:800; color:var(--text-primary); margin:6px 0 2px 0;">İlk Ölçüm: ${Number(singleLog.weightKg).toFixed(1)} kg (${sDate})</div>
+        <p style="font-size:11.5px; color:var(--text-secondary); margin:0 0 10px 0;">Zaman içindeki değişim eğrinizi görmek için bir sonraki tartınızı ekleyin.</p>
+        <button type="button" class="btn-primary" onclick="openAddMetricModal(${memberId})" style="padding:6px 14px; font-size:11.5px; font-weight:800; border-radius:999px;">
+          ➕ Yeni Tartı Ekle
+        </button>
+      </div>
+    `;
+  } else {
+    chartContentHtml = `
+      <div style="text-align:center; padding:22px 14px; border-radius:12px; background:rgba(204,255,0,0.03); border:1px dashed rgba(204,255,0,0.25);">
+        <span style="font-size:26px;">⚖️</span>
+        <div style="font-size:13px; font-weight:800; color:var(--text-primary); margin:6px 0 2px 0;">Henüz Tartı Kaydı Yok</div>
+        <p style="font-size:11.5px; color:var(--text-secondary); margin:0 0 12px 0;">Kilonuzu kaydederek zaman içindeki ilerlemenizi takip edin.</p>
+        <button type="button" class="btn-primary" onclick="openAddMetricModal(${memberId})" style="padding:8px 16px; font-size:12px; font-weight:800; border-radius:999px;">
+          ➕ İlk Tartıyı Kaydet
+        </button>
+      </div>
+    `;
+  }
+
+  const historyListHtml = logs.length > 0 ? `
+    <details style="margin-top:12px; background:rgba(0,0,0,0.18); border-radius:12px; border:1px solid var(--border-subtle); padding:10px 14px;">
+      <summary style="font-size:12px; font-weight:800; color:var(--text-secondary); cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center;">
+        <span>📋 Ölçüm Geçmişi (${logs.length} Kayıt)</span>
+        <span style="font-size:11px; color:var(--volt-lime);">Görüntüle / Sil ▾</span>
+      </summary>
+      <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+        ${[...logs].reverse().map(l => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-radius:8px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); font-size:12px;">
+            <div>
+              <div style="font-weight:800; color:var(--text-primary); display:flex; align-items:center; gap:6px;">
+                <span>${Number(l.weightKg).toFixed(1)} kg</span>
+                ${l.bodyFatPercentage ? `<span style="font-size:11px; color:#38BDF8; font-weight:700;">(%${l.bodyFatPercentage} Yağ)</span>` : ''}
+                ${l.muscleMassKg ? `<span style="font-size:11px; color:#10B981; font-weight:700;">(${l.muscleMassKg} kg Kas)</span>` : ''}
+              </div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
+                ${new Date(l.recordedAt).toLocaleDateString('tr-TR', { day:'numeric', month:'short', year:'numeric' })}
+                ${l.notes ? ` · <span style="font-style:italic;">"${escapeHtml(l.notes)}"</span>` : ''}
+              </div>
+            </div>
+            <button type="button" title="Kaydı Sil" onclick="handleDeleteBodyMetric(${memberId}, ${l.id})" style="background:transparent; border:none; color:var(--pulse-rose); font-size:14px; cursor:pointer; padding:4px 6px; border-radius:6px; opacity:0.75;">
+              🗑️
+            </button>
+          </div>
+        `).join('')}
+      </div>
+    </details>
+  ` : '';
+
+  return `
+    <div class="v0-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h4 style="font-size:14px; font-weight:800; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:8px;">
+            <span>📈</span> Kilo & Gelişim Çizelgesi
+          </h4>
+          ${changePill}
+        </div>
+        <button type="button" class="btn-primary" onclick="openAddMetricModal(${memberId})" style="padding:6px 12px; font-size:11.5px; font-weight:800; border-radius:999px;">
+          ➕ Tartı Ekle
+        </button>
+      </div>
+
+      ${logs.length > 0 ? `
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(85px, 1fr)); gap:8px; margin-bottom:12px;">
+          <div style="padding:8px 10px; border-radius:10px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); text-align:center;">
+            <div style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Başlangıç</div>
+            <div style="font-size:13.5px; font-weight:800; color:var(--text-primary); margin-top:2px;">${startingWeight || '--'} <span style="font-size:10px;">kg</span></div>
+          </div>
+          <div style="padding:8px 10px; border-radius:10px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); text-align:center;">
+            <div style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Güncel</div>
+            <div style="font-size:13.5px; font-weight:800; color:var(--volt-lime); margin-top:2px;">${currentWeight || '--'} <span style="font-size:10px;">kg</span></div>
+          </div>
+          <div style="padding:8px 10px; border-radius:10px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); text-align:center;">
+            <div style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Min / Max</div>
+            <div style="font-size:12px; font-weight:800; color:var(--text-secondary); margin-top:3px;">${minWeight || '--'} / ${maxWeight || '--'}</div>
+          </div>
+        </div>
+      ` : ''}
+
+      ${chartContentHtml}
+      ${historyListHtml}
+    </div>
+  `;
+};
+
+window.openAddMetricModal = function(memberId) {
+  const modal = document.getElementById('modal-add-metric');
+  if (!modal) return;
+
+  const dateInput = document.getElementById('input-metric-date');
+  if (dateInput) {
+    dateInput.value = new Date().toISOString().split('T')[0];
+  }
+
+  const weightInput = document.getElementById('input-metric-weight');
+  if (weightInput && !weightInput.value) {
+    const curW = document.getElementById('athlete-input-weight')?.value;
+    if (curW) weightInput.value = curW;
+  }
+
+  modal.dataset.memberId = memberId || '';
+  openModal('modal-add-metric');
+};
+
+window.handleSaveBodyMetric = async function(e) {
+  e.preventDefault();
+  const modal = document.getElementById('modal-add-metric');
+  const user = Api.getUser();
+  const memberId = modal?.dataset?.memberId || user?.memberId;
+
+  if (!memberId) {
+    showToast('Sporcu profili bulunamadı.', 'error');
+    return;
+  }
+
+  const weightVal = parseFloat(document.getElementById('input-metric-weight')?.value || 0);
+  const dateVal = document.getElementById('input-metric-date')?.value;
+  const fatVal = parseFloat(document.getElementById('input-metric-fat')?.value || 0);
+  const muscleVal = parseFloat(document.getElementById('input-metric-muscle')?.value || 0);
+  const notesVal = document.getElementById('input-metric-notes')?.value;
+
+  if (weightVal <= 0 || isNaN(weightVal)) {
+    showToast('Lütfen geçerli bir kilo değeri giriniz.', 'error');
+    return;
+  }
+
+  try {
+    showToast('⚖️ Ölçüm kaydediliyor...');
+    await Api.addMemberMetricLog(memberId, {
+      weightKg: weightVal,
+      recordedAt: dateVal ? new Date(dateVal).toISOString() : new Date().toISOString(),
+      bodyFatPercentage: fatVal > 0 ? fatVal : null,
+      muscleMassKg: muscleVal > 0 ? muscleVal : null,
+      notes: notesVal || null
+    });
+
+    closeModal('modal-add-metric');
+    showToast('✓ Tartı kaydı başarıyla eklendi!');
+    document.getElementById('form-add-metric')?.reset();
+    renderAthleteProfile();
+  } catch (err) {
+    showToast(`Hata: ${err.message}`, 'error');
+  }
+};
+
+window.handleDeleteBodyMetric = async function(memberId, logId) {
+  if (!confirm('Bu ölçüm kaydını silmek istediğinize emin misiniz?')) return;
+
+  try {
+    showToast('Siliniyor...');
+    await Api.deleteMemberMetricLog(memberId, logId);
+    showToast('✓ Ölçüm kaydı silindi.');
+    renderAthleteProfile();
+  } catch (err) {
+    showToast(`Silme Hatası: ${err.message}`, 'error');
   }
 };
 

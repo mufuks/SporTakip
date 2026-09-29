@@ -76,3 +76,58 @@
       </form>
     </div>
   </div>
+
+<div class="modal-backdrop" id="modal-add-metric">
+    <div class="modal-content" style="max-width:420px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:36px; height:36px; border-radius:10px; background:var(--volt-lime-muted); border:1px solid var(--border-subtle); display:grid; place-items:center; font-size:18px;">
+            ⚖️
+          </div>
+          <div>
+            <h3 style="font-size:16px; font-weight:800; margin:0; color:var(--text-primary);">Yeni Tartı & Ölçüm Ekle</h3>
+            <p style="font-size:11.5px; color:var(--text-secondary); margin:2px 0 0 0;">Kilo ve gelişim eğrinizi güncel tutun</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeModal('modal-add-metric')">✕</button>
+      </div>
+
+      <form id="form-add-metric" onsubmit="handleSaveBodyMetric(event)" style="display:flex; flex-direction:column; gap:12px; margin-top:14px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:5px;">Kilo (kg) *</label>
+            <input type="number" step="0.1" min="30" max="300" id="input-metric-weight" class="v0-phone-input" placeholder="Örn: 78.5" required style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
+          </div>
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:5px;">Tarih *</label>
+            <input type="date" id="input-metric-date" class="v0-phone-input" required style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:5px;">Yağ Oranı (% - Opsiyonel)</label>
+            <input type="number" step="0.1" min="3" max="70" id="input-metric-fat" class="v0-phone-input" placeholder="Örn: 15.2" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
+          </div>
+          <div>
+            <label style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:5px;">Kas Kütlesi (kg - Opsiyonel)</label>
+            <input type="number" step="0.1" min="10" max="150" id="input-metric-muscle" class="v0-phone-input" placeholder="Örn: 38.5" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:5px;">Not (Opsiyonel)</label>
+          <input type="text" maxlength="200" id="input-metric-notes" class="v0-phone-input" placeholder="Örn: Sabah aç karnına, idman öncesi" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);">
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:8px;">
+          <button type="button" class="btn-secondary" style="flex:1; padding:11px;" onclick="closeModal('modal-add-metric')">
+            Vazgeç
+          </button>
+          <button type="submit" class="v0-btn-submit" style="flex:2; padding:11px; font-size:13px; font-weight:800;">
+            💾 Tartıyı Kaydet
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>

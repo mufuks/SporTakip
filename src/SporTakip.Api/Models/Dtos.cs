@@ -38,6 +38,39 @@ public record AthleteMetricsDto(
     string? BmiCategory
 );
 
+public record BodyMetricLogDto(
+    int Id,
+    int MemberId,
+    DateTime RecordedAt,
+    decimal WeightKg,
+    decimal? BodyFatPercentage,
+    decimal? MuscleMassKg,
+    string? Notes,
+    DateTime CreatedAt
+);
+
+public record CreateBodyMetricLogDto(
+    decimal WeightKg,
+    decimal? BodyFatPercentage = null,
+    decimal? MuscleMassKg = null,
+    DateTime? RecordedAt = null,
+    string? Notes = null
+);
+
+public record BodyMetricsProgressDto(
+    int MemberId,
+    string FullName,
+    int? HeightCm,
+    decimal? CurrentWeightKg,
+    decimal? StartingWeightKg,
+    decimal? TotalChangeKg,
+    decimal? MinWeightKg,
+    decimal? MaxWeightKg,
+    decimal? Bmi,
+    string? BmiCategory,
+    List<BodyMetricLogDto> History
+);
+
 public record CreateMemberDto(
     string FullName,
     string? Phone,
