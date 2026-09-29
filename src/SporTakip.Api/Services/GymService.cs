@@ -98,7 +98,7 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
             {
                 Member = m,
                 ActiveSub = m.Subscriptions
-                    .Where(s => s.Status == "Active")
+                    .Where(s => s.Status == "Active" || s.Status == "Frozen")
                     .Select(s => new
                     {
                         Subscription = s,
@@ -348,7 +348,7 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
         member.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
         await db.SaveChangesAsync(cancellationToken);
 
-        var activeSub = member.Subscriptions.FirstOrDefault(s => s.Status == "Active");
+        var activeSub = member.Subscriptions.FirstOrDefault(s => s.Status == "Active" || s.Status == "Frozen");
         var (bmi, bmiCategory) = CalculateBmi(member.HeightCm, member.WeightKg);
         return new MemberDto(
             member.Id,
@@ -380,13 +380,15 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
             .Include(m => m.Subscriptions)
                 .ThenInclude(s => s.Payments)
             .Include(m => m.Subscriptions)
+                .ThenInclude(s => s.FreezeRecords)
+            .Include(m => m.Subscriptions)
                 .ThenInclude(s => s.Attendances)
                     .ThenInclude(a => a.Trainer)
             .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
         if (m == null) return null;
 
-        var activeSub = m.Subscriptions.FirstOrDefault(s => s.Status == "Active");
+        var activeSub = m.Subscriptions.FirstOrDefault(s => s.Status == "Active" || s.Status == "Frozen");
         var (bmi, bmiCategory) = CalculateBmi(m.HeightCm, m.WeightKg);
         return new MemberDto(
             m.Id,
@@ -457,6 +459,8 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
                 .ThenInclude(s => s.Package)
             .Include(m => m.Subscriptions)
                 .ThenInclude(s => s.Payments)
+            .Include(m => m.Subscriptions)
+                .ThenInclude(s => s.FreezeRecords)
             .FirstOrDefaultAsync(m => m.Id == memberId, cancellationToken);
 
         if (member == null) return null;
@@ -494,7 +498,7 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
 
         await db.SaveChangesAsync(cancellationToken);
 
-        var activeSub = member.Subscriptions.FirstOrDefault(s => s.Status == "Active");
+        var activeSub = member.Subscriptions.FirstOrDefault(s => s.Status == "Active" || s.Status == "Frozen");
         var (bmi, bmiCategory) = CalculateBmi(member.HeightCm, member.WeightKg);
         return new MemberDto(
             member.Id,
@@ -635,7 +639,8 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
             .Include(s => s.Member)
             .Include(s => s.Package)
             .Include(s => s.Payments)
-            .Where(s => s.Status == "Active")
+            .Include(s => s.FreezeRecords)
+            .Where(s => s.Status == "Active" || s.Status == "Frozen")
             .OrderBy(s => s.TotalLessons - s.CompletedLessons)
             .ToListAsync(cancellationToken);
 
@@ -704,6 +709,148 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
         await db.Entry(subscription).Collection(s => s.Payments).LoadAsync(cancellationToken);
 
         return MapToSubscriptionSummary(subscription);
+    }
+
+    public async Task<SubscriptionSummaryDto> FreezeSubscriptionAsync(
+        int subscriptionId,
+        FreezeSubscriptionRequest request,
+        int requestingUserId,
+        bool isStaff,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.Days < 1 || request.Days > 90)
+        {
+            throw new ArgumentException("Dondurma süresi 1 ile 90 gün arasında olmalıdır.");
+        }
+
+        var subscription = await db.Subscriptions
+            .Include(s => s.Member)
+            .Include(s => s.Package)
+            .Include(s => s.Payments)
+            .Include(s => s.FreezeRecords)
+            .FirstOrDefaultAsync(s => s.Id == subscriptionId, cancellationToken)
+            ?? throw new KeyNotFoundException("Abonelik bulunamadı.");
+
+        if (!isStaff && subscription.Member.UserId != requestingUserId)
+        {
+            throw new UnauthorizedAccessException("Yalnızca kendi aboneliğinizi dondurabilirsiniz.");
+        }
+
+        if (subscription.Status == "Frozen")
+        {
+            throw new InvalidOperationException("Bu abonelik zaten dondurulmuş durumdadır.");
+        }
+
+        if (subscription.Status != "Active")
+        {
+            throw new InvalidOperationException("Yalnızca aktif durumdaki abonelikler dondurulabilir.");
+        }
+
+        var startDate = (request.StartDate ?? DateTime.UtcNow).Date;
+        var endDate = startDate.AddDays(request.Days);
+
+        var freezeRecord = new FreezeRecord
+        {
+            SubscriptionId = subscription.Id,
+            FreezeStart = startDate,
+            FreezeEnd = endDate,
+            Reason = string.IsNullOrWhiteSpace(request.Reason) ? "Kişisel / Tatil" : request.Reason.Trim(),
+            Notes = request.Notes?.Trim(),
+            DaysAdded = request.Days,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        subscription.FreezeRecords.Add(freezeRecord);
+        subscription.Status = "Frozen";
+
+        if (subscription.EndDate.HasValue)
+        {
+            subscription.EndDate = subscription.EndDate.Value.AddDays(request.Days);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return MapToSubscriptionSummary(subscription);
+    }
+
+    public async Task<SubscriptionSummaryDto> UnfreezeSubscriptionAsync(
+        int subscriptionId,
+        int requestingUserId,
+        bool isStaff,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = await db.Subscriptions
+            .Include(s => s.Member)
+            .Include(s => s.Package)
+            .Include(s => s.Payments)
+            .Include(s => s.FreezeRecords)
+            .FirstOrDefaultAsync(s => s.Id == subscriptionId, cancellationToken)
+            ?? throw new KeyNotFoundException("Abonelik bulunamadı.");
+
+        if (!isStaff && subscription.Member.UserId != requestingUserId)
+        {
+            throw new UnauthorizedAccessException("Yalnızca kendi aboneliğinizin dondurmasını kaldırabilirsiniz.");
+        }
+
+        if (subscription.Status != "Frozen")
+        {
+            throw new InvalidOperationException("Bu abonelik dondurulmuş durumda değil.");
+        }
+
+        var activeFreeze = subscription.FreezeRecords
+            .OrderByDescending(f => f.CreatedAt)
+            .FirstOrDefault(f => f.FreezeEnd == null || f.FreezeEnd >= DateTime.UtcNow.Date);
+
+        var today = DateTime.UtcNow.Date;
+        if (activeFreeze != null)
+        {
+            var actualFrozenDays = Math.Max(1, (today - activeFreeze.FreezeStart.Date).Days);
+            if (actualFrozenDays < activeFreeze.DaysAdded)
+            {
+                var diffDays = activeFreeze.DaysAdded - actualFrozenDays;
+                if (subscription.EndDate.HasValue)
+                {
+                    subscription.EndDate = subscription.EndDate.Value.AddDays(-diffDays);
+                }
+                activeFreeze.DaysAdded = actualFrozenDays;
+            }
+            activeFreeze.FreezeEnd = today;
+        }
+
+        subscription.Status = "Active";
+        await db.SaveChangesAsync(cancellationToken);
+        return MapToSubscriptionSummary(subscription);
+    }
+
+    public async Task<List<FreezeRecordDto>> GetSubscriptionFreezeRecordsAsync(
+        int subscriptionId,
+        int requestingUserId,
+        bool isStaff,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = await db.Subscriptions
+            .Include(s => s.Member)
+            .Include(s => s.FreezeRecords)
+            .FirstOrDefaultAsync(s => s.Id == subscriptionId, cancellationToken)
+            ?? throw new KeyNotFoundException("Abonelik bulunamadı.");
+
+        if (!isStaff && subscription.Member.UserId != requestingUserId)
+        {
+            throw new UnauthorizedAccessException("Yalnızca kendi aboneliğinizin dondurma geçmişini görüntüleyebilirsiniz.");
+        }
+
+        return subscription.FreezeRecords
+            .OrderByDescending(f => f.CreatedAt)
+            .Select(f => new FreezeRecordDto(
+                f.Id,
+                f.SubscriptionId,
+                f.FreezeStart,
+                f.FreezeEnd,
+                f.Reason,
+                f.Notes,
+                f.DaysAdded,
+                f.CreatedAt
+            ))
+            .ToList();
     }
 
     public async Task<AttendanceDto> MarkAttendanceAsync(MarkAttendanceDto dto, CancellationToken cancellationToken = default)
@@ -1431,6 +1578,28 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
 
     public static SubscriptionSummaryDto MapToSubscriptionSummary(Subscription s)
     {
+        FreezeRecordDto? freezeDto = null;
+        if (s.FreezeRecords != null && s.FreezeRecords.Count > 0)
+        {
+            var active = s.FreezeRecords
+                .OrderByDescending(f => f.CreatedAt)
+                .FirstOrDefault();
+
+            if (active != null)
+            {
+                freezeDto = new FreezeRecordDto(
+                    active.Id,
+                    active.SubscriptionId,
+                    active.FreezeStart,
+                    active.FreezeEnd,
+                    active.Reason,
+                    active.Notes,
+                    active.DaysAdded,
+                    active.CreatedAt
+                );
+            }
+        }
+
         return new SubscriptionSummaryDto(
             s.Id,
             s.MemberId,
@@ -1450,7 +1619,8 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
             s.RemainingBalance,
             s.IsFullyPaid,
             s.SalonShareAmount,
-            s.TrainerShareAmount
+            s.TrainerShareAmount,
+            freezeDto
         );
     }
 

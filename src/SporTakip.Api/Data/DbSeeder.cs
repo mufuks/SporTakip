@@ -345,6 +345,19 @@ public static class DbSeeder
                             CONSTRAINT FK_BodyMetricLogs_Members_MemberId FOREIGN KEY (MemberId) REFERENCES Members (Id) ON DELETE CASCADE
                         );
                         CREATE INDEX IF NOT EXISTS IX_BodyMetricLogs_MemberId_RecordedAt ON BodyMetricLogs (MemberId, RecordedAt);
+                        
+                        CREATE TABLE IF NOT EXISTS FreezeRecords (
+                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            SubscriptionId INTEGER NOT NULL,
+                            FreezeStart TEXT NOT NULL,
+                            FreezeEnd TEXT NULL,
+                            Reason TEXT NOT NULL,
+                            Notes TEXT NULL,
+                            DaysAdded INTEGER NOT NULL DEFAULT 0,
+                            CreatedAt TEXT NOT NULL,
+                            CONSTRAINT FK_FreezeRecords_Subscriptions_SubscriptionId FOREIGN KEY (SubscriptionId) REFERENCES Subscriptions (Id) ON DELETE CASCADE
+                        );
+                        CREATE INDEX IF NOT EXISTS IX_FreezeRecords_SubscriptionId ON FreezeRecords (SubscriptionId);
                     ");
                 }
                 catch { }
@@ -368,6 +381,18 @@ public static class DbSeeder
                             ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL
                         );
                         CREATE INDEX IF NOT EXISTS ""IX_BodyMetricLogs_MemberId_RecordedAt"" ON ""BodyMetricLogs"" (""MemberId"", ""RecordedAt"");
+
+                        CREATE TABLE IF NOT EXISTS ""FreezeRecords"" (
+                            ""Id"" SERIAL PRIMARY KEY,
+                            ""SubscriptionId"" INTEGER NOT NULL REFERENCES ""Subscriptions""(""Id"") ON DELETE CASCADE,
+                            ""FreezeStart"" TIMESTAMP WITH TIME ZONE NOT NULL,
+                            ""FreezeEnd"" TIMESTAMP WITH TIME ZONE NULL,
+                            ""Reason"" VARCHAR(100) NOT NULL,
+                            ""Notes"" TEXT NULL,
+                            ""DaysAdded"" INTEGER NOT NULL DEFAULT 0,
+                            ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS ""IX_FreezeRecords_SubscriptionId"" ON ""FreezeRecords"" (""SubscriptionId"");
                     ");
                 }
                 catch { }

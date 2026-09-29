@@ -233,6 +233,18 @@ export const Api = {
     return this.get('/subscriptions/active');
   },
 
+  freezeSubscription(id, data) {
+    return this.post(`/subscriptions/${id}/freeze`, data);
+  },
+
+  unfreezeSubscription(id) {
+    return this.post(`/subscriptions/${id}/unfreeze`, {});
+  },
+
+  getSubscriptionFreezes(id) {
+    return this.get(`/subscriptions/${id}/freezes`);
+  },
+
   getPackages(all = false) {
     const q = all ? '?all=true' : '';
     return this.get(`/packages${q}`);

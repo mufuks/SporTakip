@@ -575,9 +575,14 @@ function renderMembersTable(members, container) {
 
   container.innerHTML = members.map(m => {
     const sub = m.activeSubscription;
-    const subBadge = sub 
-      ? `<span class="lesson-badge badge-green">${escapeHtml(sub.packageName)} (${sub.remainingLessons} Ders Kaldı)</span>`
-      : `<span style="color:var(--text-muted); font-size:12px;">Aktif Paket Yok</span>`;
+    let subBadge = `<span style="color:var(--text-muted); font-size:12px;">Aktif Paket Yok</span>`;
+    if (sub) {
+      if (sub.status === 'Frozen') {
+        subBadge = `<span class="lesson-badge badge-cyan" style="background:rgba(56,189,248,0.15); color:#38BDF8; border:1px solid rgba(56,189,248,0.3);">❄️ Donduruldu (${escapeHtml(sub.packageName)})</span>`;
+      } else {
+        subBadge = `<span class="lesson-badge badge-green">${escapeHtml(sub.packageName)} (${sub.remainingLessons} Ders Kaldı)</span>`;
+      }
+    }
 
     return `
       <tr>
@@ -590,7 +595,7 @@ function renderMembersTable(members, container) {
         <td>${subBadge}</td>
         <td><strong style="color:var(--cyber-cyan);">${m.totalSubscriptionsCount}</strong> Dönem</td>
         <td>
-          <div style="display:flex; gap:6px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <button class="btn-primary" style="padding:7px 14px; font-size:12px;" onclick="openNewSubModalForMember(${m.id}, '${escapeHtml(m.fullName)}')">
               + Paket Sat
             </button>
@@ -600,6 +605,15 @@ function renderMembersTable(members, container) {
             <button class="btn-secondary" style="padding:7px 12px; font-size:12px;" onclick="openEditMemberModal(${m.id})">
               ✏️ Düzenle
             </button>
+            ${sub && sub.status === 'Frozen' ? `
+              <button class="btn-secondary" style="padding:7px 12px; font-size:12px; color:#38BDF8; border-color:rgba(56,189,248,0.4);" onclick="handleStaffUnfreezeSub(${sub.id}, '${escapeJsString(m.fullName)}')">
+                ☀️ Çöz
+              </button>
+            ` : (sub && sub.status === 'Active' ? `
+              <button class="btn-secondary" style="padding:7px 12px; font-size:12px; color:#38BDF8; border-color:rgba(56,189,248,0.3);" onclick="openFreezeModal(${sub.id}, '${escapeJsString(m.fullName)}', '${escapeJsString(sub.packageName)}')">
+                ❄️ Dondur
+              </button>
+            ` : '')}
             ${sub && sub.remainingBalance > 0 ? `
               <button class="btn-secondary" style="padding:7px 12px; font-size:12px; color:var(--flame-orange);" onclick="openPaymentModal(${sub.id}, '${escapeHtml(m.fullName)}', ${sub.remainingBalance})">
                 Tahsil Et
@@ -1697,6 +1711,31 @@ window.handleDeleteSessionClick = async function() {
   }
 };
 
+
+window.openFreezeModal = function(subId, memberName, packageName) {
+  const idInput = document.getElementById('freeze-sub-id');
+  if (idInput) idInput.value = subId;
+  const labelEl = document.getElementById('freeze-sub-label');
+  if (labelEl) labelEl.innerText = `${memberName} — ${packageName}`;
+  if (typeof selectFreezeDays === 'function') selectFreezeDays(7);
+  openModal('modal-freeze-subscription');
+};
+
+window.handleStaffUnfreezeSub = async function(subId, memberName) {
+  if (!confirm(`${memberName} isimli üyenin paket dondurmasını kaldırmak istiyor musunuz?`)) {
+    return;
+  }
+  try {
+    showToast('☀️ Dondurma kaldırılıyor...');
+    await Api.unfreezeSubscription(subId);
+    showToast(`✓ ${memberName} paket dondurması kaldırıldı ve aktifleştirildi!`, 'success');
+    if (typeof loadMembersView === 'function') loadMembersView();
+    if (typeof loadAttendanceData === 'function') loadAttendanceData();
+    if (typeof loadDashboardView === 'function') loadDashboardView();
+  } catch (err) {
+    showToast(`Hata: ${err.message}`, 'error');
+  }
+};
 
 // Global window assignments for staff functions
 window.loadAttendanceView = loadAttendanceView;

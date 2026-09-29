@@ -120,6 +120,24 @@ public record UpdatePackageDto(
 );
 
 
+public record FreezeSubscriptionRequest(
+    int Days = 7,
+    string? Reason = "Tatil / Seyahat",
+    string? Notes = null,
+    DateTime? StartDate = null
+);
+
+public record FreezeRecordDto(
+    int Id,
+    int SubscriptionId,
+    DateTime FreezeStart,
+    DateTime? FreezeEnd,
+    string Reason,
+    string? Notes,
+    int DaysAdded,
+    DateTime CreatedAt
+);
+
 public record SubscriptionSummaryDto(
     int Id,
     int MemberId,
@@ -139,7 +157,8 @@ public record SubscriptionSummaryDto(
     decimal RemainingBalance,
     bool IsFullyPaid,
     decimal SalonShareAmount,
-    decimal TrainerShareAmount
+    decimal TrainerShareAmount,
+    FreezeRecordDto? ActiveFreeze = null
 );
 
 public record CreateSubscriptionDto(

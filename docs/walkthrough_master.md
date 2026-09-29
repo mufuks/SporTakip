@@ -673,6 +673,44 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - `UpdateSlot` ile seansa WOD şablonu bağlanması ve DTO'da güncellenmesi testi.
   - **Toplam 104/104 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla tamamlandı.**
 
+### Phase 45: Paket Dondurma & Çözme Yönetimi (Subscription Freeze & Unfreeze Workflow)
+- **Kullanıcı Talebi & Kapsam:** Sporcuların tatile, iş seyahatine gitmesi veya sakatlanması durumunda paketlerini arayüzden 1-90 gün süreyle (7, 14, 21, 30 gün hızlı seçimli) dondurabilmesi; dondurulan süre kadar paket bitiş tarihinin (`EndDate`) otomatik ötelenmesi, adil erken çözme (fair-use early unfreeze) ile fiili gün bazlı hak iadesi, dondurulmuş üyenin seans rezervasyonu yapmasının engellenmesi ve koç/yönetici panellerinde tam dondurma/çözme kontrolleri.
+- **Backend & Veritabanı Mimarisi:**
+  - **1. Veritabanı ve Tohumlama ([DbSeeder.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/DbSeeder.cs)):**
+    - SQLite ve PostgreSQL veritabanlarında `CREATE TABLE IF NOT EXISTS FreezeRecords` savunmacı şeması uygulandı.
+    - [FreezeRecord.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/FreezeRecord.cs) ve [Subscription.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/Subscription.cs) koleksiyon ilişkisi korundu.
+  - **2. DTO Modelleri ([Dtos.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/Dtos.cs)):**
+    - `FreezeSubscriptionRequest` (Days, Reason, Notes, StartDate), `FreezeRecordDto` (Id, SubscriptionId, FreezeStart, FreezeEnd, Reason, Notes, DaysAdded, CreatedAt) ve `SubscriptionSummaryDto` (`FreezeRecordDto? ActiveFreeze`) modelleri genişletildi.
+  - **3. İş Mantığı ([GymService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/GymService.cs)):**
+    - `FreezeSubscriptionAsync`: 1-90 gün aralığı doğrulaması, IDOR koruması (yalnızca kendi aboneliğini veya personel yetkisini denetleme), `FreezeRecord` kaydı oluşturma, `EndDate`'e gün ekleme ve `Status = "Frozen"` ataması.
+    - `UnfreezeSubscriptionAsync`: Adil erken çözme formülü (`actualFrozenDays = (today - FreezeStart).Days`), plandan erken dönüldüğünde artan günlerin `EndDate`'den düşürülmesi ve `Status = "Active"` yapılması.
+    - `GetSubscriptionFreezeRecordsAsync`: Bir paketin geçmiş dondurma hareketlerinin kronolojik listesi (IDOR korumalı).
+    - `GetActiveSubscriptionsAsync`, `GetMemberByIdAsync`, `GetMembersAsync` sorguları `s.Status == "Active" || s.Status == "Frozen"` ve `.Include(s => s.FreezeRecords)` ile güncellendi.
+  - **4. Seans Rezervasyon Engeli ([ReservationService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/ReservationService.cs)):**
+    - `BookSlotAsync`: Sporcunun paketi dondurulmuş durumdaysa kullanıcı dostu açıklayıcı mesajla ("*Aboneliğiniz dondurulmuştur. Rezervasyon yapabilmek için lütfen önce dondurmayı kaldırın veya stüdyo ile iletişime geçin.*") işlem reddedilir.
+  - **5. API Endpoint'leri ([SubscriptionsController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/SubscriptionsController.cs)):**
+    - `POST /api/subscriptions/{id:int}/freeze`: Abonelik dondurma.
+    - `POST /api/subscriptions/{id:int}/unfreeze`: Dondurmayı kaldırma/çözme.
+    - `GET /api/subscriptions/{id:int}/freezes`: Dondurma geçmişini listeleme.
+- **Frontend & Kullanıcı Deneyimi:**
+  - **1. Paket Dondurma Modalı ([athlete-modals.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/modals/athlete-modals.html)):**
+    - `#modal-freeze-subscription`: 7, 14, 21, 30 gün hızlı seçim çipleri, özel gün girişi (1-90), mazeret seçici (Tatil, Sağlık, İş, Kişisel), serbest not ve bilgilendirme kutusu.
+  - **2. Sporcu Aktif Paket Kartı Durumu ([home.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/views/athlete/home.html), [index.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/index.html) & [athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js)):**
+    - Dondurulmuş pakette `❄️ Donduruldu` buz mavisi rozeti ve dondurma tarih aralığını belirten `#pkg-freeze-banner` paneli.
+    - Tek tıkla **"☀️ Çöz"** butonu ile dondurmayı kaldırma; aktif pakette ise **"❄️ Paketi Dondur"** butonu.
+  - **3. Eğitmen & Yönetim Paneli ([staff.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/staff.js)):**
+    - Üyeler tablosunda dondurulmuş paketler için `❄️ Donduruldu` rozeti ve doğrudan koçun dondurma/çözme işlemi yapabileceği aksiyon butonları.
+  - **4. API İstemcisi ([api.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/api.js)):**
+    - `freezeSubscription`, `unfreezeSubscription`, `getSubscriptionFreezes` metotları bağlandı.
+- **Doğrulama & Test Kapsamı ([SubscriptionFreezeTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/SubscriptionFreezeTests.cs)):**
+    - Aktif paketi dondurma, `EndDate` ötelenmesi ve `FreezeRecord` doğrulaması.
+    - Zaten dondurulmuş paketin mükerrer dondurulmasının engellenmesi.
+    - IDOR yetkilendirme testi: Başka sporcunun paketini dondurma teşebbüsünün `UnauthorizedAccessException` üretmesi.
+    - Erken çözmede fiili dondurulan gün sayısına göre `EndDate`'in adil olarak geri hesaplanması testi.
+    - Dondurulmuş abonelikle seans rezervasyonunun engellenmesi testi.
+    - Controller seviyesinde uçtan uca freeze, freezes history ve unfreeze akış testi.
+    - **Toplam 110/110 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla tamamlandı.**
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)
@@ -682,7 +720,7 @@ Aşağıdaki özellikler, SporTakip ekosistemini bir sonraki seviyeye taşımak 
 1. **Atlet Deneyimi:**
    - **Kişisel Takvim Senkronizasyonu (.ics):** [Resolved - Phase 43] Rezervasyon onayında Google / Apple Calendar (.ics) senkronizasyonu, RFC 5545 standart alarmı (-PT60M) ve doğrudan seans/profil butonları tamamlandı.
    - **Kilo & Vücut Ölçüm Çizelgesi:** [Resolved - Phase 42] Zaman içindeki kilo, yağ oranı değişimi ve interaktif SVG ilerleme grafiği tamamlandı.
-   - **Paket Dondurma Talebi:** Tatile veya iş seyahatine giden sporcular için arayüzden tek tıkla 7/14 gün paket dondurma isteği.
+   - **Paket Dondurma Talebi & Yönetimi:** [Resolved - Phase 45] Sporcu ve koçlar için 1-90 gün dondurma, otomatik EndDate uzatma, adil erken çözme ve rezervasyon engeli tamamlandı.
    - **İdman Sonu Mikro Değerlendirme:** Tamamlanan antrenman sonrası RPE (Zorluk Derecesi 1-10) ve koça yıldız geri bildirimi.
 
 2. **Antrenör & Saha Operasyonu:**

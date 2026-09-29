@@ -9,7 +9,10 @@ import { renderStudioContactCardHtml, openOtpDrawer } from './auth.js';
 
 let currentCalendarSelectedDate = new Date().toISOString().split('T')[0];
 
+let currentAthleteSub = null;
+
 function renderAthleteActivePackage(activeSub) {
+  currentAthleteSub = activeSub;
   const remainingEl = document.getElementById('pkg-metric-remaining');
   const daysEl = document.getElementById('pkg-metric-days');
   const balanceEl = document.getElementById('pkg-metric-balance');
@@ -17,31 +20,74 @@ function renderAthleteActivePackage(activeSub) {
   const pkgStatusEl = document.getElementById('pkg-card-status');
   const pkgBar = document.getElementById('pkg-segmented-bar');
   const pkgCard = document.getElementById('athlete-package-card');
+  const freezeBanner = document.getElementById('pkg-freeze-banner');
+  const freezeBannerText = document.getElementById('pkg-freeze-banner-text');
+  const pkgActionButtons = document.getElementById('pkg-action-buttons');
 
   if (activeSub) {
     if (pkgCard) pkgCard.classList.remove('empty-state');
     if (pkgTitleEl) pkgTitleEl.innerText = activeSub.packageName || 'Aktif Paket';
+    
+    const isFrozen = activeSub.status === 'Frozen';
     if (pkgStatusEl) {
-      pkgStatusEl.innerText = activeSub.status === 'Active' ? 'Aktif' : 'Pasif';
-      pkgStatusEl.className = activeSub.status === 'Active' ? 'v0-status-pill-active' : 'v0-status-pill-waitlist';
+      if (isFrozen) {
+        pkgStatusEl.innerText = '❄️ Donduruldu';
+        pkgStatusEl.className = 'v0-status-pill-waitlist';
+        pkgStatusEl.style.background = 'rgba(56,189,248,0.18)';
+        pkgStatusEl.style.color = '#38bdf8';
+        pkgStatusEl.style.border = '1px solid rgba(56,189,248,0.4)';
+      } else {
+        pkgStatusEl.innerText = activeSub.status === 'Active' ? 'Aktif' : 'Pasif';
+        pkgStatusEl.className = activeSub.status === 'Active' ? 'v0-status-pill-active' : 'v0-status-pill-waitlist';
+        pkgStatusEl.style.background = '';
+        pkgStatusEl.style.color = '';
+        pkgStatusEl.style.border = '';
+      }
     }
+
+    if (isFrozen) {
+      if (freezeBanner) {
+        freezeBanner.style.display = 'block';
+        const startStr = activeSub.activeFreeze?.freezeStart ? new Date(activeSub.activeFreeze.freezeStart).toLocaleDateString('tr-TR') : 'Bugün';
+        const endStr = activeSub.activeFreeze?.freezeEnd ? new Date(activeSub.activeFreeze.freezeEnd).toLocaleDateString('tr-TR') : '';
+        const reasonStr = activeSub.activeFreeze?.reason ? ` (${activeSub.activeFreeze.reason})` : '';
+        if (freezeBannerText) {
+          freezeBannerText.innerText = endStr 
+            ? `${startStr} - ${endStr} arasında donduruldu${reasonStr}.`
+            : `${startStr} tarihinden itibaren donduruldu${reasonStr}.`;
+        }
+      }
+      if (pkgActionButtons) pkgActionButtons.style.display = 'none';
+    } else {
+      if (freezeBanner) freezeBanner.style.display = 'none';
+      if (pkgActionButtons) pkgActionButtons.style.display = 'flex';
+    }
+
     const total = activeSub.totalLessons || 8;
     const remaining = activeSub.remainingLessons ?? 0;
     const used = Math.max(0, total - remaining);
     renderSegmentedBar(used, total);
     if (remainingEl) remainingEl.innerText = `${remaining} Ders`;
     const daysLeft = activeSub.endDate ? Math.max(0, Math.ceil((new Date(activeSub.endDate) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
-    if (daysEl) daysEl.innerText = `${daysLeft} Gün`;
+    if (daysEl) daysEl.innerText = isFrozen ? `${daysLeft} Gün (Donduruldu)` : `${daysLeft} Gün`;
     const balance = activeSub.remainingBalance ?? 0;
     if (balanceEl) balanceEl.innerText = balance <= 0 ? '₺0 · Ödendi' : formatMoney(balance);
   } else {
     if (pkgCard) pkgCard.classList.add('empty-state');
     if (pkgTitleEl) pkgTitleEl.innerText = 'Aktif Paket Yok';
-    if (pkgStatusEl) { pkgStatusEl.innerText = 'Paketsiz'; pkgStatusEl.className = 'v0-status-pill-waitlist'; }
+    if (pkgStatusEl) { 
+      pkgStatusEl.innerText = 'Paketsiz'; 
+      pkgStatusEl.className = 'v0-status-pill-waitlist';
+      pkgStatusEl.style.background = '';
+      pkgStatusEl.style.color = '';
+      pkgStatusEl.style.border = '';
+    }
     if (pkgBar) pkgBar.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:4px 0;">Tanımlı aktif paketiniz bulunmuyor.</div>';
     if (remainingEl) remainingEl.innerText = '0 Ders';
     if (daysEl) daysEl.innerText = '--';
     if (balanceEl) balanceEl.innerText = '₺0';
+    if (freezeBanner) freezeBanner.style.display = 'none';
+    if (pkgActionButtons) pkgActionButtons.style.display = 'none';
   }
 }
 
@@ -108,7 +154,7 @@ async function loadAthleteHome() {
           Api.setUser(user);
         }
         if (member && member.subscriptions && member.subscriptions.length > 0) {
-          const activeSub = member.subscriptions.find(s => s.status === 'Active') || member.subscriptions[0];
+          const activeSub = member.subscriptions.find(s => s.status === 'Active' || s.status === 'Frozen') || member.subscriptions[0];
           renderAthleteActivePackage(activeSub);
           try {
             if (activeSub) sessionStorage.setItem(subCacheKey, JSON.stringify(activeSub));
@@ -1515,6 +1561,112 @@ window.handleLeadSubmit = function(event) {
   if (form) form.reset();
 };
 
+
+window.openAthleteFreezeModal = function(subId = null) {
+  const sub = subId ? (currentAthleteSub?.id === subId ? currentAthleteSub : null) : currentAthleteSub;
+  const targetId = subId || sub?.id;
+  if (!targetId) {
+    showToast('Dondurulabilecek aktif bir abonelik bulunamadı.', 'error');
+    return;
+  }
+  const idInput = document.getElementById('freeze-sub-id');
+  if (idInput) idInput.value = targetId;
+  const labelEl = document.getElementById('freeze-sub-label');
+  if (labelEl && sub?.packageName) {
+    labelEl.innerText = `${sub.packageName} · Kalan: ${sub.remainingLessons ?? 0} Ders`;
+  }
+  window.selectFreezeDays(7);
+  openModal('modal-freeze-subscription');
+};
+
+window.selectFreezeDays = function(days) {
+  const input = document.getElementById('freeze-input-days');
+  if (input) input.value = days;
+  document.querySelectorAll('.btn-freeze-day-chip').forEach(btn => {
+    if (parseInt(btn.getAttribute('data-days')) === days) {
+      btn.classList.add('active');
+      btn.style.background = 'rgba(56,189,248,0.25)';
+      btn.style.borderColor = '#38bdf8';
+      btn.style.color = '#38bdf8';
+    } else {
+      btn.classList.remove('active');
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }
+  });
+};
+
+window.syncFreezeDaysInput = function(val) {
+  const days = parseInt(val) || 0;
+  document.querySelectorAll('.btn-freeze-day-chip').forEach(btn => {
+    if (parseInt(btn.getAttribute('data-days')) === days) {
+      btn.classList.add('active');
+      btn.style.background = 'rgba(56,189,248,0.25)';
+      btn.style.borderColor = '#38bdf8';
+      btn.style.color = '#38bdf8';
+    } else {
+      btn.classList.remove('active');
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }
+  });
+};
+
+window.handleFreezeSubscriptionSubmit = async function(event) {
+  event.preventDefault();
+  const subId = parseInt(document.getElementById('freeze-sub-id')?.value || 0);
+  const days = parseInt(document.getElementById('freeze-input-days')?.value || 7);
+  const reason = document.getElementById('freeze-input-reason')?.value || 'Tatil / Seyahat';
+  const notes = document.getElementById('freeze-input-notes')?.value || null;
+
+  if (!subId) {
+    showToast('Abonelik seçilemedi.', 'error');
+    return;
+  }
+
+  try {
+    showToast('❄️ Paketiniz donduruluyor...');
+    const result = await Api.freezeSubscription(subId, {
+      days,
+      reason,
+      notes
+    });
+    closeModal('modal-freeze-subscription');
+    showToast(`✓ Paketiniz ${days} gün süreyle başarıyla donduruldu!`, 'success');
+    renderAthleteActivePackage(result);
+    await loadAthleteHome();
+    if (typeof loadMembersView === 'function') loadMembersView();
+    if (typeof loadAttendanceView === 'function') loadAttendanceView();
+  } catch (err) {
+    showToast(`Dondurma Hatası: ${err.message}`, 'error');
+  }
+};
+
+window.handleAthleteUnfreeze = async function(subId = null) {
+  const targetId = subId || currentAthleteSub?.id;
+  if (!targetId) {
+    showToast('Dondurulmuş abonelik bulunamadı.', 'error');
+    return;
+  }
+
+  if (!confirm('Paketinizin dondurmasını kaldırmak ve seans rezervasyonlarına hemen devam etmek istiyor musunuz?')) {
+    return;
+  }
+
+  try {
+    showToast('☀️ Dondurma kaldırılıyor...');
+    const result = await Api.unfreezeSubscription(targetId);
+    showToast('✓ Paketiniz tekrar aktif edildi! İyi antrenmanlar!', 'success');
+    renderAthleteActivePackage(result);
+    await loadAthleteHome();
+    if (typeof loadMembersView === 'function') loadMembersView();
+    if (typeof loadAttendanceView === 'function') loadAttendanceView();
+  } catch (err) {
+    showToast(`Hata: ${err.message}`, 'error');
+  }
+};
 
 // Global window assignments
 window.loadAthleteHome = loadAthleteHome;

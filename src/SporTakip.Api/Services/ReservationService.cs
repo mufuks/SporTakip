@@ -102,6 +102,13 @@ public class ReservationService(
             }
             else
             {
+                var hasFrozen = await db.Subscriptions
+                    .AnyAsync(s => s.MemberId == member.Id && s.Status == "Frozen", ct);
+                if (hasFrozen)
+                {
+                    throw new InvalidOperationException("Aboneliğiniz dondurulmuştur. Rezervasyon yapabilmek için lütfen önce dondurmayı kaldırın veya stüdyo ile iletişime geçin.");
+                }
+
                 throw new InvalidOperationException("Aktif bir paketiniz veya kalan ders hakkınız bulunmuyor.");
             }
         }
