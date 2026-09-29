@@ -642,6 +642,37 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - Olmayan bir seans ID'si için 404 (NotFound) yanıtı üretildiği doğrulandı.
   - **Toplam 101/101 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla tamamlandı.**
 
+### Phase 44: Günün Antrenman Programını (WOD) Seans Detayına Bağlama & Sporcu Panosunda Gösterim
+- **Kullanıcı Talebi & Kapsam:** Koçların oluşturdukları saatlik seanslara günün antrenman şablonunu (WOD - Workout of the Day) bağlayabilmesi; seansa kayıtlı sporcuların ana sayfa teaser kartından, seans kartındaki neon WOD rozetinden ve profil onaylı rezervasyonlarından egzersiz listesini (set, tekrar, tempo, dinlenme süreleri) önizleyebilmesi ve tek tıkla canlı idman takibine ("🚀 Bu İdmanı Başlat") başlayabilmesi.
+- **Backend & Mimari Çözümü:**
+  - **1. Veritabanı ve Şema Güncellemesi ([SessionSlot.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/SessionSlot.cs), [ApplicationDbContext.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/ApplicationDbContext.cs), [DbSeeder.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Data/DbSeeder.cs)):**
+    - `SessionSlot` entity'sine `WorkoutTemplateId` foreign key ve `WorkoutTemplate` navigation eklendi (`OnDelete: SetNull`).
+    - SQLite ve PostgreSQL için savunmacı DDL (`ADD COLUMN ... WorkoutTemplateId`) migrasyon kuralı tanımlandı.
+  - **2. DTO Modelleri ([SessionDtos.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/SessionDtos.cs)):**
+    - `CreateSessionSlotRequest` ve `UpdateSessionSlotRequest` içine `WorkoutTemplateId` dahil edildi.
+    - `SessionSlotDto` içine `WorkoutTemplateId`, `WorkoutTemplateName`, `WorkoutCategory`, `WorkoutDurationMinutes`, `WorkoutExerciseCount` alanları eklendi.
+  - **3. İş Mantığı ([SessionService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/SessionService.cs)):**
+    - `CreateSlotAsync` ve `UpdateSlotAsync` içinde `WorkoutTemplate` ilişkisi doğrulandı ve bağlandı / güncellendi.
+    - `GetSlotsAsync` ve `GetSlotByIdAsync` sorgularına `.Include(s => s.WorkoutTemplate).ThenInclude(w => w.Exercises)` eklendi ve `MapToDto` içinde eşlendi.
+  - **4. API Endpoint'i ([SessionsController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/SessionsController.cs)):**
+    - `GET /api/sessions/{id:int}/wod` geliştirildi: Seansa tanımlı `WorkoutTemplateDto`'yu sıralı egzersizler, hedef set ve dinlenme süreleriyle eksiksiz döner.
+- **Frontend & Kullanıcı Deneyimi:**
+  - **1. Seans Düzenleme Modalı ([session-modals.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/modals/session-modals.html) & [staff.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/staff.js)):**
+    - Koçların seans saatini düzenlediği ekrana `🔥 Günün Programı / WOD (Workout of the Day)` açılır listesi eklendi. Sistemdeki yayınlanmış tüm şablonlar dinamik doldurularak seansa WOD atama veya kaldırma imkanı sağlandı.
+  - **2. Seans Kartında İnteraktif WOD Rozeti ([athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js)):**
+    - Seans listesinde şablon atanmış kartlara neon degrade çerçeveli `🔥 WOD: [Program Adı] · [X] Egzersiz` rozeti eklendi.
+  - **3. WOD Önizleme Modalı ([athlete-modals.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/modals/athlete-modals.html)):**
+    - `#modal-session-wod-preview`: Egzersiz sırası (#1, #2...), Türkçe/İngilizce isim, hedef kas grubu, hedef set/tekrar (`3 Set × 8-12`), dinlenme süresi (`90sn`) ve antrenörün tempo/teknik notlarını şık kartlarla listeler.
+    - **"🚀 Bu İdmanı Başlat"** aksiyonu ile sporcu tek tıkla canlı set loglama ekranına geçiş yapabilir.
+  - **4. Ana Sayfa Teaser ve Profil Entegrasyonu ([athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js)):**
+    - Sporcunun bugünkü onaylı seansında WOD varsa, ana sayfadaki Teaser kartı otomatik olarak seansın WOD'una odaklanır ve tek tıkla önizleme açar.
+    - Sporcu profili "Onaylı Rezervasyonlarım" listesinde her seansın yanına `🔥 WOD` butonu yerleştirildi.
+- **Doğrulama & Test Kapsamı ([SessionsControllerTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/SessionsControllerTests.cs)):**
+  - Seansa WOD şablonu bağlama ve `GET /api/sessions/{id}/wod` ile sıralı egzersizlerin eksiksiz döndürülmesi testi.
+  - Seansa bağlı WOD yoksa 404 dönmesi testi.
+  - `UpdateSlot` ile seansa WOD şablonu bağlanması ve DTO'da güncellenmesi testi.
+  - **Toplam 104/104 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla tamamlandı.**
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)
@@ -655,7 +686,7 @@ Aşağıdaki özellikler, SporTakip ekosistemini bir sonraki seviyeye taşımak 
    - **İdman Sonu Mikro Değerlendirme:** Tamamlanan antrenman sonrası RPE (Zorluk Derecesi 1-10) ve koça yıldız geri bildirimi.
 
 2. **Antrenör & Saha Operasyonu:**
-   - **Günün Antrenman Programını (WOD) Seansa Bağlama:** Günün programı girildiğinde, o günkü seanslara kayıtlı sporcuların panosunda otomatik gösterim.
+   - **Günün Antrenman Programını (WOD) Seansa Bağlama:** [Resolved - Phase 44] Koç seans düzenleme arayüzünden WOD şablonu bağlama, seans kartlarında interaktif rozet, modal önizleme ve sporcu ana sayfa teaser entegrasyonu tamamlandı.
    - **Yedek Listeden Hızlı Çağrı:** İptal durumunda yedek listedeki ilk sporcuya otomatik/WhatsApp kontenjan bildirim desteği.
 
 3. **İşletmeci & Finans (Admin):**

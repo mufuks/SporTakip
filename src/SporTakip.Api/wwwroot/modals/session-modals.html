@@ -126,6 +126,18 @@
           <input type="text" id="edit-session-notes" class="form-control" placeholder="Ekstra antrenman bilgisi veya açıklama">
         </div>
 
+        <div class="form-group" style="padding:12px; background:linear-gradient(135deg, rgba(204,255,0,0.05), var(--bg-surface-elevated)); border:1px solid rgba(204,255,0,0.2); border-radius:12px;">
+          <label style="color:var(--volt-lime); font-weight:800; display:flex; align-items:center; gap:6px;">
+            <span>🔥</span> Günün Programı / WOD (Workout of the Day)
+          </label>
+          <select id="edit-session-workout-template" class="form-control" style="border-color:rgba(204,255,0,0.3);">
+            <option value="">— Program Yok / Serbest İdman —</option>
+          </select>
+          <small style="color:var(--text-muted); font-size:11px; margin-top:4px; display:block;">
+            Seçilen antrenman programı bu seansa kayıtlı tüm sporcuların panosunda ve seans kartında WOD olarak gösterilir.
+          </small>
+        </div>
+
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px; flex-wrap:wrap; gap:10px;">
           <button type="button" class="btn-danger-outline" onclick="handleDeleteSessionClick()" style="font-size:12px; padding:8px 14px; border:1px solid rgba(239,68,68,0.4); color:#ef4444; background:transparent; border-radius:var(--radius-xs); cursor:pointer;">
             🗑️ Seansı Sil / İptal Et

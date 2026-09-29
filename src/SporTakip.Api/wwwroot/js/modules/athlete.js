@@ -135,6 +135,35 @@ async function loadAthleteHome() {
         if (nameElTeaser) nameElTeaser.innerText = lastW.templateName || 'Antrenman';
         if (metaEl) metaEl.innerText = `${lastW.durationMinutes || 45} dk • ${lastW.exerciseLogs ? lastW.exerciseLogs.length : 0} egzersiz`;
       }
+
+      // Bugünkü seans için WOD tanımlıysa teaser kartında öncelikli olarak WOD'u öne çıkar
+      try {
+        const todayIsoStr = new Date().toISOString().split('T')[0];
+        const todaySlots = await Api.getSessions(todayIsoStr, todayIsoStr).catch(() => []);
+        const myReservations = await Api.getMyReservations().catch(() => []);
+        const myConfirmedSlotIds = new Set(
+          (myReservations || []).filter(r => r.status === 'Confirmed').map(r => r.sessionSlotId || r.slotId)
+        );
+        const myTodayWodSlot = (todaySlots || []).find(s => myConfirmedSlotIds.has(s.id) && s.workoutTemplateId && s.workoutTemplateName);
+        if (myTodayWodSlot) {
+          const tagEl = document.getElementById('teaser-workout-tag');
+          const dateEl = document.getElementById('teaser-workout-date');
+          const nameElTeaser = document.getElementById('teaser-workout-name');
+          const metaEl = document.getElementById('teaser-workout-meta');
+          if (tagEl) tagEl.innerText = '🔥 Seansının WOD Programı';
+          if (dateEl) dateEl.innerText = `· Bugün ${new Date(myTodayWodSlot.startTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
+          if (nameElTeaser) nameElTeaser.innerText = myTodayWodSlot.workoutTemplateName;
+          if (metaEl) metaEl.innerText = `${myTodayWodSlot.trainerName} ile · ${myTodayWodSlot.workoutExerciseCount || 0} Egzersiz`;
+
+          const teaserWrap = document.querySelector('.v0-workout-teaser');
+          if (teaserWrap) {
+            teaserWrap.onclick = (e) => {
+              e.stopPropagation();
+              openSessionWodPreview(myTodayWodSlot.id, myTodayWodSlot.title, myTodayWodSlot.trainerName);
+            };
+          }
+        }
+      } catch (_) {}
     } catch (err) {
       console.warn('Aktif paket yüklenirken hata:', err);
     }
@@ -378,6 +407,27 @@ async function renderSessionsList(containerId, dateStr) {
         attendeesTextHtml += `<span class="v0-waitlist-inline-tag">· ${waitlistedAthletes.length} yedek</span>`;
       }
 
+      let wodBadgeHtml = '';
+      if (slot.workoutTemplateId && slot.workoutTemplateName) {
+        wodBadgeHtml = `
+          <div class="v0-session-wod-badge" onclick="event.stopPropagation(); openSessionWodPreview(${slot.id}, '${escapeJsString(slot.title || 'Grup Seansı')}', '${escapeJsString(slot.trainerName || 'Eğitmen')}')" title="Günün Antrenman Programını (WOD) İncele" style="margin:8px 0 10px 0; padding:9px 12px; border-radius:12px; background:linear-gradient(135deg, rgba(204,255,0,0.1), rgba(255,107,0,0.06)); border:1px solid rgba(204,255,0,0.3); display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; transition:all 0.2s ease;">
+            <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+              <span style="font-size:16px;">🔥</span>
+              <div style="min-width:0;">
+                <div style="font-size:9.5px; font-weight:800; letter-spacing:0.04em; color:var(--volt-lime); text-transform:uppercase;">Günün Programı (WOD)</div>
+                <div style="font-size:12.5px; font-weight:800; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  ${escapeHtml(slot.workoutTemplateName)}
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+              <span style="font-size:11px; font-weight:700; color:var(--text-secondary); background:rgba(255,255,255,0.06); padding:2px 8px; border-radius:6px;">${slot.workoutExerciseCount || 0} Egzersiz</span>
+              <span style="color:var(--volt-lime); font-size:12.5px; font-weight:800;">İncele ›</span>
+            </div>
+          </div>
+        `;
+      }
+
       return `
         <article class="v0-session-card">
           <div class="v0-session-top">
@@ -404,6 +454,8 @@ async function renderSessionsList(containerId, dateStr) {
               </span>
             </div>
           </div>
+
+          ${wodBadgeHtml}
 
           <div class="v0-attendees-row">
             <div class="v0-attendees-avatars">
@@ -623,6 +675,94 @@ window.triggerCalendarAction = function(type) {
   }
 };
 
+// ==================== WOD (WORKOUT OF THE DAY) ENGINE ====================
+let currentSessionWodData = null;
+
+window.openSessionWodPreview = async function(slotId, sessionTitle, trainerName) {
+  try {
+    showToast('🔥 Günün Programı (WOD) yükleniyor...');
+    const wod = await Api.getSessionWod(slotId);
+    if (!wod) {
+      showToast('Bu seansa ait bir antrenman programı bulunamadı.', 'info');
+      return;
+    }
+
+    currentSessionWodData = {
+      templateId: wod.id,
+      name: wod.name,
+      slotId,
+      sessionTitle,
+      trainerName
+    };
+
+    const titleEl = document.getElementById('session-wod-title');
+    const subEl = document.getElementById('session-wod-subtitle');
+    const catEl = document.getElementById('session-wod-category');
+    const durEl = document.getElementById('session-wod-duration');
+    const countEl = document.getElementById('session-wod-count');
+    const descBox = document.getElementById('session-wod-description-box');
+    const descText = document.getElementById('session-wod-description-text');
+    const listEl = document.getElementById('session-wod-exercises-list');
+
+    if (titleEl) titleEl.innerText = wod.name || 'Günün Programı (WOD)';
+    if (subEl) subEl.innerText = `${sessionTitle || 'Seans'} · Eğitmen: ${trainerName || wod.trainerName || 'Compound Athletic'}`;
+    if (catEl) catEl.innerText = `🏋️ ${wod.category || 'Kuvvet'}`;
+    if (durEl) durEl.innerText = `⏱️ ${wod.estimatedDurationMinutes || 60} Dk`;
+    if (countEl) countEl.innerText = `🎯 ${(wod.exercises || []).length} Egzersiz`;
+
+    if (descBox && descText) {
+      if (wod.description) {
+        descText.innerText = wod.description;
+        descBox.style.display = 'block';
+      } else {
+        descBox.style.display = 'none';
+      }
+    }
+
+    if (listEl) {
+      if (!wod.exercises || wod.exercises.length === 0) {
+        listEl.innerHTML = `<div style="text-align:center; padding:24px; color:var(--text-muted); font-size:12.5px;">Bu programda henüz egzersiz sıralanmamış.</div>`;
+      } else {
+        listEl.innerHTML = wod.exercises.map((ex, idx) => `
+          <div style="padding:12px 14px; border-radius:14px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); display:flex; align-items:center; gap:12px;">
+            <div style="width:32px; height:32px; border-radius:50%; background:var(--volt-lime-muted); color:var(--volt-lime); font-size:12px; font-weight:800; display:grid; place-items:center; flex-shrink:0;">
+              #${ex.orderIndex || idx + 1}
+            </div>
+            <div style="flex:1; min-width:0;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <h4 style="font-size:13.5px; font-weight:800; margin:0; color:var(--text-primary);">${escapeHtml(ex.exerciseNameTr || ex.exerciseName)}</h4>
+                <span class="v0-chip" style="font-size:10px; padding:2px 6px; background:rgba(255,255,255,0.06); color:var(--text-secondary);">${escapeHtml(ex.muscleGroup || 'FullBody')}</span>
+              </div>
+              <div style="display:flex; gap:12px; margin-top:4px; font-size:11.5px; color:var(--text-muted); flex-wrap:wrap;">
+                <span>🎯 <strong style="color:var(--text-primary);">${ex.targetSets || 3} Set</strong> × ${escapeHtml(ex.targetReps || '8-12')}</span>
+                <span>⏱️ ${ex.restSeconds || 90} sn Dinlenme</span>
+                ${ex.notes ? `<span style="color:var(--volt-lime);">💡 ${escapeHtml(ex.notes)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    openModal('modal-session-wod-preview');
+  } catch (err) {
+    showToast(`WOD yüklenemedi: ${err.message}`, 'error');
+  }
+};
+
+window.handleStartWodFromSession = async function() {
+  if (!currentSessionWodData || !currentSessionWodData.templateId) return;
+  const templateId = currentSessionWodData.templateId;
+  closeModal('modal-session-wod-preview');
+
+  if (typeof window.switchAthleteTab === 'function') {
+    window.switchAthleteTab('workout');
+  }
+  if (typeof window.startNewWorkout === 'function') {
+    await window.startNewWorkout(templateId);
+  }
+};
+
 // Session Booking Handler
 window.handleBookSession = async function(slotId) {
   const user = Api.getUser();
@@ -753,6 +893,9 @@ async function renderAthleteProfile() {
               ${r.status === 'Confirmed' ? 'Onaylı' : r.status === 'Waitlisted' ? `Yedek #${r.waitlistPosition}` : r.status === 'CancelledByAthlete' ? 'İptal Edildi' : r.status === 'CheckedIn' ? 'Katıldı' : r.status}
             </span>
             ${r.status === 'Confirmed' ? `
+              <button type="button" title="Günün Programı (WOD)" style="background:transparent; border:1px solid rgba(204,255,0,0.3); color:var(--volt-lime); font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:3px;" onclick="openSessionWodPreview(${r.sessionSlotId}, '${escapeJsString(r.sessionTitle || 'Grup Seansı')}', '${escapeJsString(r.trainerName || 'Eğitmen')}')">
+                🔥 WOD
+              </button>
               <button type="button" title="Takvime Ekle" style="background:transparent; border:1px solid var(--border-medium); color:var(--volt-lime); font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:3px;" onclick="openCalendarSyncModal(${r.sessionSlotId}, '${escapeHtml(r.sessionTitle || 'Grup Seansı')}', '${escapeHtml(r.trainerName || 'Eğitmen')}', '${r.startTime}', '${r.endTime}')">
                 📅 Takvim
               </button>

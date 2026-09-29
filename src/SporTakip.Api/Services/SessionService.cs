@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SporTakip.Api.Data;
 using SporTakip.Api.Models;
+using SporTakip.Api.Models.Workout;
 
 namespace SporTakip.Api.Services;
 
@@ -32,6 +33,14 @@ public class SessionService(
                 ?? throw new InvalidOperationException("Slot oluşturmak için geçerli bir antrenör bulunamadı.");
         }
 
+        WorkoutTemplate? workoutTemplate = null;
+        if (request.WorkoutTemplateId.HasValue && request.WorkoutTemplateId.Value > 0)
+        {
+            workoutTemplate = await db.WorkoutTemplates
+                .Include(w => w.Exercises)
+                .FirstOrDefaultAsync(w => w.Id == request.WorkoutTemplateId.Value, ct);
+        }
+
         var slot = new SessionSlot
         {
             TrainerId = trainer.Id,
@@ -42,6 +51,8 @@ public class SessionService(
             Title = request.Title,
             Notes = request.Notes,
             Status = "Open",
+            WorkoutTemplateId = workoutTemplate?.Id,
+            WorkoutTemplate = workoutTemplate,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -59,6 +70,8 @@ public class SessionService(
         var query = db.SessionSlots
             .AsNoTracking()
             .Include(s => s.Trainer)
+            .Include(s => s.WorkoutTemplate)
+                .ThenInclude(w => w!.Exercises)
             .Include(s => s.Reservations)
                 .ThenInclude(r => r.Member)
             .Where(s => s.StartTime >= startDate && s.StartTime <= endDate);
@@ -77,6 +90,8 @@ public class SessionService(
         var slot = await db.SessionSlots
             .AsNoTracking()
             .Include(s => s.Trainer)
+            .Include(s => s.WorkoutTemplate)
+                .ThenInclude(w => w!.Exercises)
             .Include(s => s.Reservations)
                 .ThenInclude(r => r.Member)
             .FirstOrDefaultAsync(s => s.Id == slotId, ct);
@@ -90,6 +105,8 @@ public class SessionService(
     {
         var slot = await db.SessionSlots
             .Include(s => s.Trainer)
+            .Include(s => s.WorkoutTemplate)
+                .ThenInclude(w => w!.Exercises)
             .Include(s => s.Reservations)
                 .ThenInclude(r => r.Member)
             .FirstOrDefaultAsync(s => s.Id == slotId, ct)
@@ -147,6 +164,24 @@ public class SessionService(
         if (request.Notes != null)
         {
             slot.Notes = request.Notes;
+        }
+
+        if (request.WorkoutTemplateId.HasValue)
+        {
+            if (request.WorkoutTemplateId.Value <= 0)
+            {
+                slot.WorkoutTemplateId = null;
+                slot.WorkoutTemplate = null;
+            }
+            else
+            {
+                var template = await db.WorkoutTemplates
+                    .Include(w => w.Exercises)
+                    .FirstOrDefaultAsync(w => w.Id == request.WorkoutTemplateId.Value, ct)
+                    ?? throw new ArgumentException("Seçilen antrenman programı şablonu bulunamadı.");
+                slot.WorkoutTemplateId = template.Id;
+                slot.WorkoutTemplate = template;
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(request.Status))
@@ -236,7 +271,12 @@ public class SessionService(
             slot.Title,
             slot.Notes,
             slot.Status,
-            reservationDtos
+            reservationDtos,
+            slot.WorkoutTemplateId,
+            slot.WorkoutTemplate?.Name,
+            slot.WorkoutTemplate?.Category,
+            slot.WorkoutTemplate?.EstimatedDurationMinutes,
+            slot.WorkoutTemplate?.Exercises?.Count
         );
     }
 }

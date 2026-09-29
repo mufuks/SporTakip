@@ -1584,6 +1584,20 @@ window.openEditSessionModal = async function(slotId) {
     document.getElementById('edit-session-status').value = slot.status || 'Scheduled';
     document.getElementById('edit-session-notes').value = slot.notes || '';
 
+    // Load Workout Templates (WOD)
+    try {
+      const templates = await Api.getWorkoutTemplates(true).catch(() => []);
+      const templateSelect = document.getElementById('edit-session-workout-template');
+      if (templateSelect) {
+        templateSelect.innerHTML = `<option value="">— Program Yok / Serbest İdman —</option>` +
+          (templates || []).map(t =>
+            `<option value="${t.id}" ${t.id === slot.workoutTemplateId ? 'selected' : ''}>${escapeHtml(t.name)} (${t.category} · ${(t.exercises || []).length} egzersiz)</option>`
+          ).join('');
+      }
+    } catch (e) {
+      console.warn('WOD şablonları yüklenemedi:', e);
+    }
+
     // Dates and Times (Local Time)
     const startDate = new Date(slot.startTime);
     const endDate = new Date(slot.endTime);
@@ -1625,6 +1639,8 @@ window.handleSaveEditSession = async function(e) {
   const sessionType = document.getElementById('edit-session-type').value;
   const status = document.getElementById('edit-session-status').value;
   const notes = document.getElementById('edit-session-notes').value.trim();
+  const templateVal = document.getElementById('edit-session-workout-template') ? document.getElementById('edit-session-workout-template').value : '';
+  const workoutTemplateId = templateVal ? parseInt(templateVal) : 0;
 
   const startIso = `${dateStr}T${startTimeStr}:00`;
   const endIso = `${dateStr}T${endTimeStr}:00`;
@@ -1643,7 +1659,8 @@ window.handleSaveEditSession = async function(e) {
       sessionType: sessionType,
       title: title,
       notes: notes,
-      status: status
+      status: status,
+      workoutTemplateId: workoutTemplateId
     });
 
     showToast('✓ Seans saati ve bilgileri başarıyla güncellendi!', 'success');

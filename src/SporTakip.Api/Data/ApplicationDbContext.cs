@@ -233,6 +233,11 @@ public class ApplicationDbContext : DbContext
                 .WithMany(t => t.SessionSlots)
                 .HasForeignKey(ss => ss.TrainerId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ss => ss.WorkoutTemplate)
+                .WithMany()
+                .HasForeignKey(ss => ss.WorkoutTemplateId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Reservation>(entity =>

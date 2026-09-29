@@ -329,6 +329,7 @@ public static class DbSeeder
             {
                 try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE WorkoutTemplates ADD COLUMN AssignedMemberId INTEGER NULL;"); } catch { }
                 try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Members ADD COLUMN MedicalConditions TEXT NULL;"); } catch { }
+                try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE SessionSlots ADD COLUMN WorkoutTemplateId INTEGER NULL REFERENCES WorkoutTemplates(Id);"); } catch { }
                 try
                 {
                     await db.Database.ExecuteSqlRawAsync(@"
@@ -352,6 +353,7 @@ public static class DbSeeder
             {
                 try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkoutTemplates\" ADD COLUMN IF NOT EXISTS \"AssignedMemberId\" INTEGER NULL;"); } catch { }
                 try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"Members\" ADD COLUMN IF NOT EXISTS \"MedicalConditions\" VARCHAR(500) NULL;"); } catch { }
+                try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"SessionSlots\" ADD COLUMN IF NOT EXISTS \"WorkoutTemplateId\" INTEGER NULL REFERENCES \"WorkoutTemplates\"(\"Id\");"); } catch { }
                 try
                 {
                     await db.Database.ExecuteSqlRawAsync(@"

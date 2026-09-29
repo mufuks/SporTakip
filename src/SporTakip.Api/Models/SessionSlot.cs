@@ -29,6 +29,10 @@ public class SessionSlot
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
+    /// <summary>Günün Antrenman Programı (WOD) şablonu bağlantısı (Opsiyonel).</summary>
+    public int? WorkoutTemplateId { get; set; }
+    public Workout.WorkoutTemplate? WorkoutTemplate { get; set; }
+    
     // Navigation
     public ICollection<Reservation> Reservations { get; set; } = [];
     public ICollection<AttendanceRecord> AttendanceRecords { get; set; } = [];

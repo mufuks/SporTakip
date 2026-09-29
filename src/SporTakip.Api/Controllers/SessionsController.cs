@@ -8,7 +8,7 @@ namespace SporTakip.Api.Controllers;
 
 [ApiController]
 [Route("api/sessions")]
-public class SessionsController(ISessionService sessionService) : ControllerBase
+public class SessionsController(ISessionService sessionService, IWorkoutService? workoutService = null) : ControllerBase
 {
     /// <summary>
     /// Yeni seans slotu açar (Yalnızca Antrenör, Salon Sahibi ve SuperAdmin).
@@ -132,6 +132,36 @@ public class SessionsController(ISessionService sessionService) : ControllerBase
         var success = await sessionService.CancelSlotAsync(userId, id, ct);
         if (!success) return NotFound(new { message = "Seans bulunamadı." });
         return Ok(new { success = true, message = "Seans başarıyla iptal edildi." });
+    }
+
+    /// <summary>
+    /// Seansa tanımlı günün antrenman programını (WOD) ve sıralı egzersiz detaylarını döner.
+    /// </summary>
+    [HttpGet("{id:int}/wod")]
+    [ProducesResponseType(typeof(WorkoutTemplateDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSessionWod(int id, CancellationToken ct)
+    {
+        var slot = await sessionService.GetSlotByIdAsync(id, ct);
+        if (slot == null) return NotFound(new { message = "Seans bulunamadı." });
+
+        if (!slot.WorkoutTemplateId.HasValue)
+        {
+            return NotFound(new { message = "Bu seansa tanımlı bir antrenman programı (WOD) bulunmuyor." });
+        }
+
+        if (workoutService == null)
+        {
+            return NotFound(new { message = "Antrenman servisi aktif değil." });
+        }
+
+        var wod = await workoutService.GetTemplateByIdAsync(slot.WorkoutTemplateId.Value, ct);
+        if (wod == null)
+        {
+            return NotFound(new { message = "Bağlı antrenman programı bulunamadı." });
+        }
+
+        return Ok(wod);
     }
 
     /// <summary>

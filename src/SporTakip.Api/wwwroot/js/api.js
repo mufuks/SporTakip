@@ -182,6 +182,10 @@ export const Api = {
     return this.get(`/sessions/${id}`);
   },
 
+  getSessionWod(id) {
+    return this.get(`/sessions/${id}/wod`);
+  },
+
   createSession(data) {
     return this.post('/sessions', data);
   },

@@ -7,7 +7,8 @@ public record CreateSessionSlotRequest(
     string SessionType = "GRUP",
     string? Title = null,
     string? Notes = null,
-    int? TrainerId = null
+    int? TrainerId = null,
+    int? WorkoutTemplateId = null
 );
 
 public record UpdateSessionSlotRequest(
@@ -18,7 +19,8 @@ public record UpdateSessionSlotRequest(
     string? Title = null,
     string? Notes = null,
     int? TrainerId = null,
-    string? Status = null
+    string? Status = null,
+    int? WorkoutTemplateId = null
 );
 
 public record SessionSlotDto(
@@ -36,7 +38,12 @@ public record SessionSlotDto(
     string? Title,
     string? Notes,
     string Status,
-    List<ReservationSummaryDto> Reservations
+    List<ReservationSummaryDto> Reservations,
+    int? WorkoutTemplateId = null,
+    string? WorkoutTemplateName = null,
+    string? WorkoutCategory = null,
+    int? WorkoutDurationMinutes = null,
+    int? WorkoutExerciseCount = null
 );
 
 public record ReservationSummaryDto(
