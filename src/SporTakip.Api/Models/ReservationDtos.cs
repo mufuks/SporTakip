@@ -25,7 +25,8 @@ public record ReservationDto(
     DateTime EndTime,
     string TrainerName,
     string? CancellationReason,
-    DateTime? CancelledAt
+    DateTime? CancelledAt,
+    string? SessionTitle = null
 );
 
 public record CancelReservationResponse(

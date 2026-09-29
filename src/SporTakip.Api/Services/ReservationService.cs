@@ -474,7 +474,8 @@ public class ReservationService(
             slot.EndTime,
             trainerName,
             r.CancellationReason,
-            r.CancelledAt
+            r.CancelledAt,
+            slot.Title
         );
     }
 }

@@ -620,6 +620,28 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - Ölçüm kaydı silindiğinde üyenin kilosunun önceki ölçüme geri dönmesi testi.
   - **Toplam 99/99 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla tamamlandı.**
 
+### Phase 43: Kişisel Takvim Senkronizasyonu (.ics & Google / Apple Calendar)
+- **Kullanıcı Talebi & Kapsam:** Sporcuların rezerve ettikleri seansları tek tıkla doğrudan Apple Calendar (iOS/macOS), Google Calendar, Outlook veya cihaz takvimlerine aktarabilmesi; seansa 60 dakika kala otomatik yerel alarm (`VALARM`) bildirimi tetiklenmesi ve hem rezervasyon anında hem de seans kartları/profil ekranından takvime erişilebilmesi.
+- **Backend & Standartlar:**
+  - **1. RFC 5545 Uyumlu `.ics` Dışa Aktarım ([SessionsController.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Controllers/SessionsController.cs)):**
+    - `GET /api/sessions/{id:int}/ics` endpoint'i geliştirildi.
+    - Seans detayları (Başlangıç/Bitiş UTC tarihleri, Başlık, Eğitmen Adı, Salon Konumu `Compound Athletic Stüdyo`) standart iCalendar formatında oluşturuldu.
+    - `TRIGGER:-PT60M` tanımlı `VALARM` bloğu ile harici push/SMS bildirimine gerek kalmaksızın cihaz seviyesinde seansa 1 saat kala hatırlatıcı tetiklendi.
+    - iOS Safari ve mobil tarayıcıların yerel takvim aktarma dialoğunu doğrudan açabilmesi için `Content-Type: text/calendar; charset=utf-8` ve `Content-Disposition: attachment; filename="compound-session-{id}.ics"` başlıklarıyla sunuldu.
+  - **2. Rezervasyon Modeli İyileştirmesi ([ReservationDtos.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Models/ReservationDtos.cs) & [ReservationService.cs](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/Services/ReservationService.cs)):**
+    - `ReservationDto` modeline `SessionTitle` alanı eklendi ve `MapToDto` içinde slot başlığı ile eşlendi.
+- **Frontend & Kullanıcı Deneyimi:**
+  - **1. Takvim Senkronizasyon Modalı ([athlete-modals.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/modals/athlete-modals.html)):**
+    - `#modal-calendar-sync` dialoğu eklendi. Apple/Cihaz Takvimi (`.ics`) ve Google Calendar web entegrasyonu için 2 ayrı premium seçenek sunuldu.
+  - **2. Otomatik & Manuel Tetikleme Noktaları ([athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js)):**
+    - Rezervasyon tamamlandığında (`handleBookSession`) onay modalının hemen ardından takvim senkronizasyon dialoğu otomatik açılarak sporcuya 1 tıkla takvime ekleme kolaylığı sağlandı.
+    - Seans listesinde sporcunun kayıtlı olduğu seans kartlarına `📅 Takvim` butonu eklendi.
+    - Sporcu profilindeki "Onaylı Rezervasyonlarım" listesine her seans için `📅 Takvime Ekle` aksiyon butonu yerleştirildi.
+- **Doğrulama & Test Kapsamı ([SessionsControllerTests.cs](file:///c:/MUFUKS/Code/SporTakip/tests/SporTakip.Tests/SessionsControllerTests.cs)):**
+  - Var olan bir seans için RFC 5545 uyumlu `.ics` dosyasının (VCALENDAR, VEVENT, SUMMARY, LOCATION, VALARM -PT60M) eksiksiz üretildiği doğrulandı.
+  - Olmayan bir seans ID'si için 404 (NotFound) yanıtı üretildiği doğrulandı.
+  - **Toplam 101/101 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla tamamlandı.**
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)
@@ -627,7 +649,7 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
 Aşağıdaki özellikler, SporTakip ekosistemini bir sonraki seviyeye taşımak üzere paydaş (Atlet, Antrenör, İşletmeci) geri bildirimlerinden derlenmiş potansiyel geliştirme fikirleridir:
 
 1. **Atlet Deneyimi:**
-   - **Kişisel Takvim Senkronizasyonu (.ics):** Rezervasyon onayında Google / Apple Calendar senkronizasyonu ve seansa 1 saat kala cihaz bildirimi.
+   - **Kişisel Takvim Senkronizasyonu (.ics):** [Resolved - Phase 43] Rezervasyon onayında Google / Apple Calendar (.ics) senkronizasyonu, RFC 5545 standart alarmı (-PT60M) ve doğrudan seans/profil butonları tamamlandı.
    - **Kilo & Vücut Ölçüm Çizelgesi:** [Resolved - Phase 42] Zaman içindeki kilo, yağ oranı değişimi ve interaktif SVG ilerleme grafiği tamamlandı.
    - **Paket Dondurma Talebi:** Tatile veya iş seyahatine giden sporcular için arayüzden tek tıkla 7/14 gün paket dondurma isteği.
    - **İdman Sonu Mikro Değerlendirme:** Tamamlanan antrenman sonrası RPE (Zorluk Derecesi 1-10) ve koça yıldız geri bildirimi.

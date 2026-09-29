@@ -322,9 +322,14 @@ async function renderSessionsList(containerId, dateStr) {
         `;
       } else if (isReservedByMe) {
         actionButtonHtml = `
-          <button type="button" class="v0-book-btn reserved" onclick="showToast('✓ Bu seansa zaten rezervasyonunuz bulunuyor. İptal veya detay için Profilim sekmesine bakabilirsiniz.', 'info')">
-            ✓ Rezerve Edildi
-          </button>
+          <div style="display:flex; gap:6px; align-items:center; width:100%;">
+            <button type="button" class="v0-book-btn reserved" style="flex:1;" onclick="showToast('✓ Bu seansa rezervasyonunuz bulunuyor. İptal veya detay için Profilim sekmesine bakabilirsiniz.', 'info')">
+              ✓ Rezerve Edildi
+            </button>
+            <button type="button" title="Takvime Ekle" style="background:var(--volt-lime-muted); border:1px solid var(--border-subtle); color:var(--volt-lime); border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:700; font-size:12px; white-space:nowrap; display:flex; align-items:center; gap:4px;" onclick="openCalendarSyncModal(${slot.id}, '${escapeHtml(slot.title || 'Grup Seansı')}', '${escapeHtml(slot.trainerName || 'Eğitmen')}', '${slot.startTime}', '${slot.endTime}')">
+              📅 Takvim
+            </button>
+          </div>
         `;
       } else if (isFull) {
         actionButtonHtml = `
@@ -556,6 +561,68 @@ async function loadAthleteSessionsView() {
   await renderSessionsList('v0-all-sessions-container', currentCalendarSelectedDate);
 }
 
+// Calendar Sync Helpers (RFC 5545 .ics & Google Calendar)
+window.openCalendarSyncModal = function(slotId, title, trainer, startTime, endTime) {
+  if (!slotId) return;
+
+  window._activeCalendarSession = {
+    slotId,
+    title: title || 'Grup Seansı',
+    trainer: trainer || 'Compound Athletic Eğitmeni',
+    startTime,
+    endTime
+  };
+
+  const subEl = document.getElementById('cal-modal-subtitle');
+  if (subEl && startTime) {
+    const d = new Date(startTime);
+    subEl.innerText = `${title || 'Seans'} · ${d.toLocaleDateString('tr-TR', { day:'numeric', month:'short' })} ${d.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' })}`;
+  }
+
+  openModal('modal-calendar-sync');
+};
+
+window.triggerCalendarAction = function(type) {
+  const session = window._activeCalendarSession;
+  if (!session || !session.slotId) {
+    closeModal('modal-calendar-sync');
+    return;
+  }
+
+  if (type === 'ics') {
+    // Apple Calendar / Outlook / iOS / Android (.ics download via backend endpoint)
+    const link = document.createElement('a');
+    link.href = `/api/sessions/${session.slotId}/ics`;
+    link.download = `compound-session-${session.slotId}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('🍏 Takvim etkinliği açılıyor...', 'success');
+    closeModal('modal-calendar-sync');
+  } else if (type === 'google') {
+    // Google Calendar Web Template URL
+    let startIso = '';
+    let endIso = '';
+    try {
+      startIso = new Date(session.startTime).toISOString().replace(/-|:|\.\d\d\d/g, "");
+      endIso = new Date(session.endTime).toISOString().replace(/-|:|\.\d\d\d/g, "");
+    } catch {
+      const now = new Date();
+      startIso = now.toISOString().replace(/-|:|\.\d\d\d/g, "");
+      endIso = new Date(now.getTime() + 3600000).toISOString().replace(/-|:|\.\d\d\d/g, "");
+    }
+
+    const title = encodeURIComponent('Compound Athletic - ' + (session.title || 'Grup Seansı'));
+    const details = encodeURIComponent(`Eğitmen: ${session.trainer || 'Compound Athletic Eğitmeni'}\n\nSporTakip üzerinden rezerve edildi.`);
+    const location = encodeURIComponent('Compound Athletic Stüdyo');
+    const gUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startIso}/${endIso}&details=${details}&location=${location}`;
+
+    window.open(gUrl, '_blank');
+    showToast('🌐 Google Takvim açılıyor...', 'success');
+    closeModal('modal-calendar-sync');
+  }
+};
+
 // Session Booking Handler
 window.handleBookSession = async function(slotId) {
   const user = Api.getUser();
@@ -571,6 +638,14 @@ window.handleBookSession = async function(slotId) {
       showToast(`⚡ Kontenjan dolduğu için Yedek Listeye (#${res.waitlistPosition}) alındınız!`, 'success');
     } else {
       showToast(`🎉 Seans rezervasyonunuz başarıyla onaylandı!`, 'success');
+      // Onaylı rezervasyonda takvime ekleme modalını otomatik sun
+      openCalendarSyncModal(
+        res.sessionSlotId || slotId,
+        res.sessionTitle || 'Grup Seansı',
+        res.trainerName || 'Eğitmen',
+        res.startTime,
+        res.endTime
+      );
     }
     await loadAthleteHome();
     if (currentAthleteTab === 'sessions') await loadAthleteSessionsView();
@@ -677,6 +752,11 @@ async function renderAthleteProfile() {
             <span style="font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; ${r.status === 'Confirmed' ? 'background:rgba(16,185,129,0.15); color:#10B981;' : r.status === 'Waitlisted' ? 'background:rgba(245,158,11,0.15); color:#F59E0B;' : 'background:rgba(239,68,68,0.15); color:#EF4444;'}">
               ${r.status === 'Confirmed' ? 'Onaylı' : r.status === 'Waitlisted' ? `Yedek #${r.waitlistPosition}` : r.status === 'CancelledByAthlete' ? 'İptal Edildi' : r.status === 'CheckedIn' ? 'Katıldı' : r.status}
             </span>
+            ${r.status === 'Confirmed' ? `
+              <button type="button" title="Takvime Ekle" style="background:transparent; border:1px solid var(--border-medium); color:var(--volt-lime); font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:3px;" onclick="openCalendarSyncModal(${r.sessionSlotId}, '${escapeHtml(r.sessionTitle || 'Grup Seansı')}', '${escapeHtml(r.trainerName || 'Eğitmen')}', '${r.startTime}', '${r.endTime}')">
+                📅 Takvim
+              </button>
+            ` : ''}
             ${(r.status === 'Confirmed' || r.status === 'Waitlisted') ? `<button style="background:transparent; border:none; color:var(--text-muted); font-size:11px; text-decoration:underline; cursor:pointer;" onclick="handleCancelReservation(${r.id})">İptal</button>` : ''}
           </div>
         </div>

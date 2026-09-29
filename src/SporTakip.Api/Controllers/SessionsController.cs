@@ -134,6 +134,53 @@ public class SessionsController(ISessionService sessionService) : ControllerBase
         return Ok(new { success = true, message = "Seans başarıyla iptal edildi." });
     }
 
+    /// <summary>
+    /// Seans için standart iCalendar (.ics) takvim dosyası üretir.
+    /// iOS/Apple Calendar, Google Calendar, Outlook ve Android takvimleriyle tam uyumludur.
+    /// </summary>
+    [HttpGet("{id:int}/ics")]
+    [Produces("text/calendar")]
+    public async Task<IActionResult> GetSessionIcs(int id, CancellationToken ct)
+    {
+        var slot = await sessionService.GetSlotByIdAsync(id, ct);
+        if (slot == null) return NotFound(new { message = "Seans bulunamadı." });
+
+        var title = string.IsNullOrWhiteSpace(slot.Title) ? "Grup Seansı" : slot.Title;
+        var trainer = string.IsNullOrWhiteSpace(slot.TrainerName) ? "Compound Athletic Eğitmeni" : slot.TrainerName;
+        var startUtc = slot.StartTime.ToUniversalTime();
+        var endUtc = slot.EndTime.ToUniversalTime();
+        var nowUtc = DateTime.UtcNow;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("BEGIN:VCALENDAR");
+        sb.AppendLine("VERSION:2.0");
+        sb.AppendLine("PRODID:-//Compound Athletic//SporTakip//TR");
+        sb.AppendLine("CALSCALE:GREGORIAN");
+        sb.AppendLine("METHOD:PUBLISH");
+        sb.AppendLine("BEGIN:VEVENT");
+        sb.AppendLine($"UID:session-{slot.Id}-{startUtc:yyyyMMddTHHmmssZ}@compoundathletic.com");
+        sb.AppendLine($"DTSTAMP:{nowUtc:yyyyMMddTHHmmssZ}");
+        sb.AppendLine($"DTSTART:{startUtc:yyyyMMddTHHmmssZ}");
+        sb.AppendLine($"DTEND:{endUtc:yyyyMMddTHHmmssZ}");
+        sb.AppendLine($"SUMMARY:Compound Athletic - {title}");
+        sb.AppendLine($"DESCRIPTION:Eğitmen: {trainer}\\nSeans Tipi: {slot.SessionType}\\nKontenjan: {slot.Capacity} Kişi\\n\\nCompound Athletic SporTakip üzerinden rezerve edildi.");
+        sb.AppendLine("LOCATION:Compound Athletic Stüdyo");
+        sb.AppendLine("STATUS:CONFIRMED");
+        
+        // 60 dakika önce hatırlatıcı alarm (RFC 5545 VALARM)
+        sb.AppendLine("BEGIN:VALARM");
+        sb.AppendLine("TRIGGER:-PT60M");
+        sb.AppendLine("ACTION:DISPLAY");
+        sb.AppendLine($"DESCRIPTION:1 saat sonra {title} idmanınız var! Çantanızı hazırlayın.");
+        sb.AppendLine("END:VALARM");
+
+        sb.AppendLine("END:VEVENT");
+        sb.AppendLine("END:VCALENDAR");
+
+        var icsBytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        return File(icsBytes, "text/calendar; charset=utf-8", $"compound-session-{slot.Id}.ics");
+    }
+
     private int GetCurrentUserId()
     {
         var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("uid");
