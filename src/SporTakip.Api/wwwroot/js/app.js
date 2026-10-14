@@ -76,7 +76,10 @@ window.navigateTo = async function(tabName) {
     } else {
       currentAppMode = 'superadmin';
     }
-  } else if (['home', 'sessions', 'workout', 'profile'].includes(tabName)) {
+  } else if (tabName === 'sessions') {
+    tabName = 'home';
+    currentAppMode = 'athlete';
+  } else if (['home', 'workout', 'profile'].includes(tabName)) {
     currentAppMode = 'athlete';
   }
   localStorage.setItem('sportakip_app_mode', currentAppMode);
@@ -247,7 +250,10 @@ window.updateNavForUserRole = function() {
     mobSuperAdminBtn.classList.toggle('active', currentTab === 'superadmin');
   }
 
-  // 3. Header user pill & actions
+  // 3. Header user pill & actions & Guest Mode Toggle
+  const appRoot = document.getElementById('app-root') || document.querySelector('.v0-athlete-shell');
+  const headerEl = document.querySelector('.v0-app-header');
+  const bottomNavEl = document.querySelector('.v0-bottom-nav');
   const loginHeaderBtn = document.getElementById('v0-login-header-btn');
   const headerUserPill = document.getElementById('header-user-pill');
   const roleEl = document.getElementById('athlete-status-label');
@@ -255,6 +261,9 @@ window.updateNavForUserRole = function() {
   const greetingName = document.getElementById('athlete-greeting-name');
 
   if (user && token) {
+    if (appRoot) appRoot.classList.remove('is-guest-mode');
+    if (headerEl) headerEl.style.setProperty('display', 'flex', 'important');
+    if (bottomNavEl) bottomNavEl.style.setProperty('display', 'flex', 'important');
     if (loginHeaderBtn) loginHeaderBtn.style.display = 'none';
     if (headerUserPill) headerUserPill.style.display = 'inline-flex';
     if (greetingName) greetingName.innerText = user.fullName || user.phoneNumber || 'Sporcu';
@@ -265,7 +274,10 @@ window.updateNavForUserRole = function() {
       roleEl.innerText = isSuperAdmin ? '🛡️ SuperAdmin' : (roles.includes('Admin') ? 'Yönetici' : isCoach ? 'Antrenör' : 'Sporcu');
     }
   } else {
-    if (loginHeaderBtn) loginHeaderBtn.style.display = 'inline-flex';
+    if (appRoot) appRoot.classList.add('is-guest-mode');
+    if (headerEl) headerEl.style.setProperty('display', 'none', 'important');
+    if (bottomNavEl) bottomNavEl.style.setProperty('display', 'none', 'important');
+    if (loginHeaderBtn) loginHeaderBtn.style.display = 'none';
     if (headerUserPill) headerUserPill.style.display = 'none';
     if (greetingName) greetingName.innerText = 'Misafir';
     if (badgeDot) badgeDot.style.background = 'rgba(255, 255, 255, 0.3)';

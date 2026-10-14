@@ -8,9 +8,211 @@ import {
 import { renderStudioContactCardHtml, openOtpDrawer } from './auth.js';
 
 let currentCalendarSelectedDate = new Date().toISOString().split('T')[0];
-
+let currentStorySelectedDate = new Date().toISOString().split('T')[0];
 let currentAthleteSub = null;
 
+// ==================== INSTAGRAM STORY DATE STRIP ====================
+window.selectStoryDate = async function(dateIso) {
+  currentStorySelectedDate = dateIso;
+  
+  // Update active state on bubbles
+  document.querySelectorAll('.v0-story-bubble').forEach(b => {
+    const isTarget = b.getAttribute('data-date') === dateIso;
+    b.classList.toggle('active', isTarget);
+    if (isTarget) {
+      b.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  });
+
+  const dObj = new Date(dateIso + 'T00:00:00');
+  const nowObj = new Date();
+  const todayIso = `${nowObj.getFullYear()}-${String(nowObj.getMonth() + 1).padStart(2, '0')}-${String(nowObj.getDate()).padStart(2, '0')}`;
+  const isToday = dateIso === todayIso;
+  const fullDateLabel = isToday 
+    ? `Bugün, ${dObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}` 
+    : dObj.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const dateLabel = document.getElementById('v0-sessions-date-label');
+  if (dateLabel) dateLabel.innerText = fullDateLabel;
+
+  await renderSessionsList('v0-sessions-container', dateIso);
+};
+
+window.selectStoryDateOffset = function(daysOffset) {
+  const d = new Date();
+  d.setDate(d.getDate() + daysOffset);
+  const iso = formatDateToIso(d);
+  selectStoryDate(iso);
+};
+
+function renderStoryDateStrip() {
+  const container = document.getElementById('v0-story-date-strip');
+  if (!container) return;
+
+  const now = new Date();
+  const todayIso = formatDateToIso(now);
+  if (!currentStorySelectedDate) currentStorySelectedDate = todayIso;
+
+  const days = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    days.push(d);
+  }
+
+  container.innerHTML = days.map((d, idx) => {
+    const dateIso = formatDateToIso(d);
+    const isToday = idx === 0;
+    const isTomorrow = idx === 1;
+    const isActive = dateIso === currentStorySelectedDate;
+    const dayNum = d.getDate();
+    let dayLabel = d.toLocaleDateString('tr-TR', { weekday: 'short' });
+    if (isToday) dayLabel = 'BUGÜN';
+    else if (isTomorrow) dayLabel = 'YARIN';
+
+    return `
+      <button type="button" 
+              class="v0-story-bubble ${isToday ? 'today' : ''} ${isActive ? 'active' : ''}" 
+              data-date="${dateIso}"
+              onclick="selectStoryDate('${dateIso}')"
+              title="${d.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}">
+        <span class="v0-story-day">${isToday ? '🔥 ' : ''}${dayLabel}</span>
+        <span class="v0-story-num">${dayNum}</span>
+        <span class="v0-story-dot"></span>
+      </button>
+    `;
+  }).join('');
+}
+
+// ==================== ATHLETE TODAY HERO STATUS CARD ====================
+async function renderAthleteTodayHero() {
+  const heroContainer = document.getElementById('athlete-today-hero');
+  if (!heroContainer) return;
+
+  const user = Api.getUser();
+  if (!user || !Api.getToken()) {
+    heroContainer.style.display = 'none';
+    return;
+  }
+
+  const todayIso = new Date().toISOString().split('T')[0];
+
+  try {
+    const [todaySlots, myReservations] = await Promise.all([
+      Api.getSessions(todayIso, todayIso).catch(() => []),
+      Api.getMyReservations().catch(() => [])
+    ]);
+
+    // Check if user has confirmed reservation today
+    const myTodayRes = (myReservations || []).find(r => {
+      const isConfirmed = r.status === 'Confirmed';
+      const slotTime = r.startTime || (r.sessionSlot && r.sessionSlot.startTime);
+      return isConfirmed && slotTime && slotTime.startsWith(todayIso);
+    });
+
+    if (myTodayRes) {
+      const slot = (todaySlots || []).find(s => s.id === (myTodayRes.sessionSlotId || myTodayRes.slotId)) || myTodayRes;
+      const start = new Date(slot.startTime || myTodayRes.startTime);
+      const end = new Date(slot.endTime || myTodayRes.endTime);
+      const timeStr = `${start.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
+      const coach = slot.trainerName || myTodayRes.trainerName || 'Eğitmen';
+      const title = slot.title || myTodayRes.sessionTitle || 'Fonksiyonel Grup Seansı';
+
+      // Attendee bubbles
+      const confirmedAthletes = (slot.reservations || []).filter(r => r.status === 'Confirmed' && r.id !== myTodayRes.id);
+      let friendText = 'Sen ve diğer sporcular katılıyorsunuz';
+      if (confirmedAthletes.length === 1) {
+        friendText = `Sen ve <strong>${escapeHtml(confirmedAthletes[0].memberName)}</strong> katılıyorsunuz`;
+      } else if (confirmedAthletes.length > 1) {
+        friendText = `Sen, <strong>${escapeHtml(confirmedAthletes[0].memberName)}</strong> ve +${confirmedAthletes.length - 1} kişi katılıyorsunuz`;
+      }
+
+      heroContainer.className = 'v0-hero-today-card has-session';
+      heroContainer.style.display = 'block';
+      heroContainer.innerHTML = `
+        <div class="v0-hero-today-header">
+          <span class="v0-hero-tag">
+            <span class="v0-hero-live-dot"></span>
+            Bugünkü Seansın
+          </span>
+          <span style="font-size:12px; color:var(--text-muted); font-weight:700;">Compound Nilüfer</span>
+        </div>
+        <div class="v0-hero-session-time">${timeStr}</div>
+        <div class="v0-hero-session-title">⚡ ${escapeHtml(title)} · 🏋️ ${escapeHtml(coach)}</div>
+        <div class="v0-hero-friends-pill">
+          <span>👥</span>
+          <span>${friendText}</span>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button type="button" class="v0-btn-hero-action joined" style="flex:1;" onclick="showToast('✓ Bu seansa kaydınız tamamlandı. Salonda görüşmek üzere! 🐯', 'success')">
+            ✓ SEANSA KAYITLISIN
+          </button>
+          <button type="button" class="btn-secondary" style="padding:12px 14px; font-size:12px; font-weight:700; border-radius:14px;" onclick="openCalendarSyncModal(${slot.id || myTodayRes.sessionSlotId}, '${escapeJsString(title)}', '${escapeJsString(coach)}', '${slot.startTime || myTodayRes.startTime}', '${slot.endTime || myTodayRes.endTime}')" title="Takvime Ekle">
+            📅 Takvim
+          </button>
+        </div>
+        <div style="text-align:right; margin-top:10px;">
+          <span style="font-size:11.5px; color:var(--text-muted); text-decoration:underline; cursor:pointer;" onclick="handleCancelReservation(${myTodayRes.id})">
+            Rezervasyonu İptal Et
+          </span>
+        </div>
+      `;
+      return;
+    }
+
+    // No reservation today: check if there is an upcoming open slot today
+    const now = new Date();
+    const upcomingSlots = (todaySlots || []).filter(s => {
+      const startTime = new Date(s.startTime);
+      return startTime > now && (s.confirmedCount || 0) < (s.capacity || 6);
+    });
+
+    if (upcomingSlots.length > 0) {
+      const nextSlot = upcomingSlots[0];
+      const start = new Date(nextSlot.startTime);
+      const timeStr = start.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+      const coach = nextSlot.trainerName || 'Eğitmen';
+      const title = nextSlot.title || 'Grup Seansı';
+      const remainingSpots = (nextSlot.capacity || 6) - (nextSlot.confirmedCount || 0);
+
+      heroContainer.className = 'v0-hero-today-card';
+      heroContainer.style.display = 'block';
+      heroContainer.innerHTML = `
+        <div class="v0-hero-today-header">
+          <span class="v0-hero-tag">🔥 Bugün Sporda mıyız?</span>
+          <span style="font-size:11.5px; color:var(--volt-lime); font-weight:800;">${remainingSpots} Kişilik Yer Var</span>
+        </div>
+        <div class="v0-hero-session-time">Bugün ${timeStr}</div>
+        <div class="v0-hero-session-title">${escapeHtml(title)} · 🏋️ ${escapeHtml(coach)}</div>
+        <button type="button" class="v0-btn-hero-action join" onclick="handleBookSession(${nextSlot.id})">
+          <span>⚡</span>
+          <span>${timeStr} SEANSINA KATIL</span>
+          <span style="font-size:16px;">→</span>
+        </button>
+      `;
+    } else {
+      // No more open slots today
+      heroContainer.className = 'v0-hero-today-card';
+      heroContainer.style.display = 'block';
+      heroContainer.innerHTML = `
+        <div class="v0-hero-today-header">
+          <span class="v0-hero-tag">🌟 Bugünkü Seanslar</span>
+        </div>
+        <div style="font-size:14.5px; font-weight:800; color:var(--text-primary); margin-bottom:4px;">Bugün için planlanan seanslar tamamlandı</div>
+        <p style="font-size:12.5px; color:var(--text-secondary); margin:0 0 12px 0;">Yarın ve sonraki günlerin seanslarına aşağıdaki takvimden yerini ayırtabilirsin.</p>
+        <button type="button" class="v0-btn-hero-action join" style="background:var(--bg-surface-elevated); color:var(--volt-lime); border:1px solid var(--volt-lime); padding:10px 14px; font-size:13px;" onclick="selectStoryDateOffset(1)">
+          <span>📅</span>
+          <span>Yarınki Seansları İncele →</span>
+        </button>
+      `;
+    }
+  } catch (err) {
+    console.warn('Bugünkü durum kartı yüklenemedi:', err);
+    heroContainer.style.display = 'none';
+  }
+}
+
+// ==================== STREAMLINED ACTIVE PACKAGE RENDER ====================
 function renderAthleteActivePackage(activeSub) {
   currentAthleteSub = activeSub;
   const remainingEl = document.getElementById('pkg-metric-remaining');
@@ -23,6 +225,7 @@ function renderAthleteActivePackage(activeSub) {
   const freezeBanner = document.getElementById('pkg-freeze-banner');
   const freezeBannerText = document.getElementById('pkg-freeze-banner-text');
   const pkgActionButtons = document.getElementById('pkg-action-buttons');
+  const completedEl = document.getElementById('pkg-metric-completed');
 
   if (activeSub) {
     if (pkgCard) pkgCard.classList.remove('empty-state');
@@ -67,11 +270,20 @@ function renderAthleteActivePackage(activeSub) {
     const remaining = activeSub.remainingLessons ?? 0;
     const used = Math.max(0, total - remaining);
     renderSegmentedBar(used, total);
-    if (remainingEl) remainingEl.innerText = `${remaining} Ders`;
+
+    if (completedEl) completedEl.innerText = `${used} / ${total} Ders Tamamlandı`;
+    if (remainingEl) remainingEl.innerText = `${remaining} DERSİN KALDI`;
     const daysLeft = activeSub.endDate ? Math.max(0, Math.ceil((new Date(activeSub.endDate) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
-    if (daysEl) daysEl.innerText = isFrozen ? `${daysLeft} Gün (Donduruldu)` : `${daysLeft} Gün`;
+    if (daysEl) daysEl.innerText = isFrozen ? `📅 ${daysLeft} Gün (Donduruldu)` : `📅 ${daysLeft} gün geçerli`;
     const balance = activeSub.remainingBalance ?? 0;
-    if (balanceEl) balanceEl.innerText = balance <= 0 ? '₺0 · Ödendi' : formatMoney(balance);
+    if (balanceEl) {
+      if (balance > 0) {
+        balanceEl.style.display = 'inline-block';
+        balanceEl.innerText = `💳 Kalan Bakiye: ${formatMoney(balance)}`;
+      } else {
+        balanceEl.style.display = 'none';
+      }
+    }
   } else {
     if (pkgCard) pkgCard.classList.add('empty-state');
     if (pkgTitleEl) pkgTitleEl.innerText = 'Aktif Paket Yok';
@@ -83,9 +295,10 @@ function renderAthleteActivePackage(activeSub) {
       pkgStatusEl.style.border = '';
     }
     if (pkgBar) pkgBar.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:4px 0;">Tanımlı aktif paketiniz bulunmuyor.</div>';
-    if (remainingEl) remainingEl.innerText = '0 Ders';
-    if (daysEl) daysEl.innerText = '--';
-    if (balanceEl) balanceEl.innerText = '₺0';
+    if (completedEl) completedEl.innerText = '0 / 0 Ders';
+    if (remainingEl) remainingEl.innerText = '0 DERS KALDI';
+    if (daysEl) daysEl.innerText = '📅 -- gün';
+    if (balanceEl) balanceEl.style.display = 'none';
     if (freezeBanner) freezeBanner.style.display = 'none';
     if (pkgActionButtons) pkgActionButtons.style.display = 'none';
   }
@@ -230,13 +443,16 @@ async function loadAthleteHome() {
     if (loginHeaderBtn) loginHeaderBtn.style.display = 'inline-flex';
   }
 
-  // Load Today's Sessions (Yalnızca oturum açmış üyeler için seanslar yüklenir)
+  // Load Today's Sessions, Story Date Strip & Hero Card (Yalnızca oturum açmış üyeler için)
   if (user && token) {
     const guestHomeWrap = document.getElementById('athlete-guest-home-wrap');
     const memberSessionsWrap = document.getElementById('athlete-member-sessions-wrap');
     if (guestHomeWrap) guestHomeWrap.style.display = 'none';
     if (memberSessionsWrap) memberSessionsWrap.style.display = 'block';
-    await renderSessionsList('v0-sessions-container', new Date().toISOString().split('T')[0]);
+
+    renderStoryDateStrip();
+    await renderAthleteTodayHero();
+    await renderSessionsList('v0-sessions-container', currentStorySelectedDate || new Date().toISOString().split('T')[0]);
   }
 }
 
@@ -391,31 +607,31 @@ async function renderSessionsList(containerId, dateStr) {
       let actionButtonHtml = '';
       if (!isLoggedIn) {
         actionButtonHtml = `
-          <button type="button" class="v0-book-btn available" onclick="openOtpDrawer()" style="background:var(--volt-lime-muted); border:1px solid var(--border-subtle); color:var(--volt-lime);">
+          <button type="button" class="v0-book-btn available" onclick="openOtpDrawer()" style="background:var(--volt-lime); color:#000; font-weight:900; font-size:14px; padding:14px; border:none; box-shadow:0 6px 18px rgba(204,255,0,0.3);">
             <span>📱</span> Giriş Yap & Rezerve Et
           </button>
         `;
       } else if (isReservedByMe) {
         actionButtonHtml = `
-          <div style="display:flex; gap:6px; align-items:center; width:100%;">
-            <button type="button" class="v0-book-btn reserved" style="flex:1;" onclick="showToast('✓ Bu seansa rezervasyonunuz bulunuyor. İptal veya detay için Profilim sekmesine bakabilirsiniz.', 'info')">
-              ✓ Rezerve Edildi
+          <div style="display:flex; gap:8px; align-items:center; width:100%;">
+            <button type="button" class="v0-book-btn reserved" style="flex:1; font-weight:800; font-size:13.5px; padding:13px;" onclick="showToast('✓ Bu seansa rezervasyonunuz bulunuyor. Salonda görüşmek üzere! 🐯', 'info')">
+              ✓ REZERVE EDİLDİ
             </button>
-            <button type="button" title="Takvime Ekle" style="background:var(--volt-lime-muted); border:1px solid var(--border-subtle); color:var(--volt-lime); border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:700; font-size:12px; white-space:nowrap; display:flex; align-items:center; gap:4px;" onclick="openCalendarSyncModal(${slot.id}, '${escapeHtml(slot.title || 'Grup Seansı')}', '${escapeHtml(slot.trainerName || 'Eğitmen')}', '${slot.startTime}', '${slot.endTime}')">
+            <button type="button" title="Takvime Ekle" style="background:var(--volt-lime-muted); border:1px solid var(--border-subtle); color:var(--volt-lime); border-radius:12px; padding:12px 14px; cursor:pointer; font-weight:800; font-size:12.5px; white-space:nowrap; display:flex; align-items:center; gap:5px;" onclick="openCalendarSyncModal(${slot.id}, '${escapeHtml(slot.title || 'Grup Seansı')}', '${escapeHtml(slot.trainerName || 'Eğitmen')}', '${slot.startTime}', '${slot.endTime}')">
               📅 Takvim
             </button>
           </div>
         `;
       } else if (isFull) {
         actionButtonHtml = `
-          <button type="button" class="v0-book-btn waitlist" onclick="handleBookSession(${slot.id})">
+          <button type="button" class="v0-book-btn waitlist" style="font-weight:800; font-size:13.5px; padding:13px;" onclick="handleBookSession(${slot.id})">
             <span>➕</span> Yedek Listeye Katıl (Sıra #${(slot.waitlistCount || 0) + 1})
           </button>
         `;
       } else {
         actionButtonHtml = `
-          <button type="button" class="v0-book-btn available" onclick="handleBookSession(${slot.id})">
-            Seansı Rezerve Et
+          <button type="button" class="v0-book-btn available" style="background:var(--volt-lime); color:#000000; font-weight:900; font-size:14px; padding:14px; border:none; box-shadow:0 6px 18px rgba(204,255,0,0.25);" onclick="handleBookSession(${slot.id})">
+            ⚡ DERSE KATIL (${filled}/${capacity})
           </button>
         `;
       }

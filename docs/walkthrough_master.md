@@ -34,6 +34,7 @@ Sistem, Excel tabanlı manuel takibi (`SampleExcel.xlsx`) ortadan kaldırarak:
 
 ### Frontend
 - **Tasarım Dili:** Hevy / Whoop / Nike Training Club esintili **Volt Lime (`#CCFF00`) & Obsidian Dark** atletik tasarım sistemi.
+- **Smartphone-First / Mobil Öncelikli Mimari (Rule 20):** Uygulama %98 oranında akıllı telefon ekranlarında (360px - 430px) tek elle/başparmakla kullanılacak şekilde tasarlanır; masaüstü görünümü yalnızca ikincil bir tamamlayıcıdır. Geniş ekran karmaşasından arındırılmış, 44-48px başparmak dokunmatik hedefleri ve Instagram Story/Feed tarzı akıcı akış esastır.
 - **Mobil Entegrasyon:** PWA (Progressive Web App - `manifest.json`, Service Worker) ile iOS/Android ana ekrana uygulama olarak eklenebilirlik.
 - **Kullanıcı Deneyimi:** 1-dokunuşla yoklama alma, görsel segmentli set/ders ilerleme çubuğu, tek tıkla WhatsApp şablon yönlendirmesi.
 
@@ -710,6 +711,34 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Dondurulmuş abonelikle seans rezervasyonunun engellenmesi testi.
     - Controller seviyesinde uçtan uca freeze, freezes history ve unfreeze akış testi.
     - **Toplam 110/110 test sıfır derleyici uyarısı (0 warning, 0 error) ve %100 başarıyla tamamlandı.**
+
+- **2026-10-14 (v3.5.0 - Instagram Reels / Story Sadeliği: Sporcu Ana Sayfa Devrimi & Yatay Story Gün Şeridi):**
+  - **Kullanıcı Hedefi:** *"Uygulamamızı kullanıcı için basitleştirmeye çalışalım. En teknoloji bilmeyen, sadece instagramda reels kaydıran biri bile yapabilsin rahatça."*
+  - **Misafir (Giriş Yapmamış) Ekranı Sadeleştirmesi:**
+    - Uzun ve karmaşık tanıtım metinleri, kilitli takvim kartları kaldırıldı.
+    - Ortalanmış, lüks atletik kaplan amblemli (`tiger2_badge.png`), nefes alan pulsing neon auralı tek bir onboarding kartı (`.v0-guest-hero-card`) yerleştirildi.
+    - Kocaman, tek dokunuşluk başparmak butonu: `[ 📱 Telefon Numaranla Başla → ]` ve ikincil `[ 💬 WhatsApp ile Bilgi Al ]`.
+  - **Ana Sayfa Her Şeyin Kalbi Haline Getirildi:**
+    - Ayrı `Seanslar` sekmesine gerek kalmadan ana ekran tek bir akıcı merkez haline getirildi; alt navigasyon sporcular için 3 dev, konforlu başparmak butonuna dönüştürüldü: `[ 🏠 Ana Sayfa ]` `[ 📈 Antrenman ]` `[ 👤 Profilim ]`.
+    - `navigateTo('sessions')` çağrıları otomatik olarak ana sayfaya yönlendirildi.
+  - **"Bugünkü Durum" Canlı Hero Kartı (`#athlete-today-hero`):**
+    - *Rezervasyonu Varsa:* Yeşil ışıltılı durum kartı, büyük seans saati (`19:00 - 20:00`), sorumlu eğitmen, derse gelen arkadaşların avatarları ("Sen ve Meltem Y. katılıyorsunuz"), `[ ✓ SEANSA KAYITLISIN ]` rozeti, takvim senkronizasyonu ve hızlı iptal imkanı.
+    - *Rezervasyonu Yoksa:* Enerjik *"🔥 Bugün Sporda mıyız?"* başlığı, sıradaki uygun seans ve 1-dokunuşla derse yazılma: `[ ⚡ 19:00 SEANSINA KATIL ]`.
+  - **Instagram Story İlerleme Çubuğu & Paket Kartı:**
+    - 3 dağınık metrik kutucuğu yerine üstte hikaye segmentleri, ortada büyük ve net: `5 / 8 Ders Tamamlandı` ve Volt Lime hap: `3 DERSİN KALDI`.
+    - Bakiye borcu yoksa `₺0` yazıları gizlendi; temiz bir görünüm sağlandı.
+  - **Instagram Story Gün Şeridi (`#v0-story-date-strip`):**
+    - 14 günlük minik kutulu masaüstü takvim ızgarası tarihe gömüldü.
+    - Ekranın üstünde parmakla yatay kayan Story baloncukları (`🔥 BUGÜN 14`, `YARIN 15`, `CUM 16`, `CMT 17`...):
+      - Seçili gün Volt Lime dolgu, siyah tipografi ve neon parıltıyla öne çıkar.
+      - Dokunulduğu anda sayfa yenilenmeden alttaki seans feed'i akıcı biçimde güncellenir.
+  - **Reels/Feed Tarzı Seans Kartları:**
+    - Büyük saat (19:00), eğitmen çipi, katılımcı avatarları ve dev Volt buton: `[ ⚡ DERSE KATIL (4/6) ]`.
+  - **Test & Doğrulama (Redmi Note 8 Pro Benchmark):**
+    - 110/110 birim ve entegrasyon testi %100 başarıyla korundu.
+    - Referans mobil cihaz olarak **Xiaomi Redmi Note 8 Pro (6.53 inç, 1080x2340 fiziksel, 393x851 CSS viewport)** belirlendi.
+    - Misafir giriş karşılama kartı (`.v0-guest-hero-card`) tam dikey ve yatay merkeze (`position: fixed; inset: 0; display: flex; justify-content: center; align-items: center;`) oturtularak hem Koyu (Dark) hem Açık (Light) temada doğrulandı.
+    - Ekran görüntüleri kaydedildi: `docs/screenshots/redmi_note8_pro_centered_dark.png` ve `docs/screenshots/redmi_note8_pro_centered_light.png`. Sürüm `v3.5.2`.
 
 ---
 

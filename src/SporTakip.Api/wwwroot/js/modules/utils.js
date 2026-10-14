@@ -14,6 +14,8 @@ export function applyTheme(theme) {
   if (desktopIcon) desktopIcon.innerText = isLight ? '☀️' : '🌙';
   if (desktopLabel) desktopLabel.innerText = isLight ? 'Açık Tema' : 'Koyu Tema';
   if (mobileIcon) mobileIcon.innerText = isLight ? '☀️' : '🌙';
+  const guestIcon = document.getElementById('guest-theme-icon');
+  if (guestIcon) guestIcon.innerText = isLight ? '☀️' : '🌙';
 
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   if (metaThemeColor) {
