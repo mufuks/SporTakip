@@ -1,144 +1,217 @@
 <section id="view-dashboard" class="v0-section animate-fade-in" style="display:none;">
 
-      <div class="page-header">
-        <div>
-          <h2 class="page-title">SALON <span class="text-volt">FİNANSI</span></h2>
-          <p class="page-subtitle">Aylık toplam ciro, tahsil edilen kasa, salon işletme payı ve üye istatistikleri.</p>
+  <div class="page-header" style="margin-bottom:16px;">
+    <div>
+      <h2 class="page-title">SALON <span class="text-volt">MASASI</span></h2>
+      <p class="page-subtitle">Salon finansı, eğitmen bordroları ve sporcu yönetimi.</p>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <button type="button" class="btn-primary" onclick="openNewMemberModal()">+ Yeni Üye Kaydı</button>
+      <button type="button" class="btn-secondary" style="font-size:12px; padding:7px 12px;" onclick="openCreatePackageModal()">+ Yeni Paket</button>
+    </div>
+  </div>
+
+  <!-- Salon Masası 3'lü Odak Sekmeleri (Sub-tabs) -->
+  <div class="filter-chips" style="margin-bottom:20px; overflow-x:auto; padding-bottom:4px;">
+    <button type="button" class="filter-chip active" id="dash-tab-btn-finance" onclick="switchDashboardSubTab('finance')">
+      <span>📊</span> Kasa & Finans
+    </button>
+    <button type="button" class="filter-chip" id="dash-tab-btn-payroll" onclick="switchDashboardSubTab('payroll')">
+      <span>📋</span> Hoca Bordroları
+    </button>
+    <button type="button" class="filter-chip" id="dash-tab-btn-members" onclick="switchDashboardSubTab('members')">
+      <span>👥</span> Üyeler & Paketler
+    </button>
+  </div>
+
+  <!-- ==================== 1. SUBVIEW: KASA & FİNANS ==================== -->
+  <div id="dash-subview-finance">
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Aktif Sporcular</div>
+        <div class="stat-value text-volt" id="stat-active-members">0</div>
+        <div class="stat-meta">Salondaki toplam üye</div>
+      </div>
+      <div class="stat-card cyan">
+        <div class="stat-label">Bu Ayki Ciro</div>
+        <div class="stat-value text-cyan" id="stat-revenue-month">₺0</div>
+        <div class="stat-meta">Satılan paket toplamı</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">Tahsil Edilen Kasa</div>
+        <div class="stat-value text-orange" id="stat-collected-month">₺0</div>
+        <div class="stat-meta">Nakit / Havale alınan</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">Açık Hesap (Alacak)</div>
+        <div class="stat-value" id="stat-pending-month">₺0</div>
+        <div class="stat-meta">Kalan üye bakiyesi</div>
+      </div>
+    </div>
+
+    <!-- Salon Sahibi & Hoca Dağılım Kartı -->
+    <div class="glass-card" style="margin-bottom:24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+        <h3 style="font-size:17px; font-weight:800; letter-spacing:-0.01em; margin:0;">Gelir Dağılımı</h3>
+        <button type="button" class="btn-secondary" style="font-size:12px; padding:5px 12px;" onclick="switchDashboardSubTab('payroll')">📋 Bordrolar →</button>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
+        <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px;">
+          <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Salon Payı</div>
+          <div style="font-size:24px; font-weight:800; color:var(--cyber-cyan); margin:6px 0 2px 0;" id="share-salon-month">₺0</div>
+          <div style="font-size:11.5px; color:var(--text-secondary);">Salona kalan işletme payı</div>
         </div>
-        <div>
-          <button class="btn-primary" onclick="openNewMemberModal()">+ Yeni Üye Kaydı</button>
+        <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px;">
+          <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Hoca Hakedişleri</div>
+          <div style="font-size:24px; font-weight:800; color:var(--volt-lime); margin:6px 0 2px 0;" id="share-trainer-month">₺0</div>
+          <div style="font-size:11.5px; color:var(--text-secondary);">Eğitmen paket & ders payı</div>
+        </div>
+        <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px;">
+          <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Yapılan Dersler</div>
+          <div style="font-size:24px; font-weight:800; color:var(--text-primary); margin:6px 0 2px 0;" id="stat-lessons-count">0 DERS</div>
+          <div style="font-size:11.5px; color:var(--text-secondary);">Yoklaması alınan antrenmanlar</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Items Grid -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:16px;">
+      <!-- Expiring Packages -->
+      <div class="glass-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h3 style="font-size:16px; font-weight:800;">Biten Paketler</h3>
+          <span class="lesson-badge badge-amber">Son 1-2 Ders</span>
+        </div>
+        <div id="dashboard-expiring-list">
+          <!-- Dynamically populated -->
         </div>
       </div>
 
-      <!-- Stats Grid -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Aktif Sporcular</div>
-          <div class="stat-value text-volt" id="stat-active-members">0</div>
-          <div class="stat-meta">Salondaki toplam üye</div>
+      <!-- Unpaid Subscriptions -->
+      <div class="glass-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h3 style="font-size:16px; font-weight:800;">Kalan Ödemeler</h3>
+          <span class="lesson-badge badge-red">Borç Takibi</span>
         </div>
-        <div class="stat-card cyan">
-          <div class="stat-label">Bu Ayki Ciro</div>
-          <div class="stat-value text-cyan" id="stat-revenue-month">₺0</div>
-          <div class="stat-meta">Satılan paket toplamı</div>
-        </div>
-        <div class="stat-card orange">
-          <div class="stat-label">Tahsil Edilen Kasa</div>
-          <div class="stat-value text-orange" id="stat-collected-month">₺0</div>
-          <div class="stat-meta">Nakit / Havale alınan</div>
-        </div>
-        <div class="stat-card purple">
-          <div class="stat-label">Açık Hesap (Alacak)</div>
-          <div class="stat-value" id="stat-pending-month">₺0</div>
-          <div class="stat-meta">Kalan üye bakiyesi</div>
+        <div id="dashboard-unpaid-list">
+          <!-- Dynamically populated -->
         </div>
       </div>
+    </div>
 
-      <!-- Salon Sahibi & Hoca Dağılım Kartı -->
-      <div class="glass-card" style="margin-bottom:24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
-          <h3 style="font-size:17px; font-weight:800; letter-spacing:-0.01em; margin:0;">Gelir Dağılımı</h3>
-          <button type="button" class="btn-secondary" style="font-size:12px; padding:5px 12px;" onclick="navigateTo('kasa')">📋 Bordrolar →</button>
-        </div>
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
-          <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px;">
-            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Salon Payı</div>
-            <div style="font-size:24px; font-weight:800; color:var(--cyber-cyan); margin:6px 0 2px 0;" id="share-salon-month">₺0</div>
-            <div style="font-size:11.5px; color:var(--text-secondary);">Salona kalan işletme payı</div>
-          </div>
-          <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px;">
-            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Hoca Hakedişleri</div>
-            <div style="font-size:24px; font-weight:800; color:var(--volt-lime); margin:6px 0 2px 0;" id="share-trainer-month">₺0</div>
-            <div style="font-size:11.5px; color:var(--text-secondary);">Eğitmen paket & ders payı</div>
-          </div>
-          <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px;">
-            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.08em;">Yapılan Dersler</div>
-            <div style="font-size:24px; font-weight:800; color:var(--text-primary); margin:6px 0 2px 0;" id="stat-lessons-count">0 DERS</div>
-            <div style="font-size:11.5px; color:var(--text-secondary);">Yoklaması alınan antrenmanlar</div>
-          </div>
-        </div>
+    <!-- Eğitmen Kadrosu Yönetimi -->
+    <div class="glass-card" style="margin-top:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+        <h3 style="font-size:17px; font-weight:800;">Eğitmen Kadrosu</h3>
+        <button type="button" class="btn-primary" id="btn-open-new-trainer" onclick="openNewTrainerModal()">
+          + Yeni Hoca
+        </button>
       </div>
-
-      <!-- Action Items Grid -->
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:16px;">
-        <!-- Expiring Packages -->
-        <div class="glass-card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 style="font-size:16px; font-weight:800;">Biten Paketler</h3>
-            <span class="lesson-badge badge-amber">Son 1-2 Ders</span>
-          </div>
-          <div id="dashboard-expiring-list">
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Hoca Adı</th>
+              <th>Rolü</th>
+              <th>Telefon</th>
+              <th>Varsayılan Prim</th>
+              <th>Durum</th>
+              <th style="text-align:right;">İşlem</th>
+            </tr>
+          </thead>
+          <tbody id="trainers-table-body">
             <!-- Dynamically populated -->
-          </div>
-        </div>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-        <!-- Unpaid Subscriptions -->
-        <div class="glass-card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 style="font-size:16px; font-weight:800;">Kalan Ödemeler</h3>
-            <span class="lesson-badge badge-red">Borç Takibi</span>
-          </div>
-          <div id="dashboard-unpaid-list">
+    <!-- Paket & Fiyat Yönetimi -->
+    <div class="glass-card" style="margin-top:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h3 style="font-size:17px; font-weight:800; display:inline-block; margin-right:8px;">Paketler & Fiyatlar</h3>
+          <span style="font-size:12px; color:var(--text-secondary);">Standart paketler ve varsayılan liste fiyatları</span>
+        </div>
+        <button type="button" class="btn-primary" id="btn-open-new-package" onclick="openCreatePackageModal()">
+          + Yeni Paket
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Paket Adı</th>
+              <th>Tür</th>
+              <th>Ders Sayısı</th>
+              <th>Geçerlilik</th>
+              <th>Liste Fiyatı</th>
+              <th>Durum</th>
+              <th style="text-align:right;">İşlemler</th>
+            </tr>
+          </thead>
+          <tbody id="packages-table-body">
             <!-- Dynamically populated -->
-          </div>
-        </div>
+          </tbody>
+        </table>
       </div>
+    </div>
+  </div>
 
-      <!-- Eğitmen Kadrosu Yönetimi -->
-      <div class="glass-card" style="margin-top:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-          <h3 style="font-size:17px; font-weight:800;">Kadro</h3>
-          <button class="btn-primary" id="btn-open-new-trainer" onclick="openNewTrainerModal()">
-            + Yeni Hoca
-          </button>
+  <!-- ==================== 2. SUBVIEW: HOCA BORDROLARI ==================== -->
+  <div id="dash-subview-payroll" style="display:none;">
+    <div class="glass-card table-responsive" style="margin-bottom:24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h3 style="font-size:17px; font-weight:800; margin:0;">Eğitmen Hakediş Bordroları</h3>
+          <p style="font-size:12px; color:var(--text-secondary); margin:4px 0 0 0;">Salondaki tüm hocaların girdiği seanslar, ikame primleri ve aylık hakediş dökümü.</p>
         </div>
-        <div class="table-responsive">
-          <table class="custom-table">
-            <thead>
-              <tr>
-                <th>Hoca Adı</th>
-                <th>Rolü</th>
-                <th>Telefon</th>
-                <th>Varsayılan Prim</th>
-                <th>Durum</th>
-                <th style="text-align:right;">İşlem</th>
-              </tr>
-            </thead>
-            <tbody id="trainers-table-body">
-              <!-- Dynamically populated -->
-            </tbody>
-          </table>
-        </div>
+        <button type="button" class="btn-secondary" style="font-size:12px; padding:6px 12px;" onclick="loadKasaView()">🔄 Yenile</button>
       </div>
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Hoca / Yetkili</th>
+            <th>Rol</th>
+            <th>Girdiği Ders</th>
+            <th>Ders Başı Prim</th>
+            <th>Paket / Salon Payı</th>
+            <th>Toplam Hak Edilen</th>
+          </tr>
+        </thead>
+        <tbody id="payroll-table-body">
+          <!-- Dynamically populated by loadKasaView -->
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-      <!-- Paket & Fiyat Yönetimi -->
-      <div class="glass-card" style="margin-top:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-          <div>
-            <h3 style="font-size:17px; font-weight:800; display:inline-block; margin-right:8px;">Paketler & Fiyatlar</h3>
-            <span style="font-size:12px; color:var(--text-secondary);">Standart paketler ve varsayılan liste fiyatları</span>
-          </div>
-          <button class="btn-primary" id="btn-open-new-package" onclick="openCreatePackageModal()">
-            + Yeni Paket
-          </button>
+  <!-- ==================== 3. SUBVIEW: ÜYELER & PAKETLER ==================== -->
+  <div id="dash-subview-members" style="display:none;">
+    <div class="glass-card table-responsive">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+        <div class="search-wrapper" style="min-width:240px; flex:1; max-width:360px;">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" placeholder="İsim veya telefon ara..." oninput="handleMemberSearch(this.value)">
         </div>
-        <div class="table-responsive">
-          <table class="custom-table">
-            <thead>
-              <tr>
-                <th>Paket Adı</th>
-                <th>Tür</th>
-                <th>Ders Sayısı</th>
-                <th>Geçerlilik</th>
-                <th>Liste Fiyatı</th>
-                <th>Durum</th>
-                <th style="text-align:right;">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody id="packages-table-body">
-              <!-- Dynamically populated -->
-            </tbody>
-          </table>
-        </div>
+        <button type="button" class="btn-primary" onclick="openNewMemberModal()">+ Yeni Üye Kaydı</button>
       </div>
-    </section>
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Ad Soyad</th>
+            <th>Telefon</th>
+            <th>Aktif Paket Durumu</th>
+            <th>Toplam Dönem</th>
+            <th>İşlemler</th>
+          </tr>
+        </thead>
+        <tbody id="members-table-body">
+          <!-- Dynamically populated by loadMembersView -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</section>

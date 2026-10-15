@@ -23,11 +23,11 @@
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div class="form-group">
             <label>Tarih *</label>
-            <input type="date" id="schedule-date" class="form-control" required>
+            <input type="date" id="schedule-date" class="form-control" required onchange="handleScheduleModalDateChange(this.value)">
           </div>
           <div class="form-group">
             <label>Saat Dilimi *</label>
-            <select id="schedule-hour" class="form-control" required>
+            <select id="schedule-hour" class="form-control" required onchange="handleScheduleModalHourChange(this.value)">
               <option value="9">09:00 - 10:00</option>
               <option value="10">10:00 - 11:00</option>
               <option value="11">11:00 - 12:00</option>
@@ -43,6 +43,9 @@
               <option value="21">21:00 - 22:00</option>
             </select>
           </div>
+        </div>
+        <div id="schedule-capacity-warning" style="display:none; margin-top:-6px; margin-bottom:12px; padding:8px 12px; border-radius:8px; font-size:11.5px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; font-weight:700;">
+          ⚠️ Bu saatte salon kapasitesi dolmuştur (6/6). Yine de planlamak ekipman ve alan sıkışıklığına yol açabilir.
         </div>
         <div class="form-group">
           <label>Not / Hedef Seans</label>

@@ -152,8 +152,10 @@ function renderCapacitySlots(slots) {
     const isActive = selectedSlotHour === slot.hour;
 
     let trainerSummary = 'Boş Saat';
+    let trainerShortPills = '';
     if (slot.trainers && slot.trainers.length > 0) {
       trainerSummary = slot.trainers.map(t => `${t.trainerName} (${t.memberCount})`).join(', ');
+      trainerShortPills = `<span style="font-size:9.5px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; display:block; margin-top:2px;">${escapeHtml(slot.trainers.map(t => `${t.trainerName.split(' ')[0]}:${t.memberCount}`).join(' '))}</span>`;
     }
 
     const countLabel = hasMembers ? `${slot.totalMembers}/${slot.capacityLimit}` : 'Boş';
@@ -165,6 +167,7 @@ function renderCapacitySlots(slots) {
               title="${slot.timeSlot} - ${hasMembers ? slot.totalMembers + '/' + slot.capacityLimit + ' Kişi (' + trainerSummary + ')' : 'Boş Saat (Kayıt yok)'}">
         <span class="v0-cal-day-num">${slot.timeSlot}</span>
         <span class="v0-cal-day-sub">${countLabel}</span>
+        ${trainerShortPills}
         <span class="v0-cal-dot ${statusClass}"></span>
       </button>
     `;
@@ -183,8 +186,32 @@ window.selectSlotHour = function(hour) {
   const markAllBtn = document.getElementById('btn-mark-all-attended');
 
   if (slot && detailsBox && detailsText) {
-    const athletes = slot.members.map(m => `${m.memberName} (${m.status === 'Attended' ? 'Geldi' : 'Planlı'})`).join(', ');
-    detailsText.innerHTML = `<strong>Saat ${slot.timeSlot}:</strong> Toplam ${slot.totalMembers} kişi ${athletes ? `— ${escapeHtml(athletes)}` : '(Henüz kayıt yok)'}`;
+    const isFull = slot.totalMembers >= slot.capacityLimit;
+    const isFilling = slot.totalMembers >= 4 && !isFull;
+    
+    const statusPill = isFull
+      ? `<span style="background:rgba(239,68,68,0.18); color:#ef4444; border:1px solid rgba(239,68,68,0.35); font-weight:800; font-size:11px; padding:2px 8px; border-radius:999px;">🔴 DOLU (${slot.totalMembers}/${slot.capacityLimit}) - Çakışma Riski</span>`
+      : isFilling
+      ? `<span style="background:rgba(245,158,11,0.18); color:#f59e0b; border:1px solid rgba(245,158,11,0.35); font-weight:800; font-size:11px; padding:2px 8px; border-radius:999px;">🟡 DOLUYOR (${slot.totalMembers}/${slot.capacityLimit}) - ${slot.capacityLimit - slot.totalMembers} Boş Yer</span>`
+      : `<span style="background:rgba(204,255,0,0.14); color:var(--volt-lime); border:1px solid rgba(204,255,0,0.3); font-weight:800; font-size:11px; padding:2px 8px; border-radius:999px;">🟢 RAHAT (${slot.totalMembers}/${slot.capacityLimit}) - ${slot.capacityLimit - slot.totalMembers} Boş Yer</span>`;
+
+    let trainersBreakdown = '';
+    if (slot.trainers && slot.trainers.length > 0) {
+      trainersBreakdown = slot.trainers.map(t => {
+        const names = t.memberNames && t.memberNames.length > 0 ? ` (${escapeHtml(t.memberNames.join(', '))})` : '';
+        return `<span style="display:inline-flex; align-items:center; gap:4px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); padding:3px 8px; border-radius:6px; font-size:11.5px; color:var(--text-primary);">🏋️ <strong>${escapeHtml(t.trainerName)}:</strong> ${t.memberCount} sporcu${names}</span>`;
+      }).join(' ');
+    }
+
+    detailsText.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <strong>Saat ${slot.timeSlot}:</strong>
+          ${statusPill}
+        </div>
+        ${trainersBreakdown ? `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:2px;">${trainersBreakdown}</div>` : `<span style="color:var(--text-muted); font-size:12px;">Henüz bu saatte kayıtlı sporcu yok.</span>`}
+      </div>
+    `;
 
     if (markAllBtn) {
       const pendingMembers = slot.members.filter(m => m.status !== 'Attended');
@@ -509,8 +536,25 @@ window.filterAttendance = function(text) {
   renderAttendanceList(filtered);
 };
 
+// ==================== 2. DASHBOARD (SALON MASASI YÖNETİMİ) ====================
+function switchDashboardSubTab(subTab) {
+  const tabs = ['finance', 'payroll', 'members'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`dash-tab-btn-${t}`);
+    const view = document.getElementById(`dash-subview-${t}`);
+    if (btn) btn.classList.toggle('active', t === subTab);
+    if (view) view.style.display = t === subTab ? 'block' : 'none';
+  });
 
-// ==================== 2. DASHBOARD (YÖNETİM) ====================
+  if (subTab === 'payroll') {
+    loadKasaView();
+  } else if (subTab === 'members') {
+    loadMembersView();
+  } else if (subTab === 'finance') {
+    loadDashboardView();
+  }
+};
+
 async function loadDashboardView() {
   try {
     const stats = await Api.getStats();
@@ -1521,6 +1565,76 @@ window.sendWhatsAppTemplate = function(templateNum) {
 };
 
 // ==================== SEANS PLANLAMA (KAPASİTE YÖNETİMİ) ====================
+async function populateScheduleHourOptions(targetDate) {
+  const hourSelect = document.getElementById('schedule-hour');
+  if (!hourSelect) return;
+
+  let slots = capacitySlotsData;
+  if (!slots || currentCapacityDate !== targetDate) {
+    try {
+      slots = await Api.getCapacity(targetDate);
+    } catch {
+      slots = capacitySlotsData || [];
+    }
+  }
+
+  const hours = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+  const selectedVal = parseInt(hourSelect.value) || 19;
+
+  hourSelect.innerHTML = hours.map(h => {
+    const slot = slots?.find(s => s.hour === h);
+    const startStr = h.toString().padStart(2, '0') + ':00';
+    const endStr = (h + 1).toString().padStart(2, '0') + ':00';
+    const timeLabel = `${startStr} - ${endStr}`;
+
+    let statusText = '(Boş 🟢)';
+    let trainerInfo = '';
+    const total = slot?.totalMembers || 0;
+    const limit = slot?.capacityLimit || 6;
+
+    if (total >= limit) {
+      statusText = `(${total}/${limit} DOLU 🔴 Çakışma!)`;
+    } else if (total >= 4) {
+      statusText = `(${total}/${limit} Doluyor 🟡)`;
+    } else if (total > 0) {
+      statusText = `(${total}/${limit} Rahat 🟢)`;
+    }
+
+    if (slot?.trainers && slot.trainers.length > 0) {
+      trainerInfo = ' · ' + slot.trainers.map(t => `${t.trainerName.split(' ')[0]}:${t.memberCount}`).join(' ');
+    }
+
+    const isSelected = h === selectedVal;
+    return `<option value="${h}" ${isSelected ? 'selected' : ''}>${timeLabel} ${statusText}${trainerInfo}</option>`;
+  }).join('');
+
+  checkScheduleHourWarning();
+}
+
+window.handleScheduleModalDateChange = async function(newDate) {
+  if (newDate) {
+    await populateScheduleHourOptions(newDate);
+  }
+};
+
+window.handleScheduleModalHourChange = function() {
+  checkScheduleHourWarning();
+};
+
+function checkScheduleHourWarning() {
+  const hourSelect = document.getElementById('schedule-hour');
+  const warningBanner = document.getElementById('schedule-capacity-warning');
+  if (!hourSelect || !warningBanner) return;
+
+  const hour = parseInt(hourSelect.value);
+  const slot = capacitySlotsData?.find(s => s.hour === hour);
+  if (slot && slot.totalMembers >= slot.capacityLimit) {
+    warningBanner.style.display = 'block';
+  } else {
+    warningBanner.style.display = 'none';
+  }
+}
+
 function openScheduleSessionModal() {
   const subSelect = document.getElementById('schedule-sub-select');
   if (activeSubscriptions.length === 0) {
@@ -1538,7 +1652,10 @@ function openScheduleSessionModal() {
   ).join('');
 
   const dateInput = document.getElementById('schedule-date');
-  if (dateInput) dateInput.value = currentCapacityDate;
+  if (dateInput) {
+    dateInput.value = currentCapacityDate;
+    populateScheduleHourOptions(currentCapacityDate);
+  }
 
   openModal('modal-schedule-session');
 }
@@ -1737,7 +1854,7 @@ window.handleStaffUnfreezeSub = async function(subId, memberName) {
   }
 };
 
-// Global window assignments for staff functions
+window.switchDashboardSubTab = switchDashboardSubTab;
 window.loadAttendanceView = loadAttendanceView;
 window.renderCapacityWeekStrip = renderCapacityWeekStrip;
 window.loadCapacitySlots = loadCapacitySlots;
@@ -1758,6 +1875,7 @@ window.renderCalendarGrid = renderCalendarGrid;
 window.openScheduleModal = openScheduleSessionModal;
 
 export {
+  switchDashboardSubTab,
   loadAttendanceView, renderCapacityWeekStrip, loadCapacitySlots, renderCapacitySlots,
   applyAttendanceFilter, renderAttendanceList, loadDashboardView, renderMembersTable,
   loadMembersView, getRoleBadgeHtml, loadKasaView, loadMyEarningsView,

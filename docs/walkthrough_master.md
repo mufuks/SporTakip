@@ -755,6 +755,25 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - **Dinamik SVG Kilo İlerleme Grafiği:** Min/Max kılavuz çizgileri, neon gradyan dolgu ve dokunmatik veri noktaları ile zaman içindeki kilo trendini gösteren hafif SVG grafik.
     - **Ölçüm Geçmişi & Silme:** Önceki ölçümlere göre fark göstergeli (+/- kg) geçmiş listesi ve silme aksiyonu.
   - **Mobil Öncelikli Doğrulama:** Xiaomi Redmi Note 8 Pro (393px × 851px) görünümünde test edildi.
+- **2026-10-15 (v3.6.2 & v3.6.3 - Hoca ve Salon Sahibi Sadeleştirmesi: Çakışmasız Doluluk & 3'lü Salon Masası Hub):**
+  - **Hoca Rolü Sadeleştirmesi (Coach Experience):**
+    - Hoca ekranlarından karmaşık finans/kasa/muhasebe butonları kaldırıldı.
+    - Hoca için alt navigasyon tam olarak **2 odaklı başparmak sekmesine** indirgendi:
+      - `[ 📋 Seans & Yoklama ]` (Bugünün saatlik salon doluluğu, kendi seansı ve tek dokunuşla `[ ✓ Geldi ]` yoklaması).
+      - `[ 💵 Kazancım ]` (Bu ay kaç derse girildi, %40 ikame primleri, tahmini hakediş dökümü).
+  - **Salon Sahibi Rolü (Owner = Coach + Salon Masası):**
+    - Salon sahibinin de salonda bizzat ders veren bir antrenör olduğu gerçeğiyle; Hoca ekranlarını aynen kullanması, yönetim içinse yanına tek bir `[ 👑 Salon Masası ]` sekmesi eklenmesi sağlandı.
+    - Salon Sahibi için alt navigasyon **3 konforlu sekmeye** indirgendi: `[ 📋 Yoklama ] [ 💵 Kazancım ] [ 👑 Salon ]`.
+  - **3'lü Salon Masası Hub (`views/staff/dashboard.html`):**
+    - Alt çubuğu 5 farklı butonla doldurmak yerine `Salon Masası` sekmesi içine hızlı 3 alt sekme (sub-tabs) yerleştirildi:
+      - `[ 📊 Kasa & Finans ]`: Ciro, tahsil edilen kasa, kalan alacak, gelir dağılımı, kadro ve paket yönetimi.
+      - `[ 📋 Hoca Bordroları ]`: Gülçin Hoca vb. tüm antrenörlerin ders sayısı, ikame payları ve aylık hakediş tablosu.
+      - `[ 👥 Üyeler & Paketler ]`: Hızlı arama çubuğu, sporcular tablosu ve tek dokunuşla yeni üye/paket satışı.
+  - **Çakışma Önleyici Canlı Doluluk & Hoca Dağılımı (Anti-Clash Scheduling):**
+    - `capacity-slots-list` içinde her saat diliminde hocaların aldığı öğrenci sayıları (Örn: `Gülçin: 2 Sinan: 1`) kompakt çiplerle gösterildi.
+    - Slota tıklandığında açılan detay çubuğunda salonun doluluk durumu (`🔴 DOLU (6/6) - Çakışma Riski`, `🟡 DOLUYOR (4/6)`, `🟢 RAHAT (2/6)`) ve hangi hocanın hangi öğrencileri aldığı (`🏋️ Gülçin: 2 sporcu (Ahmet, Can)`) net olarak görselleştirildi.
+    - **Seans Planlama Modalı (`session-modals.html`):** Saat açılır menüsünde günün tüm saatleri doluluk oranı ve hoca bilgileriyle (`19:00 - 20:00 (6/6 DOLU 🔴 Çakışma! · Gülçin:3 Sinan:3)`) dinamik olarak listelendi; dolu saat seçildiğinde kırmızı çakışma uyarı kutusu devreye alındı.
+  - **Doğrulama & Standartlar:** Xiaomi Redmi Note 8 Pro (`393px × 851px`) benchmark ekranında doğrulandı. 110/110 birim testi başarıyla korundu.
 
 ---
 

@@ -16,11 +16,11 @@ import {
   loadAttendanceView, renderCapacityWeekStrip, loadCapacitySlots, renderCapacitySlots,
   applyAttendanceFilter, renderAttendanceList,
   loadDashboardView, loadMembersView, getRoleBadgeHtml,
-  loadKasaView, loadMyEarningsView,
+  loadKasaView, loadMyEarningsView, switchDashboardSubTab,
   loadTrainers, renderTrainersTable, updateTrainerSelects,
   loadPackagesAdmin, renderPackagesTable,
   loadCalendarView, renderCalendarGrid
-} from './modules/staff.js';
+} from './modules/staff.js?v=3.6.3';
 import { 
   loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,
@@ -120,9 +120,26 @@ window.navigateTo = async function(tabName) {
   else if (tabName === 'profile') renderAthleteProfile();
   else if (tabName === 'yoklama') loadAttendanceView();
   else if (tabName === 'takvim') loadCalendarView();
-  else if (tabName === 'dashboard') { loadDashboardView(); loadTrainers(); loadPackagesAdmin(); }
-  else if (tabName === 'uyeler') loadMembersView();
-  else if (tabName === 'kasa') loadKasaView();
+  else if (tabName === 'dashboard') { 
+    loadDashboardView(); 
+    loadTrainers(); 
+    loadPackagesAdmin(); 
+    if (typeof switchDashboardSubTab === 'function') switchDashboardSubTab('finance');
+  }
+  else if (tabName === 'uyeler') {
+    await ensureViewLoaded('dashboard');
+    document.querySelectorAll('.v0-section').forEach(el => el.style.display = 'none');
+    const dashEl = document.getElementById('view-dashboard');
+    if (dashEl) dashEl.style.display = 'block';
+    if (typeof switchDashboardSubTab === 'function') switchDashboardSubTab('members');
+  }
+  else if (tabName === 'kasa') {
+    await ensureViewLoaded('dashboard');
+    document.querySelectorAll('.v0-section').forEach(el => el.style.display = 'none');
+    const dashEl = document.getElementById('view-dashboard');
+    if (dashEl) dashEl.style.display = 'block';
+    if (typeof switchDashboardSubTab === 'function') switchDashboardSubTab('payroll');
+  }
   else if (tabName === 'hakedisim') loadMyEarningsView();
   else if (tabName === 'superadmin') loadSuperAdminView();
 
