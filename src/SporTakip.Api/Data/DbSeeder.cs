@@ -34,6 +34,9 @@ public static class DbSeeder
 
         // 6. Örnek Seansları Temizle
         await CleanDemoSessionsAsync(db);
+
+        // 7. Örnek Bildirimler
+        await SeedDemoNotificationsAsync(db);
     }
 
     // ── 1. SuperAdmin ────────────────────────────────────────────────────────────
@@ -320,7 +323,84 @@ public static class DbSeeder
         }
     }
 
-    // ── 7. Şema Güncelleme Güvencesi (Defensive Schema Upgrades) ───────────────
+    // ── 7. Örnek Bildirimler ─────────────────────────────────────────────────────
+    private static async Task SeedDemoNotificationsAsync(ApplicationDbContext db)
+    {
+        if (await db.Notifications.AnyAsync()) return;
+
+        var athleteUser = await db.Users.FirstOrDefaultAsync(u => u.PhoneNumber == "+905551234567");
+        if (athleteUser != null)
+        {
+            db.Notifications.AddRange(
+                new AppNotification
+                {
+                    UserId = athleteUser.Id,
+                    Title = "Compound Athletic'e Hoş Geldin! 👋",
+                    Message = "Hesabınız başarıyla oluşturuldu. Seanslar menüsünden dilediğiniz antrenmana tek dokunuşla kaydolabilirsiniz.",
+                    Type = "System",
+                    Icon = "👋",
+                    ActionUrl = "home",
+                    IsRead = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-2)
+                },
+                new AppNotification
+                {
+                    UserId = athleteUser.Id,
+                    Title = "Grup 8 Ders Paketi Aktif ⚡",
+                    Message = "Paketiniz tanımlandı. Kalan 5 ders hakkınız bulunmaktadır.",
+                    Type = "Package",
+                    Icon = "⚡",
+                    ActionUrl = "profile",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow.AddHours(-3)
+                },
+                new AppNotification
+                {
+                    UserId = athleteUser.Id,
+                    Title = "Günün Seansı Hatırlatması 📅",
+                    Message = "Bugün saat 19:00'da Fonksiyonel Kuvvet seansınız bulunuyor. İyi antrenmanlar!",
+                    Type = "Session",
+                    Icon = "📅",
+                    ActionUrl = "home",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-30)
+                }
+            );
+        }
+
+        var coachUser = await db.Users.FirstOrDefaultAsync(u => u.PhoneNumber == "+905324445566");
+        if (coachUser != null)
+        {
+            db.Notifications.AddRange(
+                new AppNotification
+                {
+                    UserId = coachUser.Id,
+                    Title = "Eğitmen Paneline Hoş Geldiniz 👋",
+                    Message = "Salonda sporcu yoklamalarını cep telefonunuzdan 1 saniyede alabilirsiniz.",
+                    Type = "System",
+                    Icon = "👋",
+                    ActionUrl = "yoklama",
+                    IsRead = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-3)
+                },
+                new AppNotification
+                {
+                    UserId = coachUser.Id,
+                    Title = "Yeni Seans Kaydı ⚡",
+                    Message = "Atlet_1, bu akşam 19:00 Fonksiyonel Kuvvet seansınıza kaydoldu.",
+                    Type = "Session",
+                    Icon = "⚡",
+                    ActionUrl = "yoklama",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow.AddHours(-1)
+                }
+            );
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    // ── 8. Şema Güncelleme Güvencesi (Defensive Schema Upgrades) ───────────────
     private static async Task EnsureSchemaUpgradesAsync(ApplicationDbContext db)
     {
         try
@@ -358,6 +438,21 @@ public static class DbSeeder
                             CONSTRAINT FK_FreezeRecords_Subscriptions_SubscriptionId FOREIGN KEY (SubscriptionId) REFERENCES Subscriptions (Id) ON DELETE CASCADE
                         );
                         CREATE INDEX IF NOT EXISTS IX_FreezeRecords_SubscriptionId ON FreezeRecords (SubscriptionId);
+
+                        CREATE TABLE IF NOT EXISTS Notifications (
+                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            UserId INTEGER NOT NULL,
+                            Title TEXT NOT NULL,
+                            Message TEXT NOT NULL,
+                            Type TEXT NOT NULL,
+                            Icon TEXT NULL,
+                            ActionUrl TEXT NULL,
+                            IsRead INTEGER NOT NULL DEFAULT 0,
+                            CreatedAt TEXT NOT NULL,
+                            CONSTRAINT FK_Notifications_Users_UserId FOREIGN KEY (UserId) REFERENCES Users (Id) ON DELETE CASCADE
+                        );
+                        CREATE INDEX IF NOT EXISTS IX_Notifications_UserId_IsRead ON Notifications (UserId, IsRead);
+                        CREATE INDEX IF NOT EXISTS IX_Notifications_UserId_CreatedAt ON Notifications (UserId, CreatedAt);
                     ");
                 }
                 catch { }
@@ -393,6 +488,20 @@ public static class DbSeeder
                             ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL
                         );
                         CREATE INDEX IF NOT EXISTS ""IX_FreezeRecords_SubscriptionId"" ON ""FreezeRecords"" (""SubscriptionId"");
+
+                        CREATE TABLE IF NOT EXISTS ""Notifications"" (
+                            ""Id"" SERIAL PRIMARY KEY,
+                            ""UserId"" INTEGER NOT NULL REFERENCES ""Users""(""Id"") ON DELETE CASCADE,
+                            ""Title"" VARCHAR(150) NOT NULL,
+                            ""Message"" VARCHAR(500) NOT NULL,
+                            ""Type"" VARCHAR(50) NOT NULL,
+                            ""Icon"" VARCHAR(20) NULL,
+                            ""ActionUrl"" VARCHAR(100) NULL,
+                            ""IsRead"" BOOLEAN NOT NULL DEFAULT FALSE,
+                            ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS ""IX_Notifications_UserId_IsRead"" ON ""Notifications"" (""UserId"", ""IsRead"");
+                        CREATE INDEX IF NOT EXISTS ""IX_Notifications_UserId_CreatedAt"" ON ""Notifications"" (""UserId"", ""CreatedAt"");
                     ");
                 }
                 catch { }

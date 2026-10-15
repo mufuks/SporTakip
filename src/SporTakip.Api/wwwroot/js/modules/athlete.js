@@ -1,4 +1,4 @@
-import { Api } from '../api.js?v=3.0.0';
+import { Api } from '../api.js?v=3.6.8';
 import { state } from './state.js';
 import { 
   showToast, openModal, closeModal, escapeHtml, escapeJsString, 
@@ -1216,16 +1216,16 @@ window.handleBookSession = async function(slotId) {
 
 // Session Cancel Handler
 window.handleCancelReservation = async function(reservationId) {
-  if (!confirm('Bu rezervasyonu iptal etmek istediğinize emin misiniz?\n(Seansa 3 saatten az kaldıysa ders hakkınız düşer)')) {
+  if (!confirm('Bu derse katılımınızı iptal etmek istediğinize emin misiniz?\n(Derse 3 saatten az kaldıysa ders hakkınız düşer)')) {
     return;
   }
 
   try {
     const res = await Api.cancelReservation(reservationId, 'Sporcu PWA üzerinden iptal edildi');
     if (res.lessonDeducted) {
-      showToast(`⚠️ Rezervasyon iptal edildi. 3 saat kuralı gereği ders hakkı düşüldü. (Kalan Ders: ${res.remainingLessons})`, 'error');
+      showToast(`⚠️ Ders kaydı iptal edildi. 3 saat kuralı gereği ders hakkı düşüldü. (Kalan Ders: ${res.remainingLessons})`, 'error');
     } else {
-      showToast(`✓ Rezervasyon cezasız iptal edildi. Ders hakkınız korundu. (Kalan Ders: ${res.remainingLessons})`, 'success');
+      showToast(`✓ Ders kaydı cezasız iptal edildi. Ders hakkınız korundu. (Kalan Ders: ${res.remainingLessons})`, 'success');
     }
     await loadAthleteHome();
     if (currentAthleteTab === 'profile') renderAthleteProfile();
@@ -1234,6 +1234,145 @@ window.handleCancelReservation = async function(reservationId) {
     showToast(`İptal Hatası: ${err.message}`, 'error');
   }
 };
+
+// ==================== ATHLETE LESSONS PAGINATION & ORDERING ====================
+let cachedAthleteReservations = [];
+let currentResPage = 1;
+const RES_PAGE_SIZE = 3;
+
+window.changeReservationPage = function(newPage) {
+  currentResPage = newPage;
+  updateReservationsBlock();
+};
+
+function getOrderedReservations() {
+  const now = new Date(Date.now() - 3600000); // 1 saat tolerans
+  const upcoming = (cachedAthleteReservations || [])
+    .filter(r => (r.status === 'Confirmed' || r.status === 'Waitlisted') && new Date(r.startTime) >= now)
+    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  const past = (cachedAthleteReservations || [])
+    .filter(r => !((r.status === 'Confirmed' || r.status === 'Waitlisted') && new Date(r.startTime) >= now))
+    .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+  return [...upcoming, ...past];
+}
+
+function updateReservationsBlock() {
+  const container = document.getElementById('athlete-reservations-wrapper');
+  if (!container) return;
+  container.innerHTML = buildAthleteReservationsCardHtml();
+}
+
+function buildAthleteReservationsCardHtml() {
+  const ordered = getOrderedReservations();
+  const totalItems = ordered.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / RES_PAGE_SIZE));
+  if (currentResPage > totalPages) currentResPage = totalPages;
+  if (currentResPage < 1) currentResPage = 1;
+
+  const startIdx = (currentResPage - 1) * RES_PAGE_SIZE;
+  const pageItems = ordered.slice(startIdx, startIdx + RES_PAGE_SIZE);
+
+  let listHtml = '';
+  if (pageItems.length === 0) {
+    listHtml = `
+      <div style="text-align:center; padding:24px 10px; color:var(--text-muted); font-size:12.5px;">
+        📭 Kayıtlı dersiniz bulunmuyor.
+      </div>
+    `;
+  } else {
+    listHtml = pageItems.map(r => {
+      const isConfirmed = r.status === 'Confirmed';
+      const isWaitlisted = r.status === 'Waitlisted';
+      const statusBadge = isConfirmed
+        ? 'background:rgba(16,185,129,0.15); color:#10B981; border:1px solid rgba(16,185,129,0.3);'
+        : isWaitlisted
+        ? 'background:rgba(245,158,11,0.15); color:#F59E0B; border:1px solid rgba(245,158,11,0.3);'
+        : r.status === 'CheckedIn'
+        ? 'background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);'
+        : 'background:rgba(239,68,68,0.15); color:#EF4444; border:1px solid rgba(239,68,68,0.3);';
+
+      const statusLabel = isConfirmed ? 'Onaylı' 
+        : isWaitlisted ? `Yedek #${r.waitlistPosition}` 
+        : r.status === 'CheckedIn' ? 'Katıldı ✓' 
+        : r.status === 'CancelledByAthlete' ? 'İptal Edildi'
+        : r.status === 'NoShow' ? 'Gelinmedi' : r.status;
+
+      const dateStr = new Date(r.startTime).toLocaleDateString('tr-TR', { day:'numeric', month:'short', weekday:'short' });
+      const timeStr = new Date(r.startTime).toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' });
+      const coachName = escapeHtml(r.trainerName || 'Eğitmen');
+
+      return `
+        <div style="padding:11px 13px; border-radius:12px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); margin-top:8px;">
+          <!-- Satır 1: Solda Tarih/Saat, Sağda Hoca -->
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <div style="font-size:13px; font-weight:800; color:var(--text-primary); display:inline-flex; align-items:center; gap:5px;">
+              <span>📅</span>
+              <span>${dateStr} · ${timeStr}</span>
+            </div>
+            <div style="font-size:12px; font-weight:700; color:var(--text-secondary); display:inline-flex; align-items:center; gap:4px; max-width:48%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${coachName}">
+              <span>🏋️</span>
+              <span style="overflow:hidden; text-overflow:ellipsis;">${coachName}</span>
+            </div>
+          </div>
+
+          <!-- Satır 2: Solda Durum Rozeti, Sağda Aksiyon Rozetleri (WOD, Takvim, İptal) -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:6px; flex-wrap:wrap;">
+            <span style="font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; ${statusBadge}">
+              ${statusLabel}
+            </span>
+            <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+              ${isConfirmed ? `
+                <button type="button" title="Günün Programı (WOD)" style="background:transparent; border:1px solid rgba(204,255,0,0.3); color:var(--volt-lime); font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:3px;" onclick="openSessionWodPreview(${r.sessionSlotId}, '${escapeJsString(r.sessionTitle || 'Grup Seansı')}', '${escapeJsString(r.trainerName || 'Eğitmen')}')">
+                  🔥 WOD
+                </button>
+                <button type="button" title="Takvime Ekle" style="background:transparent; border:1px solid var(--border-medium); color:var(--volt-lime); font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:3px;" onclick="openCalendarSyncModal(${r.sessionSlotId}, '${escapeHtml(r.sessionTitle || 'Grup Seansı')}', '${escapeHtml(r.trainerName || 'Eğitmen')}', '${r.startTime}', '${r.endTime}')">
+                  📅 Takvim
+                </button>
+              ` : ''}
+              ${(isConfirmed || isWaitlisted) ? `
+                <button type="button" title="Dersi İptal Et" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.35); color:#f87171; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:3px;" onclick="handleCancelReservation(${r.id})">
+                  ✕ İptal
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  return `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h4 style="font-size:13px; font-weight:800; color:var(--text-secondary); margin:0; text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; gap:6px;">
+        <span>⚡</span> Derslerim
+      </h4>
+      <span style="font-size:10.5px; font-weight:800; color:var(--volt-lime); background:var(--volt-lime-muted); padding:2px 8px; border-radius:999px; border:1px solid var(--border-subtle);">
+        ${totalItems} Ders
+      </span>
+    </div>
+
+    <div id="athlete-reservations-list">
+      ${listHtml}
+    </div>
+
+    ${totalPages > 1 ? `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid var(--border-subtle);">
+        <button type="button" class="res-page-btn" ${currentResPage === 1 ? 'disabled' : ''} style="background:var(--bg-surface-elevated); border:1px solid var(--border-medium); color:var(--text-primary); font-size:11.5px; font-weight:800; padding:6px 14px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s ease; ${currentResPage === 1 ? 'opacity:0.3; cursor:not-allowed; border-color:transparent; background:rgba(255,255,255,0.02); color:var(--text-muted);' : ''}" onclick="changeReservationPage(${currentResPage - 1})">
+          <span>◀</span> Önceki
+        </button>
+        <div style="font-size:11px; font-weight:800; color:var(--volt-lime); background:var(--volt-lime-muted); padding:4px 12px; border-radius:999px; border:1px solid rgba(204,255,0,0.25); display:inline-flex; align-items:center; gap:4px; letter-spacing:0.02em;">
+          <span>Sayfa</span>
+          <strong style="color:var(--text-primary); font-size:11.5px;">${currentResPage}</strong>
+          <span style="color:var(--text-muted);">/</span>
+          <span style="color:var(--text-secondary);">${totalPages}</span>
+        </div>
+        <button type="button" class="res-page-btn" ${currentResPage === totalPages ? 'disabled' : ''} style="background:var(--bg-surface-elevated); border:1px solid var(--border-medium); color:var(--text-primary); font-size:11.5px; font-weight:800; padding:6px 14px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s ease; ${currentResPage === totalPages ? 'opacity:0.3; cursor:not-allowed; border-color:transparent; background:rgba(255,255,255,0.02); color:var(--text-muted);' : ''}" onclick="changeReservationPage(${currentResPage + 1})">
+          Sonraki <span>▶</span>
+        </button>
+      </div>
+    ` : ''}
+  `;
+}
 
 // Athlete Profile View
 async function renderAthleteProfile() {
@@ -1285,6 +1424,7 @@ async function renderAthleteProfile() {
       user.memberId ? Api.getMember(user.memberId).catch(() => null) : Api.getMyProfile().catch(() => null),
       user.memberId ? Api.getMemberMetricProgress(user.memberId).catch(() => null) : null
     ]);
+    cachedAthleteReservations = myRes || [];
     memberDetails = memberData;
     progressData = metricsProgress;
     if (memberDetails && !user.memberId && memberDetails.id) {
@@ -1293,32 +1433,6 @@ async function renderAthleteProfile() {
       if (!progressData) {
         progressData = await Api.getMemberMetricProgress(memberDetails.id).catch(() => null);
       }
-    }
-    if (myRes && myRes.length > 0) {
-      reservationsHtml = myRes.map(r => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-radius:12px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); margin-top:8px;">
-          <div>
-            <div style="font-size:13.5px; font-weight:800; color:var(--text-primary);">
-              ${new Date(r.startTime).toLocaleDateString('tr-TR')} · ${new Date(r.startTime).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}
-            </div>
-            <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(r.trainerName || 'Eğitmen')}</div>
-          </div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; ${r.status === 'Confirmed' ? 'background:rgba(16,185,129,0.15); color:#10B981;' : r.status === 'Waitlisted' ? 'background:rgba(245,158,11,0.15); color:#F59E0B;' : 'background:rgba(239,68,68,0.15); color:#EF4444;'}">
-              ${r.status === 'Confirmed' ? 'Onaylı' : r.status === 'Waitlisted' ? `Yedek #${r.waitlistPosition}` : r.status === 'CancelledByAthlete' ? 'İptal Edildi' : r.status === 'CheckedIn' ? 'Katıldı' : r.status}
-            </span>
-            ${r.status === 'Confirmed' ? `
-              <button type="button" title="Günün Programı (WOD)" style="background:transparent; border:1px solid rgba(204,255,0,0.3); color:var(--volt-lime); font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:3px;" onclick="openSessionWodPreview(${r.sessionSlotId}, '${escapeJsString(r.sessionTitle || 'Grup Seansı')}', '${escapeJsString(r.trainerName || 'Eğitmen')}')">
-                🔥 WOD
-              </button>
-              <button type="button" title="Takvime Ekle" style="background:transparent; border:1px solid var(--border-medium); color:var(--volt-lime); font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:3px;" onclick="openCalendarSyncModal(${r.sessionSlotId}, '${escapeHtml(r.sessionTitle || 'Grup Seansı')}', '${escapeHtml(r.trainerName || 'Eğitmen')}', '${r.startTime}', '${r.endTime}')">
-                📅 Takvim
-              </button>
-            ` : ''}
-            ${(r.status === 'Confirmed' || r.status === 'Waitlisted') ? `<button style="background:transparent; border:none; color:var(--text-muted); font-size:11px; text-decoration:underline; cursor:pointer;" onclick="handleCancelReservation(${r.id})">İptal</button>` : ''}
-          </div>
-        </div>
-      `).join('');
     }
   } catch (e) {
     console.warn('Profil verileri çekilemedi', e);
@@ -1409,35 +1523,39 @@ async function renderAthleteProfile() {
     <!-- 2.5 Kilo & Vücut Gelişim Çizelgesi (Weight & Progress Tracker) -->
     ${buildProgressChartCardHtml(progressData, user.memberId || (memberDetails && memberDetails.id))}
 
-    <!-- 3. Rezervasyonlarım -->
-    <div class="v0-card">
-      <h4 style="font-size:13px; font-weight:700; color:var(--text-secondary); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.05em;">Rezervasyonlarım</h4>
-      ${reservationsHtml}
+    <!-- 3. Derslerim (Paging & Sıralı) -->
+    <div class="v0-card" id="athlete-reservations-wrapper">
+      ${buildAthleteReservationsCardHtml()}
     </div>
 
-    ${renderStudioContactCardHtml(gym)}
-
-    <!-- 4. Uygulama & Mobil Cihaz Durumu (PWA) -->
-    <div class="v0-card" style="${isAppInstalled() ? 'border:1px solid rgba(16,185,129,0.35); background:rgba(16,185,129,0.06);' : 'border:1px solid var(--volt-lime); background:linear-gradient(135deg, rgba(204,255,0,0.08), var(--bg-surface-elevated));'}">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-        <div style="display:flex; align-items:center; gap:12px;">
-          <img src="/images/tiger2_badge.png?v=2.7.5" alt="SporTakip" style="width:36px; height:36px; object-fit:contain; filter:drop-shadow(0 0 10px rgba(204,255,0,0.4));">
-          <div>
-            <h4 style="margin:0; font-size:13.5px; font-weight:800; color:var(--text-primary);">${isAppInstalled() ? 'SporTakip Mobil Uygulaması Aktif' : 'Uygulamayı Cihazınıza Yükleyin'}</h4>
-            <p style="margin:2px 0 0 0; font-size:11.5px; color:var(--text-secondary);">${isAppInstalled() ? 'Uygulama tam ekran modunda cihazınızda kurulu çalışıyor.' : 'Ana ekrana ekleyerek 1 saniyede açılan mobil deneyim yaşayın.'}</p>
+    <!-- 4. Uygulama & Mobil Cihaz Durumu (PWA - Kompakt Tek Satır Buton) -->
+    ${isAppInstalled() ? `
+      <div class="v0-card" style="padding:12px 14px; border-radius:14px; border:1px solid rgba(16,185,129,0.35); background:rgba(16,185,129,0.06); display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+          <img src="/images/tiger2_badge.png?v=3.7.8" alt="SporTakip" style="width:28px; height:28px; object-fit:contain; flex-shrink:0;">
+          <div style="min-width:0;">
+            <div style="font-size:12.5px; font-weight:800; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">SporTakip Mobil Uygulaması</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:1px;">Cihazınızda kurulu ve aktif</div>
           </div>
         </div>
-        ${isAppInstalled() ? `
-          <span style="font-size:11px; font-weight:800; color:var(--volt-lime); background:var(--volt-lime-muted); padding:4px 10px; border-radius:999px; border:1px solid var(--border-subtle);">
-            ✓ Kurulu
-          </span>
-        ` : `
-          <button type="button" class="btn-primary" style="padding:8px 14px; font-size:12px; font-weight:800;" onclick="triggerPwaInstall()">
-            <img src="/images/tiger1_badge.png?v=2.7.5" class="tiger-icon-inline tiger-icon-xs" style="margin-right:4px;"> ${isIosDevice() ? 'Nasıl Yüklenir?' : 'Hemen Yükle'}
-          </button>
-        `}
+        <span style="font-size:10.5px; font-weight:800; color:#10B981; background:rgba(16,185,129,0.14); padding:3px 9px; border-radius:999px; border:1px solid rgba(16,185,129,0.3); flex-shrink:0;">
+          ✓ Kurulu
+        </span>
       </div>
-    </div>
+    ` : `
+      <div class="v0-card" role="button" tabindex="0" onclick="triggerPwaInstall()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();triggerPwaInstall();}" style="padding:12px 14px; border-radius:14px; border:1px solid rgba(204,255,0,0.35); background:linear-gradient(135deg, rgba(204,255,0,0.08), var(--bg-surface-elevated)); display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.borderColor='var(--volt-lime)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='rgba(204,255,0,0.35)'; this.style.transform='none';">
+        <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+          <img src="/images/tiger2_badge.png?v=3.7.8" alt="SporTakip" style="width:28px; height:28px; object-fit:contain; filter:drop-shadow(0 0 8px rgba(204,255,0,0.4)); flex-shrink:0;">
+          <div style="min-width:0;">
+            <div style="font-size:12.5px; font-weight:800; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Uygulamayı Cihazınıza Yükleyin</div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ana ekrana ekle · Hızlı mobil deneyim</div>
+          </div>
+        </div>
+        <span style="font-size:11px; font-weight:800; color:var(--volt-lime); background:var(--volt-lime-muted); padding:4px 10px; border-radius:999px; border:1px solid rgba(204,255,0,0.25); display:inline-flex; align-items:center; gap:3px; flex-shrink:0;">
+          ${isIosDevice() ? 'Rehber 📲' : 'Yükle 📲'}
+        </span>
+      </div>
+    `}
 
     <button style="width:100%; border:1px solid rgba(239,68,68,0.4); background:rgba(239,68,68,0.08); color:var(--pulse-rose); border-radius:12px; padding:12px; font-weight:700; font-size:13px; cursor:pointer; margin-top:8px;" onclick="handleLogout()">
       Çıkış Yap
@@ -1614,31 +1732,84 @@ window.buildProgressChartCardHtml = function(progress, memberId) {
     `;
   }
 
+let cachedProfileMetricLogs = [];
+let cachedProfileMemberId = null;
+let currentProfileMetricPage = 1;
+const PROFILE_METRIC_PAGE_SIZE = 3;
+
+window.changeProfileMetricPage = function(newPage) {
+  currentProfileMetricPage = newPage;
+  const container = document.getElementById('profile-metric-history-content');
+  if (container) {
+    container.innerHTML = renderProfileMetricHistoryListHtml();
+  }
+};
+
+function renderProfileMetricHistoryListHtml() {
+  const sortedLogs = [...cachedProfileMetricLogs].reverse();
+  const totalItems = sortedLogs.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PROFILE_METRIC_PAGE_SIZE));
+  if (currentProfileMetricPage > totalPages) currentProfileMetricPage = totalPages;
+  if (currentProfileMetricPage < 1) currentProfileMetricPage = 1;
+
+  const startIdx = (currentProfileMetricPage - 1) * PROFILE_METRIC_PAGE_SIZE;
+  const pageItems = sortedLogs.slice(startIdx, startIdx + PROFILE_METRIC_PAGE_SIZE);
+
+  const itemsHtml = pageItems.map(l => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-radius:8px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); font-size:12px;">
+      <div>
+        <div style="font-weight:800; color:var(--text-primary); display:flex; align-items:center; gap:6px;">
+          <span>${Number(l.weightKg).toFixed(1)} kg</span>
+          ${l.bodyFatPercentage ? `<span style="font-size:11px; color:#38BDF8; font-weight:700;">(%${l.bodyFatPercentage} Yağ)</span>` : ''}
+          ${l.muscleMassKg ? `<span style="font-size:11px; color:#10B981; font-weight:700;">(${l.muscleMassKg} kg Kas)</span>` : ''}
+        </div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
+          ${new Date(l.recordedAt).toLocaleDateString('tr-TR', { day:'numeric', month:'short', year:'numeric' })}
+          ${l.notes ? ` · <span style="font-style:italic;">"${escapeHtml(l.notes)}"</span>` : ''}
+        </div>
+      </div>
+      <button type="button" title="Kaydı Sil" onclick="handleDeleteBodyMetric(${cachedProfileMemberId}, ${l.id})" style="background:transparent; border:none; color:var(--pulse-rose); font-size:14px; cursor:pointer; padding:4px 6px; border-radius:6px; opacity:0.75;">
+        🗑️
+      </button>
+    </div>
+  `).join('');
+
+  const paginationHtml = totalPages > 1 ? `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:8px; border-top:1px solid var(--border-subtle);">
+      <button type="button" class="res-page-btn" ${currentProfileMetricPage === 1 ? 'disabled' : ''} style="background:var(--bg-surface-elevated); border:1px solid var(--border-medium); color:var(--text-primary); font-size:11px; font-weight:800; padding:5px 12px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; ${currentProfileMetricPage === 1 ? 'opacity:0.3; cursor:not-allowed; border-color:transparent; background:rgba(255,255,255,0.02); color:var(--text-muted);' : ''}" onclick="changeProfileMetricPage(${currentProfileMetricPage - 1})">
+        <span>◀</span> Önceki
+      </button>
+      <div style="font-size:10.5px; font-weight:800; color:var(--volt-lime); background:var(--volt-lime-muted); padding:3px 10px; border-radius:999px; border:1px solid rgba(204,255,0,0.25); display:inline-flex; align-items:center; gap:4px;">
+        <span>Sayfa</span>
+        <strong style="color:var(--text-primary); font-size:11px;">${currentProfileMetricPage}</strong>
+        <span style="color:var(--text-muted);">/</span>
+        <span style="color:var(--text-secondary);">${totalPages}</span>
+      </div>
+      <button type="button" class="res-page-btn" ${currentProfileMetricPage === totalPages ? 'disabled' : ''} style="background:var(--bg-surface-elevated); border:1px solid var(--border-medium); color:var(--text-primary); font-size:11px; font-weight:800; padding:5px 12px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; ${currentProfileMetricPage === totalPages ? 'opacity:0.3; cursor:not-allowed; border-color:transparent; background:rgba(255,255,255,0.02); color:var(--text-muted);' : ''}" onclick="changeProfileMetricPage(${currentProfileMetricPage + 1})">
+        Sonraki <span>▶</span>
+      </button>
+    </div>
+  ` : '';
+
+  return `
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      ${itemsHtml}
+    </div>
+    ${paginationHtml}
+  `;
+}
+
+  cachedProfileMetricLogs = logs;
+  cachedProfileMemberId = memberId;
+
   const historyListHtml = logs.length > 0 ? `
     <details style="margin-top:12px; background:rgba(0,0,0,0.18); border-radius:12px; border:1px solid var(--border-subtle); padding:10px 14px;">
       <summary style="font-size:12px; font-weight:800; color:var(--text-secondary); cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center;">
         <span>📋 Ölçüm Geçmişi (${logs.length} Kayıt)</span>
         <span style="font-size:11px; color:var(--volt-lime);">Görüntüle / Sil ▾</span>
       </summary>
-      <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
-        ${[...logs].reverse().map(l => `
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-radius:8px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); font-size:12px;">
-            <div>
-              <div style="font-weight:800; color:var(--text-primary); display:flex; align-items:center; gap:6px;">
-                <span>${Number(l.weightKg).toFixed(1)} kg</span>
-                ${l.bodyFatPercentage ? `<span style="font-size:11px; color:#38BDF8; font-weight:700;">(%${l.bodyFatPercentage} Yağ)</span>` : ''}
-                ${l.muscleMassKg ? `<span style="font-size:11px; color:#10B981; font-weight:700;">(${l.muscleMassKg} kg Kas)</span>` : ''}
-              </div>
-              <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
-                ${new Date(l.recordedAt).toLocaleDateString('tr-TR', { day:'numeric', month:'short', year:'numeric' })}
-                ${l.notes ? ` · <span style="font-style:italic;">"${escapeHtml(l.notes)}"</span>` : ''}
-              </div>
-            </div>
-            <button type="button" title="Kaydı Sil" onclick="handleDeleteBodyMetric(${memberId}, ${l.id})" style="background:transparent; border:none; color:var(--pulse-rose); font-size:14px; cursor:pointer; padding:4px 6px; border-radius:6px; opacity:0.75;">
-              🗑️
-            </button>
-          </div>
-        `).join('')}
+      <div id="profile-metric-history-content" style="margin-top:10px;">
+        ${renderProfileMetricHistoryListHtml()}
       </div>
     </details>
   ` : '';
@@ -1758,14 +1929,12 @@ window.handleNotificationClick = function() {
   openNotificationDrawer();
 };
 
-window.openNotificationDrawer = function() {
+window.openNotificationDrawer = async function() {
   const drawer = document.getElementById('v0-notification-drawer');
   if (drawer) {
     drawer.classList.add('open');
-    renderNotificationItems();
+    await renderNotificationItems();
   }
-  const dot = document.querySelector('.v0-bell-dot');
-  if (dot) dot.style.display = 'none';
 };
 
 window.closeNotificationDrawer = function() {
@@ -1775,6 +1944,29 @@ window.closeNotificationDrawer = function() {
 
 window.handleNotificationBackdropClick = function(e) {
   if (e.target.id === 'v0-notification-drawer') closeNotificationDrawer();
+};
+
+window.updateNotificationBadge = async function() {
+  const dot = document.querySelector('.v0-bell-dot');
+  if (!dot) return;
+
+  const user = Api.getUser();
+  const token = Api.getToken();
+  if (!user || !token) {
+    dot.style.display = 'none';
+    return;
+  }
+
+  try {
+    const res = await Api.getUnreadNotificationCount();
+    if (res && res.unreadCount > 0) {
+      dot.style.display = 'block';
+    } else {
+      dot.style.display = 'none';
+    }
+  } catch (err) {
+    dot.style.display = 'none';
+  }
 };
 
 window.togglePushPermission = async function() {
@@ -1832,60 +2024,122 @@ function updatePushUi() {
   }
 }
 
-function renderNotificationItems() {
+async function renderNotificationItems() {
   const container = document.getElementById('v0-notification-list');
   if (!container) return;
   updatePushUi();
 
   const user = Api.getUser();
-  const notifs = [
-    {
-      id: 1,
-      unread: true,
-      icon: '📅',
-      title: 'Bugünkü Seans Hatırlatması',
-      desc: user ? `${user.fullName || 'Sporcu'}, bugün planlanan seansınız için stüdyoya 10 dakika önce gelmenizi öneririz.` : 'Seanslarınızı ve doluluk durumunu Seanslar sekmesinden takip edebilirsiniz.',
-      time: 'Bugün'
-    },
-    {
-      id: 2,
-      unread: true,
-      icon: '⚡',
-      title: 'Paket ve Seans Durumu',
-      desc: 'Kalan derslerinizi ve seans hakkınızı Profilim sekmesindeki karttan anlık takip edebilirsiniz.',
-      time: '1 saat önce'
-    },
-    {
-      id: 3,
-      unread: false,
-      icon: '🐯',
-      title: 'Compound Athletic Mobil PWA',
-      desc: 'SporTakip uygulamasını ana ekranınıza ekleyerek tam ekran ve çevrimdışı hızlı erişim sağlayabilirsiniz.',
-      time: 'Dün'
-    }
-  ];
-
-  const unreadCount = notifs.filter(n => n.unread).length;
+  const token = Api.getToken();
   const summary = document.getElementById('notification-unread-summary');
-  if (summary) summary.innerText = `${unreadCount} okunmamış bildirim`;
 
-  container.innerHTML = notifs.map(n => `
-    <div class="v0-notification-card ${n.unread ? 'unread' : ''}">
-      <div class="v0-notif-icon-box">${n.icon}</div>
-      <div class="v0-notif-body">
-        <div class="v0-notif-title">${escapeHtml(n.title)}</div>
-        <div class="v0-notif-desc">${escapeHtml(n.desc)}</div>
-        <div class="v0-notif-time">${n.time}</div>
+  if (!user || !token) {
+    if (summary) summary.innerText = '0 yeni bildirim';
+    container.innerHTML = `
+      <div class="v0-notification-card">
+        <div class="v0-notif-icon-box">👋</div>
+        <div class="v0-notif-body">
+          <div class="v0-notif-title">Bildirimleri Görmek İçin Giriş Yapın</div>
+          <div class="v0-notif-desc">Seans rezervasyonu, yoklama ve paket bildirimlerinizi anlık olarak buradan takip edebilirsiniz.</div>
+        </div>
       </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="text-align:center; padding:24px 10px; color:var(--text-muted); font-size:12.5px;">
+      <span class="spinner-border spinner-border-sm" style="display:inline-block; width:16px; height:16px; border:2px solid var(--volt-lime); border-right-color:transparent; border-radius:50%; animation:spin 0.75s linear infinite; vertical-align:middle; margin-right:6px;"></span>
+      Bildirimler yükleniyor...
     </div>
-  `).join('');
+  `;
+
+  try {
+    const response = await Api.getNotifications(30);
+    const notifs = response?.items || [];
+    const unreadCount = response?.unreadCount ?? notifs.filter(n => !n.isRead).length;
+
+    if (summary) {
+      summary.innerText = unreadCount > 0 ? `${unreadCount} okunmamış bildirim` : 'Tümü okundu ✓';
+    }
+
+    const dot = document.querySelector('.v0-bell-dot');
+    if (dot) dot.style.display = unreadCount > 0 ? 'block' : 'none';
+
+    if (notifs.length === 0) {
+      container.innerHTML = `
+        <div style="text-align:center; padding:32px 10px; color:var(--text-muted); font-size:13px;">
+          <div style="font-size:32px; margin-bottom:8px;">📭</div>
+          Henüz hiç bildiriminiz bulunmuyor.
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = notifs.map(n => `
+      <div class="v0-notification-card ${!n.isRead ? 'unread' : ''}" 
+           id="notif-card-${n.id}"
+           onclick="handleNotificationItemClick(${n.id}, '${n.actionUrl || ''}', ${n.isRead})"
+           style="cursor:pointer;"
+           title="${n.isRead ? 'Okundu' : 'Okundu olarak işaretle'}">
+        <div class="v0-notif-icon-box">${n.icon || '🔔'}</div>
+        <div class="v0-notif-body">
+          <div class="v0-notif-title">${escapeHtml(n.title)}</div>
+          <div class="v0-notif-desc">${escapeHtml(n.message)}</div>
+          <div class="v0-notif-time">${n.timeAgo}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error('Bildirimler yüklenemedi:', err);
+    container.innerHTML = `
+      <div style="text-align:center; padding:20px; color:#f87171; font-size:12px;">
+        Bildirimler alınamadı. Lütfen daha sonra tekrar deneyin.
+      </div>
+    `;
+  }
 }
 
-window.markAllNotificationsRead = function() {
-  document.querySelectorAll('.v0-notification-card.unread').forEach(el => el.classList.remove('unread'));
-  const summary = document.getElementById('notification-unread-summary');
-  if (summary) summary.innerText = 'Tümü okundu ✓';
-  showToast('✓ Tüm bildirimler okundu olarak işaretlendi.');
+window.handleNotificationItemClick = async function(notificationId, actionUrl, wasRead) {
+  if (!wasRead) {
+    try {
+      await Api.markNotificationRead(notificationId);
+      const card = document.getElementById(`notif-card-${notificationId}`);
+      if (card) card.classList.remove('unread');
+      window.updateNotificationBadge();
+      
+      const unreadCards = document.querySelectorAll('.v0-notification-card.unread').length;
+      const summary = document.getElementById('notification-unread-summary');
+      if (summary) {
+        summary.innerText = unreadCards > 0 ? `${unreadCards} okunmamış bildirim` : 'Tümü okundu ✓';
+      }
+    } catch (e) {
+      console.warn('Bildirim okundu işaretlenemedi:', e);
+    }
+  }
+
+  if (actionUrl) {
+    window.closeNotificationDrawer();
+    window.navigateTo(actionUrl);
+  }
+};
+
+window.markAllNotificationsRead = async function() {
+  const user = Api.getUser();
+  const token = Api.getToken();
+  if (!user || !token) return;
+
+  try {
+    await Api.markAllNotificationsRead();
+    document.querySelectorAll('.v0-notification-card.unread').forEach(el => el.classList.remove('unread'));
+    const summary = document.getElementById('notification-unread-summary');
+    if (summary) summary.innerText = 'Tümü okundu ✓';
+    const dot = document.querySelector('.v0-bell-dot');
+    if (dot) dot.style.display = 'none';
+    showToast('✓ Tüm bildirimler okundu olarak işaretlendi.');
+  } catch (err) {
+    showToast(`Hata: ${err.message}`, 'error');
+  }
 };
 
 

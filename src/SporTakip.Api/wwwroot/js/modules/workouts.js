@@ -363,7 +363,26 @@ function renderProgressSvgChart(logs) {
   `;
 }
 
+// ==================== WORKOUT PROGRESS MEASUREMENT HISTORY ====================
+let cachedProgressLogs = [];
+let currentProgressHistoryPage = 1;
+let isProgressHistoryOpen = false;
+const PROGRESS_HISTORY_PAGE_SIZE = 3;
+
+window.toggleProgressHistory = function() {
+  isProgressHistoryOpen = !isProgressHistoryOpen;
+  renderProgressHistoryList(cachedProgressLogs, currentProgressMemberId);
+};
+
+window.changeProgressHistoryPage = function(newPage) {
+  currentProgressHistoryPage = newPage;
+  renderProgressHistoryList(cachedProgressLogs, currentProgressMemberId);
+};
+
 function renderProgressHistoryList(logs, memberId) {
+  cachedProgressLogs = logs || [];
+  currentProgressMemberId = memberId;
+
   const historyCard = document.getElementById('progress-history-container');
   if (!historyCard) return;
 
@@ -378,13 +397,21 @@ function renderProgressHistoryList(logs, memberId) {
 
   // Reverse chronological
   const sortedLogs = [...logs].reverse();
+  const totalItems = sortedLogs.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PROGRESS_HISTORY_PAGE_SIZE));
+  if (currentProgressHistoryPage > totalPages) currentProgressHistoryPage = totalPages;
+  if (currentProgressHistoryPage < 1) currentProgressHistoryPage = 1;
 
-  const itemsHtml = sortedLogs.map((item, idx) => {
-    const dStr = new Date(item.recordedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const startIdx = (currentProgressHistoryPage - 1) * PROGRESS_HISTORY_PAGE_SIZE;
+  const pageItems = sortedLogs.slice(startIdx, startIdx + PROGRESS_HISTORY_PAGE_SIZE);
+
+  const itemsHtml = pageItems.map((item, idx) => {
+    const globalIdx = startIdx + idx;
+    const dStr = new Date(item.recordedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
     const tStr = new Date(item.recordedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
     
     // Compare with the one right after in reverse array (which was prior in time)
-    const prevItem = sortedLogs[idx + 1];
+    const prevItem = sortedLogs[globalIdx + 1];
     let diffBadge = '';
     if (prevItem) {
       const diff = Number(item.weightKg) - Number(prevItem.weightKg);
@@ -398,10 +425,10 @@ function renderProgressHistoryList(logs, memberId) {
     }
 
     return `
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border-subtle);">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border-subtle);">
         <div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:15px; font-weight:800; color:var(--text-primary);">${Number(item.weightKg).toFixed(1)} kg</span>
+            <span style="font-size:14.5px; font-weight:800; color:var(--text-primary);">${Number(item.weightKg).toFixed(1)} kg</span>
             ${diffBadge}
           </div>
           <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">
@@ -415,16 +442,45 @@ function renderProgressHistoryList(logs, memberId) {
     `;
   }).join('');
 
+  const paginationHtml = totalPages > 1 ? `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px solid var(--border-subtle);">
+      <button type="button" class="res-page-btn" ${currentProgressHistoryPage === 1 ? 'disabled' : ''} style="background:var(--bg-surface-elevated); border:1px solid var(--border-medium); color:var(--text-primary); font-size:11.5px; font-weight:800; padding:6px 14px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s ease; ${currentProgressHistoryPage === 1 ? 'opacity:0.3; cursor:not-allowed; border-color:transparent; background:rgba(255,255,255,0.02); color:var(--text-muted);' : ''}" onclick="changeProgressHistoryPage(${currentProgressHistoryPage - 1})">
+        <span>◀</span> Önceki
+      </button>
+      <div style="font-size:11px; font-weight:800; color:var(--volt-lime); background:var(--volt-lime-muted); padding:4px 12px; border-radius:999px; border:1px solid rgba(204,255,0,0.25); display:inline-flex; align-items:center; gap:4px; letter-spacing:0.02em;">
+        <span>Sayfa</span>
+        <strong style="color:var(--text-primary); font-size:11.5px;">${currentProgressHistoryPage}</strong>
+        <span style="color:var(--text-muted);">/</span>
+        <span style="color:var(--text-secondary);">${totalPages}</span>
+      </div>
+      <button type="button" class="res-page-btn" ${currentProgressHistoryPage === totalPages ? 'disabled' : ''} style="background:var(--bg-surface-elevated); border:1px solid var(--border-medium); color:var(--text-primary); font-size:11.5px; font-weight:800; padding:6px 14px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s ease; ${currentProgressHistoryPage === totalPages ? 'opacity:0.3; cursor:not-allowed; border-color:transparent; background:rgba(255,255,255,0.02); color:var(--text-muted);' : ''}" onclick="changeProgressHistoryPage(${currentProgressHistoryPage + 1})">
+        Sonraki <span>▶</span>
+      </button>
+    </div>
+  ` : '';
+
   historyCard.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-      <h3 style="font-size:14.5px; font-weight:800; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:8px;">
-        <span>📋</span> Ölçüm Geçmişi
-      </h3>
-      <span style="font-size:11px; color:var(--text-muted); font-weight:700;">Toplam ${logs.length} Kayıt</span>
+    <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;" onclick="toggleProgressHistory()">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <h3 style="font-size:14px; font-weight:800; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:6px;">
+          <span>📋</span> Ölçüm Geçmişi
+        </h3>
+        <span style="font-size:10.5px; font-weight:800; color:var(--volt-lime); background:var(--volt-lime-muted); padding:2px 8px; border-radius:999px; border:1px solid var(--border-subtle);">
+          ${totalItems} Kayıt
+        </span>
+      </div>
+      <button type="button" style="background:var(--bg-surface-elevated); border:1px solid var(--border-medium); color:var(--text-secondary); font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+        <span>${isProgressHistoryOpen ? 'Gizle' : 'Görüntüle'}</span>
+        <span style="transition:transform 0.2s ease; display:inline-block; transform:${isProgressHistoryOpen ? 'rotate(180deg)' : 'rotate(0deg)'};">▾</span>
+      </button>
     </div>
-    <div class="v0-progress-history-list">
-      ${itemsHtml}
-    </div>
+
+    ${isProgressHistoryOpen ? `
+      <div class="v0-progress-history-list" style="margin-top:12px; padding-top:4px; border-top:1px solid var(--border-subtle);">
+        ${itemsHtml}
+        ${paginationHtml}
+      </div>
+    ` : ''}
   `;
 }
 
@@ -471,7 +527,9 @@ window.submitProgressMeasurement = async function() {
     const notesInput = document.getElementById('progress-input-notes');
     if (notesInput) notesInput.value = '';
 
-    // Re-render
+    // Re-render and open history on page 1
+    isProgressHistoryOpen = true;
+    currentProgressHistoryPage = 1;
     await loadWorkoutHub();
   } catch (err) {
     showToast(`Kayıt Hatası: ${err.message}`, 'error');
@@ -488,6 +546,7 @@ window.handleDeleteProgressLog = async function(logId) {
   try {
     await Api.deleteMemberMetricLog(memberId, logId);
     showToast('Ölçüm kaydı silindi.');
+    isProgressHistoryOpen = true;
     await loadWorkoutHub();
   } catch (err) {
     showToast(`Silme Hatası: ${err.message}`, 'error');

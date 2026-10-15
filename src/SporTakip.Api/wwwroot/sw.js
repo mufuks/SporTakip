@@ -1,13 +1,13 @@
-const CACHE_NAME = 'sportakip-shell-v3.6.7';
+const CACHE_NAME = 'sportakip-shell-v3.7.8';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon.ico',
-  '/css/app.css?v=3.6.7',
-  '/js/app.js?v=3.6.7',
-  '/js/api.js?v=3.1.0',
+  '/css/app.css?v=3.7.8',
+  '/js/app.js?v=3.7.8',
+  '/js/api.js?v=3.7.7',
   '/js/modules/state.js',
   '/js/modules/utils.js',
   '/js/modules/auth.js',
@@ -81,8 +81,8 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // 1. Dynamic API calls & Health/Ping: Network only (never cache)
-  if (url.pathname.startsWith('/api/') || url.pathname === '/health' || url.pathname === '/ping') {
+  // 1. Dynamic API calls & Health/Ping or Forced Reload: Network only (never cache)
+  if (url.pathname.startsWith('/api/') || url.pathname === '/health' || url.pathname === '/ping' || url.searchParams.has('reload') || url.searchParams.has('nocache')) {
     return;
   }
 

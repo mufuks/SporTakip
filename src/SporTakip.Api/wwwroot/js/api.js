@@ -432,6 +432,23 @@ export const Api = {
 
   updateTrainer(trainerId, data) {
     return this.put(`/trainers/${trainerId}`, data);
+  },
+
+  // Notifications
+  getNotifications(limit = 30) {
+    return this.get(`/notifications?limit=${limit}`);
+  },
+
+  getUnreadNotificationCount() {
+    return this.get('/notifications/unread-count');
+  },
+
+  markNotificationRead(notificationId) {
+    return this.post(`/notifications/${notificationId}/read`);
+  },
+
+  markAllNotificationsRead() {
+    return this.post('/notifications/read-all');
   }
 };
 

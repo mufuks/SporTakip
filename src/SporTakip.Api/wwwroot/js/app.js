@@ -1,4 +1,4 @@
-import { Api } from './api.js?v=3.1.0';
+import { Api } from './api.js?v=3.6.8';
 import { state } from './modules/state.js';
 import { 
   applyTheme, toggleTheme, showToast, openModal, closeModal, 
@@ -25,12 +25,12 @@ import {
   loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,
   updatePushUi, renderNotificationItems
-} from './modules/athlete.js?v=3.6.7';
+} from './modules/athlete.js?v=3.7.8';
 import { 
   loadWorkoutHub, loadWorkoutTemplates,
   startWorkoutTimer, renderLiveWorkoutView,
   loadWorkoutProgress 
-} from './modules/workouts.js?v=3.6.1';
+} from './modules/workouts.js?v=3.7.6';
 import { 
   loadSuperAdminView, filterAndRenderSuperAdminUsers,
   updateSortIcons, updateRoleCounts
@@ -303,6 +303,11 @@ window.updateNavForUserRole = function() {
     if (badgeDot) badgeDot.style.background = 'rgba(255, 255, 255, 0.3)';
     if (roleEl) roleEl.innerText = 'Giriş Yapılmadı';
   }
+
+  // Okunmamış bildirim rozetini güncelle
+  if (typeof window.updateNotificationBadge === 'function') {
+    window.updateNotificationBadge();
+  }
 };
 
 window.loadInitialData = async function() {
@@ -379,6 +384,13 @@ function initPwaInstallFlow() {
 
 // ==================== BOOTSTRAP ====================
 document.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('reload') || urlParams.has('nocache')) {
+    if ('caches' in window) {
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
+    }
+  }
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
       reg.update();
@@ -403,7 +415,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }).catch(() => {});
   }
 
-  const urlParams = new URLSearchParams(window.location.search);
   const requestedTab = urlParams.get('tab') || localStorage.getItem('sportakip_tab') || 'home';
   window.navigateTo(requestedTab);
 });

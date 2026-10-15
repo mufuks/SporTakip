@@ -1194,16 +1194,25 @@ table.custom-table tr:hover td {
   box-shadow: 0 0 0 3px var(--volt-lime-muted);
 }
 
-/* Toast */
+/* Toast Notification System */
 .toast-container {
   position: fixed;
-  top: 20px;
+  top: 76px; /* Menünün hemen altından başlar */
   right: 20px;
-  z-index: 3000;
+  z-index: 3500;
   display: flex;
   flex-direction: column;
   gap: 10px;
   pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .toast-container {
+    top: 92px; /* Mobilde 2 satırlı header'ın altından başlar */
+    left: 14px;
+    right: 14px;
+    align-items: center;
+  }
 }
 
 .toast {
@@ -1211,14 +1220,16 @@ table.custom-table tr:hover td {
   border: 1px solid var(--volt-lime);
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16), 0 0 15px var(--volt-lime-glow);
   color: var(--text-primary);
-  padding: 14px 20px;
+  padding: 12px 18px;
   border-radius: var(--radius-md);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
   display: flex;
   align-items: center;
   gap: 12px;
-  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 90vw;
+  box-sizing: border-box;
 }
 
 [data-theme="dark"] .toast {
@@ -1227,9 +1238,9 @@ table.custom-table tr:hover td {
   color: #fff;
 }
 
-@keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+@keyframes slideInDown {
+  from { transform: translateY(-12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 /* ==================== Capacity & Slot Styling (BR-03) ==================== */
@@ -4329,6 +4340,71 @@ table.custom-table tr:hover td {
   font-size: 10px;
   color: var(--text-muted);
   margin-top: 5px;
+}
+
+/* ==================== RESERVATIONS PAGINATION CONTROLS ==================== */
+.res-page-btn {
+  background: var(--bg-surface-elevated, #161b26);
+  border: 1px solid var(--border-medium, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary, #ffffff);
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.res-page-btn:hover:not(:disabled) {
+  background: var(--bg-surface-active, #1f2533);
+  border-color: var(--volt-lime, #ccff00);
+  color: var(--volt-lime, #ccff00);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(204, 255, 0, 0.2);
+}
+
+.res-page-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.res-page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-muted, #64748b);
+  box-shadow: none;
+  transform: none;
+}
+
+.res-filter-pill {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.res-filter-pill.active {
+  background: var(--volt-lime);
+  color: #000;
+  font-weight: 800;
+}
+
+#v0-profile-content {
+  padding-bottom: 90px;
 }
 
 /* Attendance: Already Attended Button Style */

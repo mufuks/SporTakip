@@ -7,7 +7,8 @@ namespace SporTakip.Api.Services;
 
 public class ReservationService(
     ApplicationDbContext db,
-    ILogger<ReservationService> logger) : IReservationService
+    ILogger<ReservationService> logger,
+    INotificationService? notificationService = null) : IReservationService
 {
     public async Task<ReservationDto> BookSlotAsync(int athleteUserId, int slotId, CancellationToken ct = default)
     {
@@ -198,6 +199,51 @@ public class ReservationService(
         logger.LogInformation("🎟️ [BOOKING] Member #{MemberId} ({MemberName}) -> Slot #{SlotId} ({Status}, Sıra: #{Pos})",
             member.Id, member.FullName, slotId, status, waitlistPosition);
 
+        if (notificationService != null && member.UserId.HasValue)
+        {
+            try
+            {
+                if (status == "Confirmed")
+                {
+                    await notificationService.CreateNotificationAsync(
+                        member.UserId.Value,
+                        "Rezervasyon Onaylandı",
+                        $"{slot.Title} seansınız onaylandı. ({slot.StartTime.ToLocalTime():dd MMMM HH:mm})",
+                        type: "Session",
+                        icon: "📅",
+                        actionUrl: "home",
+                        ct: ct);
+                }
+                else if (status == "Waitlisted")
+                {
+                    await notificationService.CreateNotificationAsync(
+                        member.UserId.Value,
+                        "Yedek Listeye Alındınız",
+                        $"{slot.Title} seansı kontenjanı dolu olduğundan {waitlistPosition}. yedek sırasındasınız.",
+                        type: "Session",
+                        icon: "⏳",
+                        actionUrl: "home",
+                        ct: ct);
+                }
+
+                if (slot.Trainer?.UserId.HasValue == true && slot.Trainer.UserId.Value != athleteUserId)
+                {
+                    await notificationService.CreateNotificationAsync(
+                        slot.Trainer.UserId.Value,
+                        "Yeni Seans Kaydı",
+                        $"{member.FullName}, {slot.Title} ({slot.StartTime.ToLocalTime():HH:mm}) seansınıza kaydoldu.",
+                        type: "Session",
+                        icon: "⚡",
+                        actionUrl: "yoklama",
+                        ct: ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Bildirim oluşturulurken hata oluştu (Rezervasyon #{ResId})", reservation.Id);
+            }
+        }
+
         return MapToDto(reservation, slot, member.FullName, slot.Trainer?.FullName ?? "Eğitmen");
     }
 
@@ -233,6 +279,7 @@ public class ReservationService(
         var hoursUntilStart = (reservation.SessionSlot.StartTime - DateTime.UtcNow).TotalHours;
         bool penaltyApplied = false;
         string message;
+        Reservation? promotedReservation = null;
 
         if (reservation.Status == "Confirmed")
         {
@@ -296,6 +343,7 @@ public class ReservationService(
                 var firstWaitlist = waitlist[0];
                 firstWaitlist.Status = "Confirmed";
                 firstWaitlist.WaitlistPosition = 0;
+                promotedReservation = firstWaitlist;
 
                 // Diğer yedeklerin pozisyonunu 1 adım öne çek (-1)
                 for (int i = 1; i < waitlist.Count; i++)
@@ -332,6 +380,43 @@ public class ReservationService(
 
         logger.LogInformation("🚫 [CANCELLATION] Res #{ResId} iptal edildi. Ceza: {Penalty}, Kalan Ders: {Remaining}",
             reservation.Id, penaltyApplied, reservation.Subscription.RemainingLessons);
+
+        if (notificationService != null)
+        {
+            try
+            {
+                if (reservation.Member.UserId.HasValue)
+                {
+                    var cancelTitle = penaltyApplied ? "Geç İptal (Ders Düşüldü)" : "Rezervasyon İptali";
+                    var cancelIcon = penaltyApplied ? "⚠️" : "✓";
+                    await notificationService.CreateNotificationAsync(
+                        reservation.Member.UserId.Value,
+                        cancelTitle,
+                        $"{reservation.SessionSlot.Title} seansı rezervasyonunuz iptal edildi. {message}",
+                        type: "Session",
+                        icon: cancelIcon,
+                        actionUrl: "home",
+                        ct: ct);
+                }
+
+                if (promotedReservation?.Member?.UserId.HasValue == true)
+                {
+                    var promotedUser = promotedReservation.Member!;
+                    await notificationService.CreateNotificationAsync(
+                        promotedUser.UserId!.Value,
+                        "🎉 Müjde! Yedekten Sıra Geldi",
+                        $"{reservation.SessionSlot.Title} ({reservation.SessionSlot.StartTime.ToLocalTime():dd MMMM HH:mm}) seansındaki yeriniz onaylandı!",
+                        type: "Session",
+                        icon: "🎉",
+                        actionUrl: "home",
+                        ct: ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "İptal bildirimi oluşturulurken hata oluştu (Rezervasyon #{ResId})", reservation.Id);
+            }
+        }
 
         var dto = MapToDto(reservation, reservation.SessionSlot, reservation.Member.FullName, reservation.SessionSlot.Trainer?.FullName ?? "Eğitmen");
         return new CancelReservationResponse(true, message, penaltyApplied, reservation.Subscription.RemainingLessons, dto);
@@ -412,6 +497,37 @@ public class ReservationService(
 
         logger.LogInformation("✅ [CHECK-IN] Res #{ResId} -> Yoklama alındı (Attended). İkame: {IsSub}, Birim: {Unit:N2} TL, Hoca Payı: {Trainer:N2} TL",
             reservation.Id, isSubstitute, unitPrice, trainerShare);
+
+        if (notificationService != null && reservation.Member.UserId.HasValue)
+        {
+            try
+            {
+                await notificationService.CreateNotificationAsync(
+                    reservation.Member.UserId.Value,
+                    "Tebrikler! Antrenman Tamamlandı",
+                    $"{reservation.SessionSlot.Title} seansınız yoklandı. Kalan ders hakkınız: {sub.RemainingLessons}.",
+                    type: "Attendance",
+                    icon: "💪",
+                    actionUrl: "home",
+                    ct: ct);
+
+                if (sub.RemainingLessons <= 1)
+                {
+                    await notificationService.CreateNotificationAsync(
+                        reservation.Member.UserId.Value,
+                        "⚠️ Paketiniz Bitiyor",
+                        $"Paketinizde son {sub.RemainingLessons} ders hakkınız kaldı! Kesintisiz devam etmek için yeni paketinizi alabilirsiniz.",
+                        type: "Package",
+                        icon: "⚠️",
+                        actionUrl: "profile",
+                        ct: ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Yoklama bildirimi oluşturulurken hata oluştu (Rezervasyon #{ResId})", reservation.Id);
+            }
+        }
 
         return new CheckInResponse(
             true,

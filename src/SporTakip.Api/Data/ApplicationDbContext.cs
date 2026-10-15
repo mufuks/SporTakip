@@ -39,6 +39,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ExerciseLog> ExerciseLogs => Set<ExerciseLog>();
     public DbSet<SetLog> SetLogs => Set<SetLog>();
     public DbSet<BodyMetricLog> BodyMetricLogs => Set<BodyMetricLog>();
+    public DbSet<AppNotification> Notifications => Set<AppNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -387,6 +388,26 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(b => b.Member)
                 .WithMany(m => m.BodyMetricLogs)
                 .HasForeignKey(b => b.MemberId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ══════════════════════════════════════════════════════════
+        //  NOTIFICATIONS
+        // ══════════════════════════════════════════════════════════
+        modelBuilder.Entity<AppNotification>(entity =>
+        {
+            entity.HasKey(n => n.Id);
+            entity.Property(n => n.Title).IsRequired().HasMaxLength(150);
+            entity.Property(n => n.Message).IsRequired().HasMaxLength(500);
+            entity.Property(n => n.Type).IsRequired().HasMaxLength(50);
+            entity.Property(n => n.Icon).HasMaxLength(20);
+            entity.Property(n => n.ActionUrl).HasMaxLength(100);
+            entity.HasIndex(n => new { n.UserId, n.IsRead });
+            entity.HasIndex(n => new { n.UserId, n.CreatedAt });
+
+            entity.HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

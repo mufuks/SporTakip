@@ -49,6 +49,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IWorkoutService, WorkoutService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // 3. JWT Kimlik Doğrulama & Yetkilendirme
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "SporTakip_SuperSecret_Jwt_SigningKey_CompoundAthletic_2026!";

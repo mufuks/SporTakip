@@ -792,6 +792,102 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Service Worker:** `sportakip-shell-v3.6.7` olarak güncellendi.
   - **Test & Sağlık:** 110/110 birim testi %100 başarılı.
 
+- **Phase 51 (v3.6.8) - Dinamik Uygulama İçi Bildirim Merkezi (In-App Notification Center):**
+  - **Kullanıcı Talebi:** Bildirimlerdeki mock verinin incelenmesi ve canlı, dinamik bildirim merkezine dönüştürülmesi (Seçenek A onaylandı).
+  - **Backend Veri Modeli (`AppNotification` & `NotificationDto`):**
+    - `AppNotification`: `Id`, `UserId`, `Title`, `Message`, `Type` (Session, Attendance, Package, System), `Icon`, `ActionUrl`, `IsRead`, `CreatedAt`.
+    - SQLite ve PostgreSQL otomatik şema migrasyonu (`Notifications` tablosu, `(UserId, IsRead)` ve `(UserId, CreatedAt)` indeksleri).
+  - **Servis & API Mimarisi (`INotificationService` & `NotificationsController`):**
+    - `GET /api/notifications?limit=30`: Kullanıcının son bildirimlerini ve okunmamış bildirim adedini döner. Türkçe göreceli zaman formatlaması ("Az önce", "32 dk önce", "3 saat önce", "Dün", "2 gün önce").
+    - `GET /api/notifications/unread-count`: Header zil rozeti için hafif ve anlık okunmamış sayacı döner.
+    - `POST /api/notifications/{id}/read`: Tekil bildirimi okundu olarak işaretler.
+    - `POST /api/notifications/read-all`: Kullanıcının tüm bildirimlerini okundu durumuna getirir.
+  - **Otomasyon ve Domain Event Tetikleyicileri:**
+    - `ReservationService.BookSlotAsync`: Sporcuya anlık rezervasyon onayı (`📅`), yedek liste sırası (`⏳`) ve antrenöre yeni sporcu katılım uyarısı (`⚡`).
+    - `ReservationService.CancelReservationAsync`: Cezasız veya cezalı iptal bildirimi (`⚠️` / `✓`) ve yedekten sırası gelen sporcuya otomatik müjde bildirimi (`🎉`).
+    - `ReservationService.CheckInReservationAsync`: Yoklama alındığında sporcuya antrenman tebriği ve kalan seans uyarısı (`💪`), son 1 ders kaldığında paket yenileme uyarısı (`⚠️`).
+    - `GymService.FreezeSubscriptionAsync` & `UnfreezeSubscriptionAsync`: Paket dondurma (`❄️`) ve dondurmayı çözme (`🔥`) anlık bildirimleri.
+  - **Frontend Entegrasyonu (`api.js`, `athlete.js`, `auth-modals.html`):**
+    - Header zil butonunda okunmamış bildirim olduğunda beliren canlı Volt Lime rozet noktası (`.v0-bell-dot`).
+    - Çekmece açıldığında dinamik API verileriyle yüklenen bildirim listesi, kart tıklamasıyla otomatik okundu yapma ve ilgili ekrana gitme (`actionUrl`).
+    - "Tümünü Okundu Say" butonu ile tek dokunuşla tüm rozetlerin ve vurguların temizlenmesi.
+    - Service Worker önbelleği `sportakip-shell-v3.6.8` olarak güncellendi.
+  - **Test Doğrulaması:** 4 yeni unit test (`NotificationServiceTests.cs`) ile toplam **114/114 test %100 başarıyla geçti**. Tarayıcı subagent ile 393x851 mobil ekranında uçtan uca doğrulandı.
+
+- **Phase 52 (v3.6.9) - Toast Bildirim Konumlandırması & Rezervasyonlarım Kompakt Sayfalama (Pagination & Kategori Filtreleri):**
+  - **Kullanıcı Talepleri:**
+    1. *"toast mesajı üst menüyü kapatarak çıkıyor ya onu menünün altından başlayacak gibi yapabilir miyiz?"*
+    2. *"Rezervasyonlarım aşağı çok uzuyor paging gibi yapalım"*
+  - **1. Toast Bildirim Konumlandırması (`app.css`, `utils.js`):**
+    - `.toast-container` masaüstünde `top: 76px`, mobilde iki satırlı header yüksekliğine uyumlu olarak `top: 92px` olarak ayarlandı.
+    - Menünün (Logo, Mod Switcher, Zil, Profil Avatarı) üzerini kapatması tamamen engellendi; animasyonu `slideInDown` (menünün altından aşağıya doğru 12px süzülerek açılma ve kaybolma) olarak optimize edildi.
+  - **2. Rezervasyonlarım Kompakt Sayfalama & Kategori Filtreleri (`athlete.js`, `app.css`):**
+    - Sporcu profilindeki rezervasyon listesi eskiden tüm kayıtları (10-20 adet) alt alta dizerek sayfayı aşırı uzatıyordu.
+    - **Kategori Filtre Çipleri (`res-filter-pill`):**
+      - `Tümü (X)`: Tüm aktif ve geçmiş rezervasyonlar.
+      - `Yaklaşan (Y)`: Yalnızca gelecekteki onaylı (`Confirmed`) ve yedek (`Waitlisted`) seanslar.
+      - `Geçmiş (Z)`: Katılınan (`CheckedIn`), gelinmeyen veya iptal edilen eski seanslar.
+    - **Sayfa Başına 3 Rezervasyon (`RES_PAGE_SIZE = 3`):** Sayfa yüksekliği kompakt tutuldu, gereksiz aşağı kaydırma ihtiyacı sonlandırıldı.
+    - **Sayfalama Kontrolleri (`res-page-btn`):**
+      - `[◀ Önceki]  Sayfa X / Y  [Sonraki ▶]` butonları eklendi.
+      - Sayfa ve filtre değişimleri tam sayfa yenilemesi olmadan reaktif DOM güncellemesiyle anında çalışır hale getirildi.
+    - `#v0-profile-content` altına `padding-bottom: 90px;` verilerek en alttaki sayfalama ve çıkış butonlarının mobil alt menü arkasında kalması engellendi.
+- **Phase 53 (v3.7.0) - Rezervasyonlarım Arayüz Sadeliği: Sıralı Akış, Sağ Hizalı Eğitmen & Rozet Stilli İptal:**
+  - **Kullanıcı Talepleri:**
+    1. *"tümü-yaklaşan-geçmiş filtresine gerek yok sıralı gösterivercez zaten."*
+    2. *"İptal'i de badge gibi yapalım öyleyse"*
+    3. *'"Sabah Güç & Kondisyon · SalonSahibi_1" yerine sadece Hoca\'yı tarihle aynı hizada sağa koyabiliriz. WOD içinde varsa planı görür zaten'*
+  - **1. Filtre Çiplerinin Kaldırılması & Akıllı Sıralı Akış (`athlete.js`):**
+    - Gereksiz yatay kalabalık oluşturan `Tümü / Yaklaşan / Geçmiş` filtre çipleri kaldırıldı.
+    - Rezervasyonlar kullanıcı beklentisine uygun olarak `getOrderedReservations()` mantığıyla sıralandı:
+      - Yaklaşan seanslar en yakından uzağa kronolojik sıralı olarak ilk sayfada listelenir.
+      - Varsa geçmiş seanslar en yeniden eskiye doğru arkasından devam eder.
+      - Sayfa başına 3 seans (`RES_PAGE_SIZE = 3`) ile kompakt sayfalama (`◀ Önceki`, `Sayfa X / Y`, `Sonraki ▶`) korundu.
+    - Başlık alanı sadeleştirildi: Sol tarafta `🎟️ Rezervasyonlarım`, sağ tarafta `X Rezervasyon` volt-lime rozeti.
+  - **2. İki Satırlı Ultra Kompakt Kart Düzeni:**
+    - Seans başlığı metni (`Sabah Güç & Kondisyon`) kaldırılarak kart yüksekliği ~60px'e düşürüldü. Seans içeriği zaten `🔥 WOD` butonuyla görüntülenebilmektedir.
+    - **1. Satır (Tarih & Eğitmen):** Solda seans tarihi ve saati (`📅 29 Eyl Sal · 19:00`), sağda aynı hizada eğitmen adı (`🏋️ Hoca_1`).
+    - **2. Satır (Durum & Aksiyonlar):** Solda durum rozeti (`Onaylı` / `Yedek #1` / `Katıldı ✓` / `İptal Edildi`), sağda aksiyon butonları (`🔥 WOD`, `📅 Takvim` ve `✕ İptal`).
+  - **3. Rozet Stilli İptal Butonu (`athlete.js`):**
+    - Eski altı çizgili sade metin linki yerine; `🔥 WOD` ve `📅 Takvim` hap butonlarıyla mükemmel uyumlu, kırmızı tonlu modern hap rozet (`✕ İptal`, `background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.35); color:#f87171;`) kullanıldı.
+- **Phase 54 (v3.7.3) - "Derslerim" Terminoloji Dönüşümü & Atletik Sayfalama Kapsül Butonları:**
+  - **Kullanıcı Talepleri:**
+    1. *"önceki-sonraki tuşlarını sa temaya uygun yapalım. eski winformslara benzemiş"*
+    2. *'"rezervasyon"larım sanki güç atlet tarafındaymış gibi anlam veriyor bana. "rezerve ettim" havası ona başka bişey diyelim' -> 'Derslerim' seçildi.*
+  - **1. Atletik Sayfalama Kapsül Butonları (`app.css`, `athlete.js`):**
+    - Sayfalama butonları (`◀ Önceki`, `Sonraki ▶`) varsayılan tarayıcı görünümünden arındırılarak `border-radius: 999px` atletik koyu kapsül buton tasarımına geçirildi.
+    - Ortadaki sayfa göstergesi Volt Lime ışıltılı pill badge (`Sayfa X / Y`) olarak tasarlandı.
+    - Olası önbellek uyumsuzluklarına karşı butonlara doğrudan satır içi (inline) temel stiller eklenerek WinForms görünümü tamamen engellendi.
+  - **2. "Rezervasyonlarım" -> "Derslerim" Terminoloji Dönüşümü (`athlete.js`):**
+    - "Rezervasyon" kelimesinin yarattığı "güç/inisiyatif atlet tarafında, rezerve ettim" algısı yerine stüdyodaki "Kalan Ders" bakiyesiyle doğrudan örtüşen samimi ve doğal **"Derslerim"** dili benimsendi:
+      - Kart Başlığı: `⚡ Derslerim` (Sağda: `X Ders` rozeti).
+      - Boş Durum: `📭 Kayıtlı dersiniz bulunmuyor.`
+      - İptal Onayı & Bildirimler: *"Bu derse katılımınızı iptal etmek istediğinize emin misiniz?"*, *"✓ Ders kaydı cezasız iptal edildi. Ders hakkınız korundu."*
+      - Buton İpucu: `title="Dersi İptal Et"`
+- **Phase 55 (v3.7.4) - Sporcu Profilinden Stüdyo Adres Kartının Kaldırılması:**
+  - **Kullanıcı Talebi:** *"bu adres bilgilerinin profilde olmasına gerek yok"*
+  - **Uygulama (`athlete.js`):**
+    - Giriş yapmış sporcunun kişisel profil ekranında yer alan ve gereksiz dikey kaydırma oluşturan "Compound Athletic Stüdyosu" adres, çalışma saatleri ve harita/iletişim kartı (`renderStudioContactCardHtml`) kaldırıldı.
+    - Ziyaretçi / giriş yapılmamış moddaki iletişim kartı korunarak, giriş yapmış aktif üyeye sadece kendi kişisel ve atletik verileri (Vücut Metrikleri, Kilo Takibi, Derslerim, Uygulama Kurulumu) odaklı sade bir profil sunuldu.
+- **Phase 56 (v3.7.7) - Gelişim Ekranında Katlanabilir (Collapsible) & Sayfalamalı Ölçüm Geçmişi:**
+  - **Kullanıcı Talebi:** *"Gelişim'deki Ölçüm Geçmişini de pagingli ve/veya collapsible yapalım kısalsın"*
+  - **Uygulama (`workouts.js`, `athlete.js`, `workout.html`):**
+    - **1. Katlanabilir (Collapsible) Kart Mimarisi (`workouts.js`):**
+      - Ölçüm Geçmişi kartı varsayılan olarak katlanmış (~48px) kompakt halde gelir: Sol tarafta `📋 Ölçüm Geçmişi` başlığı ve `X Kayıt` Volt Lime rozeti, sağ tarafta `[Görüntüle ▾]` butonu yer alır.
+      - Başlığa veya butona tıklandığında yumuşak bir açılışla (`[Gizle ▴]`) liste gösterilir.
+      - Yeni tartı eklendiğinde (`submitProgressMeasurement`) veya kayıt silindiğinde liste otomatik açık tutulup ilk sayfaya konumlandırılır.
+    - **2. Sayfa Başına 3 Kayıt & Kapsül Sayfalama (`workouts.js`, `athlete.js`):**
+      - Sayfa başına 3 ölçüm (`PAGE_SIZE = 3`) ile liste yüksekliği minimal tutuldu.
+      - `◀ Önceki`, `Sayfa X / Y` (Volt Lime ışıltılı rozet) ve `Sonraki ▶` modern atletik hap butonları eklendi.
+      - Profil sekmesindeki tartı geçmişi modal/detayında da aynı 3'lü sayfalama altyapısı devreye alındı.
+    - **3. Mobil Alt Menü Mesafesi (`workout.html`):**
+      - `#v0-view-workout` bölümüne `padding-bottom: 90px;` eklenerek sayfalama kontrollerinin mobil alt navigasyon barının arkasında kalması engellendi.
+  - **Sürüm & Doğrulama:** `sportakip-shell-v3.7.7` sürümüne geçildi. 114/114 birim testi başarılı. 393px × 851px mobil görünümünde hem katlanmış hem de açık/sayfalanmış durumlar tarayıcı alt ajanı ile görsel olarak doğrulandı.
+- **2026-10-15 (v3.7.8 - Faz 57: Kompakt & Tek Satır Tıklanabilir PWA Yükleme Kartı):**
+  - **Kompakt Kapsül Buton Mimarisi:** Sporcu profilinin altındaki PWA kartı, alt satıra taşan devasa sarı "Hemen Yükle" butonundan arındırılarak tüm gövdesi tıklanabilir (`role="button"`, `onclick="triggerPwaInstall()"`, `cursor:pointer;`) şık ve kompakt tek satırlık bir aksiyon kartına dönüştürüldü.
+  - **Görsel Hiyerarşi & Mobil Uyum:** Sol tarafta 28px parlak kaplan ikonu, ortada başlık ("Uygulamayı Cihazınıza Yükleyin") ve alt metin ("Ana ekrana ekle · Hızlı mobil deneyim"), sağ tarafta ise `Yükle 📲` (veya kurulu ise `✓ Kurulu`) atletik hap rozeti konumlandırıldı.
+  - **Sürüm & Doğrulama:** `sportakip-shell-v3.7.8` sürümüne geçildi; Xiaomi Redmi Note 8 Pro mobil benchmark (393px × 851px) üzerinde görsel olarak doğrulanıp onaylandı.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)

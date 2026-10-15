@@ -6,7 +6,10 @@ using SporTakip.Api.Models.Identity;
 
 namespace SporTakip.Api.Services;
 
-public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
+public class GymService(
+    ApplicationDbContext db,
+    IMemoryCache? cache = null,
+    INotificationService? notificationService = null)
 {
     public async Task<DashboardStatsDto> GetDashboardStatsAsync(CancellationToken cancellationToken = default)
     {
@@ -769,6 +772,26 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        if (notificationService != null && subscription.Member.UserId.HasValue)
+        {
+            try
+            {
+                await notificationService.CreateNotificationAsync(
+                    subscription.Member.UserId.Value,
+                    "Paketiniz Donduruldu",
+                    $"{subscription.Package.Name} paketiniz {startDate:dd.MM.yyyy} - {endDate:dd.MM.yyyy} tarihleri arasında donduruldu ({request.Days} gün).",
+                    type: "Package",
+                    icon: "❄️",
+                    actionUrl: "profile",
+                    ct: cancellationToken);
+            }
+            catch
+            {
+                // Bildirim hatası ana dondurma akışını engellemez
+            }
+        }
+
         return MapToSubscriptionSummary(subscription);
     }
 
@@ -818,6 +841,26 @@ public class GymService(ApplicationDbContext db, IMemoryCache? cache = null)
 
         subscription.Status = "Active";
         await db.SaveChangesAsync(cancellationToken);
+
+        if (notificationService != null && subscription.Member.UserId.HasValue)
+        {
+            try
+            {
+                await notificationService.CreateNotificationAsync(
+                    subscription.Member.UserId.Value,
+                    "Paket Dondurması Kaldırıldı",
+                    $"{subscription.Package.Name} paketinizin dondurması çözüldü ve paketiniz tekrar aktif hale getirildi.",
+                    type: "Package",
+                    icon: "🔥",
+                    actionUrl: "profile",
+                    ct: cancellationToken);
+            }
+            catch
+            {
+                // Bildirim hatası ana çözme akışını engellemez
+            }
+        }
+
         return MapToSubscriptionSummary(subscription);
     }
 
