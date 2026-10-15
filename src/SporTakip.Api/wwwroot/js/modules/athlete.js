@@ -90,13 +90,10 @@ function renderStoryDateStrip() {
 // ==================== ATHLETE TODAY HERO STATUS CARD ====================
 async function renderAthleteTodayHero() {
   const heroContainer = document.getElementById('athlete-today-hero');
-  if (!heroContainer) return;
-
-  const user = Api.getUser();
-  if (!user || !Api.getToken()) {
+  if (heroContainer) {
     heroContainer.style.display = 'none';
-    return;
   }
+  return;
 
   const todayIso = new Date().toISOString().split('T')[0];
 
@@ -198,14 +195,13 @@ async function renderAthleteTodayHero() {
       heroContainer.className = 'v0-hero-today-card';
       heroContainer.style.display = 'block';
       heroContainer.innerHTML = `
-        <div class="v0-hero-today-header">
+        <div class="v0-hero-today-header" style="margin-bottom:6px;">
           <span class="v0-hero-tag">🌟 Bugünkü Seanslar</span>
         </div>
-        <div style="font-size:14.5px; font-weight:800; color:var(--text-primary); margin-bottom:4px;">Bugün için planlanan seanslar tamamlandı</div>
-        <p style="font-size:12.5px; color:var(--text-secondary); margin:0 0 12px 0;">Yarın ve sonraki günlerin seanslarına aşağıdaki takvimden yerini ayırtabilirsin.</p>
-        <button type="button" class="v0-btn-hero-action join" style="background:var(--bg-surface-elevated); color:var(--volt-lime); border:1px solid var(--volt-lime); padding:10px 14px; font-size:13px;" onclick="selectStoryDateOffset(1)">
+        <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:10px;">Bugünkü seanslar tamamlandı.</div>
+        <button type="button" class="v0-btn-hero-action join" style="background:var(--bg-surface-elevated); color:var(--volt-lime); border:1px solid var(--volt-lime); padding:9px 14px; font-size:13px;" onclick="selectStoryDateOffset(1)">
           <span>📅</span>
-          <span>Yarınki Seansları İncele →</span>
+          <span>Yarınki Seanslar →</span>
         </button>
       `;
     }
@@ -1328,7 +1324,7 @@ async function renderAthleteProfile() {
     console.warn('Profil verileri çekilemedi', e);
   }
 
-  const customAvatar = localStorage.getItem('sportakip_custom_avatar') || '/images/default-avatar.png?v=2.7.5';
+  const customAvatar = localStorage.getItem('sportakip_custom_avatar') || '/images/default-avatar.png?v=3.6.4';
   const hasCustomAvatar = !!localStorage.getItem('sportakip_custom_avatar');
 
   const curHeight = memberDetails?.heightCm || '';
@@ -1360,7 +1356,7 @@ async function renderAthleteProfile() {
             </button>
             ${hasCustomAvatar ? `
               <button type="button" onclick="resetAvatarToDefault()" style="background:transparent; border:none; color:var(--volt-lime); font-size:11px; font-weight:700; cursor:pointer; text-decoration:underline;">
-                Compound Avatarına Dön
+                Varsayılana Dön
               </button>` : ''}
           </div>
         </div>

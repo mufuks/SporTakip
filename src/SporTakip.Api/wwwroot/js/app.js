@@ -11,7 +11,7 @@ import {
   startOtpTimer, handlePhoneInput, submitSendOtp, resendOtp, checkCodeComplete,
   submitVerifyOtp, setupOtpBoxListeners, updateAppAvatars, handleLogout,
   handleAvatarClick, handleAvatarFileUpload, resetAvatarToDefault 
-} from './modules/auth.js';
+} from './modules/auth.js?v=3.6.5';
 import { 
   loadAttendanceView, renderCapacityWeekStrip, loadCapacitySlots, renderCapacitySlots,
   applyAttendanceFilter, renderAttendanceList,
@@ -20,12 +20,12 @@ import {
   loadTrainers, renderTrainersTable, updateTrainerSelects,
   loadPackagesAdmin, renderPackagesTable,
   loadCalendarView, renderCalendarGrid
-} from './modules/staff.js?v=3.6.3';
+} from './modules/staff.js?v=3.6.5';
 import { 
   loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,
   updatePushUi, renderNotificationItems
-} from './modules/athlete.js?v=3.6.1';
+} from './modules/athlete.js?v=3.6.7';
 import { 
   loadWorkoutHub, loadWorkoutTemplates,
   startWorkoutTimer, renderLiveWorkoutView,

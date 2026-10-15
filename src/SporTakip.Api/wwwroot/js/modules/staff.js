@@ -16,6 +16,7 @@ let currentCapacityDate = new Date().toISOString().split('T')[0];
 let waTargetSub = null;
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth() + 1;
+let currentFilter = 'all';
 
 // ==================== 1. HIZLI YOKLAMA (ATTENDANCE & CAPACITY) ====================
 async function loadAttendanceView() {

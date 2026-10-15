@@ -1,12 +1,12 @@
-const CACHE_NAME = 'sportakip-shell-v3.6.3';
+const CACHE_NAME = 'sportakip-shell-v3.6.7';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon.ico',
-  '/css/app.css?v=3.6.0',
-  '/js/app.js?v=3.6.0',
+  '/css/app.css?v=3.6.7',
+  '/js/app.js?v=3.6.7',
   '/js/api.js?v=3.1.0',
   '/js/modules/state.js',
   '/js/modules/utils.js',
@@ -35,7 +35,8 @@ const PRECACHE_ASSETS = [
   '/modals/auth-modals.html',
   '/modals/athlete-modals.html',
   '/images/compound-brand-icon.png?v=2.7.5',
-  '/images/default-avatar.png?v=2.7.5',
+  '/images/default-avatar.png?v=3.6.4',
+  '/images/default-avatar.svg',
   '/images/compound-watermark.png',
   '/images/tiger1.png',
   '/images/tiger1_badge.png',

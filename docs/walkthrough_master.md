@@ -775,6 +775,23 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - **Seans Planlama Modalı (`session-modals.html`):** Saat açılır menüsünde günün tüm saatleri doluluk oranı ve hoca bilgileriyle (`19:00 - 20:00 (6/6 DOLU 🔴 Çakışma! · Gülçin:3 Sinan:3)`) dinamik olarak listelendi; dolu saat seçildiğinde kırmızı çakışma uyarı kutusu devreye alındı.
   - **Doğrulama & Standartlar:** Xiaomi Redmi Note 8 Pro (`393px × 851px`) benchmark ekranında doğrulandı. 110/110 birim testi başarıyla korundu.
 
+- **Phase 49 (v3.6.5) - Varsayılan Unisex Profil Silüeti ve Sporcu Ana Ekran Sadeleştirmesi:**
+  - **Unisex Atletik Avatar:** Kaplan kafa varsayılan görseli yerine modern, karanlık zeminli unisex atletik silüet (`default-avatar.png` & `default-avatar.svg`) hazırlandı. Profil ekranındaki 34px küçülme ve sağa/sola kayma CSS hatası (`#profile-avatar-img`) 68px tam daireye sabitlenerek düzeltildi.
+  - **Sporcu Seans Kartı Sadeleştirmesi:** Sporcu ana ekranında günün tüm seansları bittiğinde gösterilen karttaki uzun ve kalabalık açıklama paragrafı ("Yarın ve sonraki günlerin...") kaldırıldı; doğrudan kompakt ve net 2 satıra indirgendi ("Bugünkü seanslar tamamlandı." + "📅 Yarınki Seanslar →").
+  - **OTP Giriş Sonrası Sporcu Görünümü:** `auth.js` ve `app.js` içerisindeki yönlendirme koşulu güncellenerek sporcu girişi sonrası ana ekranın misafir karşılama ekranında takılı kalmadan anında üye paneline geçmesi garanti altına alındı.
+  - **Service Worker ve Cache-Busting:** `sw.js` sürümü `sportakip-shell-v3.6.5` olarak güncellendi ve tüm modül importları senkronize edildi.
+  - **Test & Sağlık:** 110/110 birim testi %100 başarılı.
+
+- **Phase 50 (v3.6.7) - Sporcu Ana Sayfası Akış Yenilenmesi (Salon Doluluğu Üstte, Seanslar Ortada, Aktif Paket En Altta):**
+  - **Dikey Akışın Yeniden Sıralanması:** Sporcu ana ekranında gereksiz yer kaplayan ve seansları aşağı iten "Bugünkü Seanslar" hero kartı (`athlete-today-hero`) tamamen kaldırılarak ekran ferahlatıldı.
+  - **Öncelik Sırası:**
+    1. **🏢 Salon Doluluğu (En Üst):** Sporcunun ilk gördüğü alan saatlik canlı salon doluluğu (`athlete-occupancy-card`) oldu.
+    2. **📅 Seanslar (Orta):** 14 günlük Instagram story date strip ve seans katılım kartları (`athlete-member-sessions-wrap`) doğrudan doluluğun altına alındı.
+    3. **🏋️ Aktif Paket (En Alt):** Kalan ders sayısı ve dondurma seçenekleri sayfanın en altına konumlandırıldı.
+  - **Masaüstü Responsive Grid (`app.css`):** Geniş ekranlarda `grid-template-areas: "occupancy sessions" "package sessions"` ile sol sütunda Doluluk + Paket, sağ sütunda Seanslar akıcı şekilde korundu.
+  - **Service Worker:** `sportakip-shell-v3.6.7` olarak güncellendi.
+  - **Test & Sağlık:** 110/110 birim testi %100 başarılı.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)

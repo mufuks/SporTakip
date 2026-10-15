@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Base Circle Background -->
+  <circle cx="256" cy="256" r="256" fill="#1e2128"/>
+  <circle cx="256" cy="256" r="252" fill="none" stroke="#343a46" stroke-width="5"/>
+
+  <!-- Clip inside circle -->
+  <clipPath id="avatarClip">
+    <circle cx="256" cy="256" r="252"/>
+  </clipPath>
+
+  <g clip-path="url(#avatarClip)">
+    <!-- Head -->
+    <circle cx="256" cy="180" r="78" fill="#cbd5e1"/>
+    <!-- Shoulders / Torso -->
+    <ellipse cx="256" cy="480" rx="195" ry="180" fill="#cbd5e1"/>
+  </g>
+</svg>

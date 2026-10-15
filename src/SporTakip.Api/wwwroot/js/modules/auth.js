@@ -288,6 +288,7 @@ export async function submitVerifyOtp() {
       if (window.setAppMode) window.setAppMode('staff');
     } else {
       if (window.setAppMode) window.setAppMode('athlete');
+      if (window.navigateTo) window.navigateTo('home');
     }
   } catch (err) {
     showToast(`Doğrulama Hatası: ${err.message}`, 'error');
@@ -332,7 +333,7 @@ window.setupOtpBoxListeners = setupOtpBoxListeners;
 
 // ==================== AVATARS & LOGOUT ====================
 export function updateAppAvatars() {
-  const avatarUrl = localStorage.getItem('sportakip_custom_avatar') || '/images/default-avatar.png?v=2.7.5';
+  const avatarUrl = localStorage.getItem('sportakip_custom_avatar') || '/images/default-avatar.png?v=3.6.4';
   document.querySelectorAll('.v0-avatar-img, #athlete-avatar-img, #profile-avatar-img').forEach(img => {
     img.src = avatarUrl;
   });

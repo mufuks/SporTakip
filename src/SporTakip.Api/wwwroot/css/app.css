@@ -2089,6 +2089,17 @@ table.custom-table tr:hover td {
   flex-direction: column;
 }
 
+@media (max-width: 899px) {
+  #athlete-occupancy-card {
+    margin-top: 0 !important;
+    margin-bottom: 14px !important;
+  }
+  #athlete-package-card {
+    margin-top: 14px !important;
+    margin-bottom: 24px !important;
+  }
+}
+
 @media (min-width: 900px) {
   .v0-desktop-brand {
     display: flex;
@@ -2113,20 +2124,25 @@ table.custom-table tr:hover td {
   .v0-home-grid {
     display: grid;
     grid-template-columns: 380px 1fr;
-    gap: 32px;
+    grid-template-areas:
+      "occupancy sessions"
+      "package   sessions";
+    gap: 20px 32px;
     padding: 28px 32px;
     align-items: start;
   }
 
-  .v0-home-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    position: sticky;
-    top: 24px;
+  #athlete-occupancy-card {
+    grid-area: occupancy;
+    margin: 0 !important;
   }
 
-  .v0-home-sidebar .v0-package-card {
+  .v0-home-main {
+    grid-area: sessions;
+  }
+
+  #athlete-package-card {
+    grid-area: package;
     margin: 0 !important;
   }
 
@@ -2382,6 +2398,14 @@ table.custom-table tr:hover td {
   background: var(--bg-surface-elevated);
 }
 
+#profile-avatar-img {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
 @media (max-width: 640px) {
   .v0-app-header {
     flex-wrap: wrap !important;
@@ -2451,7 +2475,7 @@ table.custom-table tr:hover td {
     padding: 6px 12px;
     font-size: 11px;
   }
-  .v0-avatar-img {
+  .v0-avatar-ring .v0-avatar-img {
     width: 34px;
     height: 34px;
   }
@@ -4112,7 +4136,7 @@ table.custom-table tr:hover td {
     height: 36px !important;
   }
 
-  .v0-avatar-img {
+  .v0-avatar-ring .v0-avatar-img {
     width: 34px !important;
     height: 34px !important;
   }
