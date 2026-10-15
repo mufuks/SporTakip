@@ -5,7 +5,8 @@ export async function fetchPartial(url) {
   if (partialCache.has(url)) {
     return partialCache.get(url);
   }
-  const res = await fetch(url);
+  const cacheBustUrl = url.includes('?') ? url : `${url}?v=3.6.0`;
+  const res = await fetch(cacheBustUrl);
   if (!res.ok) {
     throw new Error(`Kısmi HTML yüklenemedi: ${url} (${res.status})`);
   }
@@ -33,7 +34,11 @@ export async function ensureViewLoaded(tabName) {
   if (!route) return null;
 
   let el = document.getElementById(route.id);
-  if (el) return el;
+  if (el && (tabName !== 'workout' || el.querySelector('#progress-summary-card'))) return el;
+  if (el && tabName === 'workout' && !el.querySelector('#progress-summary-card')) {
+    el.remove();
+    partialCache.delete(route.file);
+  }
 
   const container = document.getElementById('app-views-container');
   if (!container) return null;

@@ -29,7 +29,7 @@
   <meta name="apple-mobile-web-app-title" content="SporTakip">
   
   <!-- CSS -->
-  <link rel="stylesheet" href="/css/app.css?v=3.5.2">
+  <link rel="stylesheet" href="/css/app.css?v=3.6.0">
 
   <!-- Immediate Critical Guest Mode Styles (Ensures header and bottom nav are 100% hidden on frame 0) -->
   <style>
@@ -88,6 +88,129 @@
       width: 100% !important;
       max-width: 420px !important;
     }
+
+    /* Native Edge-to-Edge Docked Mobile Bottom Tab Bar */
+    .v0-bottom-nav {
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      background: rgba(12, 16, 24, 0.95) !important;
+      backdrop-filter: blur(24px) !important;
+      -webkit-backdrop-filter: blur(24px) !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+      border-left: none !important;
+      border-right: none !important;
+      border-bottom: none !important;
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5) !important;
+      z-index: 900 !important;
+      pointer-events: auto !important;
+    }
+
+    [data-theme="light"] .v0-bottom-nav {
+      background: rgba(255, 255, 255, 0.96) !important;
+      border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06) !important;
+    }
+
+    /* Hide on Desktop: Desktop already uses the top header navigation */
+    @media (min-width: 992px) {
+      .v0-bottom-nav {
+        display: none !important;
+      }
+    }
+
+    .v0-bottom-nav-inner {
+      width: 100% !important;
+      max-width: 480px !important;
+      margin: 0 auto !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-around !important;
+      padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 12px)) 12px !important;
+      background: transparent !important;
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+
+    .v0-nav-btn {
+      position: relative !important;
+      flex: 1 !important;
+      display: flex;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 3px !important;
+      border-radius: 12px !important;
+      padding: 6px 4px !important;
+      background: transparent !important;
+      border: none !important;
+      cursor: pointer !important;
+      color: #9aa4b2 !important;
+      min-height: 48px !important;
+      transition: all 0.2s ease !important;
+    }
+
+    .v0-nav-btn[style*="display: none"],
+    .v0-nav-btn[style*="display:none"] {
+      display: none !important;
+    }
+
+    .v0-nav-btn:hover {
+      color: #ffffff !important;
+    }
+
+    [data-theme="light"] .v0-nav-btn {
+      color: #64748b !important;
+    }
+    [data-theme="light"] .v0-nav-btn:hover {
+      color: #0f172a !important;
+    }
+
+    .v0-nav-btn .v0-nav-icon {
+      font-size: 21px !important;
+      line-height: 1 !important;
+      transition: transform 0.2s ease, color 0.2s ease !important;
+    }
+
+    .v0-nav-btn .v0-nav-label {
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      letter-spacing: -0.01em !important;
+      transition: color 0.2s ease !important;
+    }
+
+    .v0-nav-btn.active {
+      color: #ccff00 !important;
+    }
+
+    [data-theme="light"] .v0-nav-btn.active {
+      color: #059669 !important;
+    }
+
+    .v0-nav-btn.active .v0-nav-icon {
+      transform: translateY(-2px) scale(1.1) !important;
+    }
+
+    .v0-nav-active-dot {
+      position: absolute !important;
+      top: 2px !important;
+      width: 4px !important;
+      height: 4px !important;
+      border-radius: 50% !important;
+      background: #ccff00 !important;
+      box-shadow: 0 0 8px #ccff00 !important;
+    }
+
+    [data-theme="light"] .v0-nav-active-dot {
+      background: #059669 !important;
+      box-shadow: 0 0 6px rgba(5, 150, 105, 0.4) !important;
+    }
   </style>
 </head>
 <body>
@@ -130,7 +253,7 @@
           <span>🏠</span> Ana Sayfa
         </button>
         <button type="button" class="v0-desk-nav-btn nav-athlete-item" data-mode="athlete" data-tab="workout" id="nav-btn-workout" onclick="navigateTo('workout')">
-          <span>📈</span> Antrenmanım
+          <span>📈</span> Gelişimim
         </button>
         <button type="button" class="v0-desk-nav-btn nav-athlete-item" data-mode="athlete" data-tab="profile" id="nav-btn-profile" onclick="navigateTo('profile')">
           <span>👤</span> Profilim
@@ -283,21 +406,28 @@
             </div>
           </div>
 
-          <!-- Workout Teaser Card -->
-          <div class="v0-section v0-sidebar-teaser-wrap" id="athlete-workout-teaser-wrap" style="margin-top:12px;">
-            <div class="v0-workout-teaser" onclick="switchAthleteTab('workout')">
-              <div class="v0-workout-emoji-box">🦵</div>
-              <div class="v0-workout-content">
-                <div class="v0-workout-top">
-                  <span class="v0-workout-tag" id="teaser-workout-tag">Son Antrenmanım</span>
-                  <span class="v0-workout-date" id="teaser-workout-date">· --</span>
-                </div>
-                <p class="v0-workout-name" id="teaser-workout-name">Antrenman Programları</p>
-                <div class="v0-workout-meta" id="teaser-workout-meta">
-                  <span>Programları İncele</span>
-                </div>
+          <!-- Salon Doluluğu Canlı Durumu -->
+          <div class="v0-card v0-occupancy-card" id="athlete-occupancy-card" style="margin-top:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:18px;">🏢</span>
+                <h3 style="font-size:15px; font-weight:800; color:var(--text-primary); margin:0;">Salon Doluluğu</h3>
+                <span class="v0-occupancy-badge-current" id="athlete-occupancy-live-badge" style="font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:999px; background:rgba(204,255,0,0.14); color:var(--volt-lime); border:1px solid rgba(204,255,0,0.3);">Canlı</span>
               </div>
-              <span style="color:rgba(255,255,255,0.3); font-size:18px;">›</span>
+              <span style="font-size:11.5px; color:var(--text-muted); font-weight:700;" id="athlete-occupancy-date-label">Bugün</span>
+            </div>
+
+            <p style="font-size:12px; color:var(--text-secondary); margin:0 0 10px 0;">
+              Günün saatlik doluluk oranı ve çalışma alanı yoğunluğu:
+            </p>
+
+            <!-- Horizontal Scrollable Hourly Capacity Strip -->
+            <div class="v0-occupancy-strip" id="athlete-occupancy-strip" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;">
+              <div style="font-size:12px; color:var(--text-muted); padding:10px 0;">Doluluk verileri yükleniyor...</div>
+            </div>
+
+            <!-- Selected Slot Quick Info Box -->
+            <div id="athlete-occupancy-detail-box" style="display:none; margin-top:8px; padding:10px 12px; border-radius:12px; background:rgba(204,255,0,0.06); border:1px solid rgba(204,255,0,0.2); font-size:12px; color:var(--text-primary);">
             </div>
           </div>
         </div>
@@ -342,7 +472,7 @@
         </button>
         <button type="button" class="v0-nav-btn nav-athlete-item" data-mode="athlete" data-tab="workout" id="mob-btn-workout" onclick="navigateTo('workout')">
           <span class="v0-nav-icon">📈</span>
-          <span class="v0-nav-label">Antrenman</span>
+          <span class="v0-nav-label">Gelişim</span>
         </button>
         <button type="button" class="v0-nav-btn nav-athlete-item" data-mode="athlete" data-tab="profile" id="mob-btn-profile" onclick="navigateTo('profile')">
           <span class="v0-nav-icon">👤</span>
@@ -440,7 +570,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Javascript -->
-  <script type="module" src="/js/app.js?v=3.5.0"></script>
+  <script type="module" src="/js/app.js?v=3.6.1"></script>
 </body>
 </html>
 

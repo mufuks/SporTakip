@@ -1,12 +1,12 @@
-const CACHE_NAME = 'sportakip-shell-v3.5.2';
+const CACHE_NAME = 'sportakip-shell-v3.6.1';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon.ico',
-  '/css/app.css?v=3.5.2',
-  '/js/app.js?v=3.5.0',
+  '/css/app.css?v=3.6.0',
+  '/js/app.js?v=3.6.0',
   '/js/api.js?v=3.1.0',
   '/js/modules/state.js',
   '/js/modules/utils.js',
@@ -105,10 +105,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Static App Shell: Scripts (.js), Styles (.css), Views/Modals (.html), Icons/Images
+  // 3. Views & Modals (.html partials): Network-First (instant updates when online, offline fallback)
+  if (url.pathname.endsWith('.html')) {
+    event.respondWith(
+      fetch(request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
+        return networkResponse;
+      }).catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // 4. Static Assets: Scripts (.js), Styles (.css), Icons/Images
   // Cache-First with Stale-While-Revalidate: Immediate 0ms local response + silent background refresh
   event.respondWith(
-    caches.match(request, { ignoreSearch: true }).then((cachedResponse) => {
+    caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
           const clone = networkResponse.clone();

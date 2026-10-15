@@ -35,7 +35,10 @@ window.selectStoryDate = async function(dateIso) {
   const dateLabel = document.getElementById('v0-sessions-date-label');
   if (dateLabel) dateLabel.innerText = fullDateLabel;
 
-  await renderSessionsList('v0-sessions-container', dateIso);
+  await Promise.all([
+    renderAthleteGymOccupancy(dateIso),
+    renderSessionsList('v0-sessions-container', dateIso)
+  ]);
 };
 
 window.selectStoryDateOffset = function(daysOffset) {
@@ -138,7 +141,7 @@ async function renderAthleteTodayHero() {
           <span style="font-size:12px; color:var(--text-muted); font-weight:700;">Compound Nilüfer</span>
         </div>
         <div class="v0-hero-session-time">${timeStr}</div>
-        <div class="v0-hero-session-title">⚡ ${escapeHtml(title)} · 🏋️ ${escapeHtml(coach)}</div>
+        <div class="v0-hero-session-title">⚡ ${escapeHtml(title)} · 🏋️ Koç: <strong>${escapeHtml(coach)}</strong></div>
         <div class="v0-hero-friends-pill">
           <span>👥</span>
           <span>${friendText}</span>
@@ -211,6 +214,159 @@ async function renderAthleteTodayHero() {
     heroContainer.style.display = 'none';
   }
 }
+
+// ==================== ATHLETE GYM OCCUPANCY (SALON DOLULUĞU) ====================
+let athleteCapacitySlotsData = [];
+let selectedAthleteSlotHour = null;
+
+async function renderAthleteGymOccupancy(dateStr) {
+  const container = document.getElementById('athlete-occupancy-strip');
+  const badge = document.getElementById('athlete-occupancy-live-badge');
+  const detailBox = document.getElementById('athlete-occupancy-detail-box');
+  const dateLabel = document.getElementById('athlete-occupancy-date-label');
+  if (!container) return;
+
+  const targetDate = dateStr || new Date().toISOString().split('T')[0];
+  const isToday = targetDate === new Date().toISOString().split('T')[0];
+  if (dateLabel) {
+    const d = new Date(targetDate + 'T00:00:00');
+    dateLabel.innerText = isToday ? 'Bugün' : d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+  }
+
+  try {
+    const slots = await Api.getCapacity(targetDate);
+    athleteCapacitySlotsData = slots || [];
+
+    if (!slots || slots.length === 0) {
+      container.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:8px 0;">Bu tarihte çalışma saati bulunamadı.</div>';
+      return;
+    }
+
+    const currentHour = new Date().getHours();
+    const currentHourSlot = isToday ? slots.find(s => s.hour === currentHour) : null;
+
+    if (badge) {
+      if (currentHourSlot) {
+        const count = currentHourSlot.totalMembers;
+        if (count >= 5) {
+          badge.style.background = 'rgba(239,68,68,0.15)';
+          badge.style.color = '#EF4444';
+          badge.style.borderColor = 'rgba(239,68,68,0.3)';
+          badge.innerText = `Şu An Yoğun (${count}/6)`;
+        } else if (count >= 3) {
+          badge.style.background = 'rgba(245,158,11,0.15)';
+          badge.style.color = '#F59E0B';
+          badge.style.borderColor = 'rgba(245,158,11,0.3)';
+          badge.innerText = `Şu An Orta (${count}/6)`;
+        } else {
+          badge.style.background = 'rgba(16,185,129,0.15)';
+          badge.style.color = '#10B981';
+          badge.style.borderColor = 'rgba(16,185,129,0.3)';
+          badge.innerText = count > 0 ? `Şu An Rahat (${count}/6)` : 'Şu An Sakin (0/6)';
+        }
+      } else {
+        badge.innerText = isToday ? 'Canlı' : 'Planlı';
+        badge.style.background = 'rgba(204,255,0,0.14)';
+        badge.style.color = 'var(--volt-lime)';
+        badge.style.borderColor = 'rgba(204,255,0,0.3)';
+      }
+    }
+
+    container.innerHTML = slots.map(slot => {
+      const isPast = isToday && slot.hour < currentHour;
+      const isCurrent = isToday && slot.hour === currentHour;
+      const count = slot.totalMembers || 0;
+      const cap = slot.capacityLimit || 6;
+      const isFull = count >= cap;
+      const isFilling = count >= 4 && !isFull;
+      const isComfortable = count > 0 && count < 4;
+      const isEmpty = count === 0;
+
+      let dotColor = '#10B981';
+      let dotText = 'Rahat';
+      let pillBg = 'rgba(255,255,255,0.04)';
+      let pillBorder = 'rgba(255,255,255,0.08)';
+
+      if (isFull) {
+        dotColor = '#EF4444';
+        dotText = 'Dolu';
+        pillBg = 'rgba(239,68,68,0.1)';
+        pillBorder = 'rgba(239,68,68,0.25)';
+      } else if (isFilling) {
+        dotColor = '#F59E0B';
+        dotText = 'Doluyor';
+        pillBg = 'rgba(245,158,11,0.1)';
+        pillBorder = 'rgba(245,158,11,0.25)';
+      } else if (isComfortable) {
+        dotColor = '#10B981';
+        dotText = 'Rahat';
+        pillBg = 'rgba(16,185,129,0.08)';
+        pillBorder = 'rgba(16,185,129,0.2)';
+      }
+
+      const isSelected = selectedAthleteSlotHour === slot.hour;
+
+      return `
+        <button type="button"
+                onclick="selectAthleteSlotHour(${slot.hour})"
+                style="flex:0 0 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:8px 12px; border-radius:12px; background:${isSelected ? 'rgba(204,255,0,0.16)' : pillBg}; border:1px solid ${isSelected ? '#CCFF00' : pillBorder}; cursor:pointer; min-width:68px; transition:all 0.2s ease; ${isPast ? 'opacity:0.5;' : ''}"
+                title="${slot.timeSlot}: ${count}/${cap} kişi">
+          <span style="font-size:12px; font-weight:800; color:var(--text-primary);">${slot.timeSlot.split(' ')[0]}</span>
+          <span style="font-size:11px; font-weight:700; color:${count > 0 ? dotColor : 'var(--text-muted)'};">${count}/${cap}</span>
+          <span style="font-size:9.5px; font-weight:700; color:${dotColor}; display:inline-flex; align-items:center; gap:3px;">
+            <span style="width:5px; height:5px; border-radius:50%; background:${dotColor};"></span>
+            ${isEmpty ? 'Boş' : dotText}
+          </span>
+        </button>
+      `;
+    }).join('');
+
+  } catch (err) {
+    console.warn('Salon doluluk bilgisi alınamadı:', err);
+    if (container) {
+      container.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:8px 0;">Doluluk bilgisi şu an yüklenemedi.</div>';
+    }
+  }
+}
+window.renderAthleteGymOccupancy = renderAthleteGymOccupancy;
+
+window.selectAthleteSlotHour = function(hour) {
+  const detailBox = document.getElementById('athlete-occupancy-detail-box');
+  if (!detailBox) return;
+
+  if (selectedAthleteSlotHour === hour) {
+    selectedAthleteSlotHour = null;
+    detailBox.style.display = 'none';
+    renderAthleteGymOccupancy(currentStorySelectedDate);
+    return;
+  }
+
+  selectedAthleteSlotHour = hour;
+  const slot = athleteCapacitySlotsData.find(s => s.hour === hour);
+  if (!slot) return;
+
+  let trainerText = 'Serbest Antrenman / Kayıtsız';
+  if (slot.trainers && slot.trainers.length > 0) {
+    trainerText = slot.trainers.map(t => `<strong>${escapeHtml(t.trainerName)}</strong> (${t.memberCount} sporcu)`).join(', ');
+  }
+
+  const freeSpots = (slot.capacityLimit || 6) - (slot.totalMembers || 0);
+
+  detailBox.style.display = 'block';
+  detailBox.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+      <span style="font-weight:800; color:var(--volt-lime);">⏰ Saat ${slot.timeSlot}</span>
+      <span style="font-size:11px; font-weight:700; color:${freeSpots > 0 ? '#10B981' : '#EF4444'};">
+        ${freeSpots > 0 ? `${freeSpots} Kişilik Boş Alan Var` : 'Salonda Kontenjan Dolu'}
+      </span>
+    </div>
+    <div style="font-size:11.5px; color:var(--text-secondary); line-height:1.4;">
+      Salondaki Eğitmenler: ${trainerText} · Toplam: <strong>${slot.totalMembers} kişi</strong>
+    </div>
+  `;
+
+  renderAthleteGymOccupancy(currentStorySelectedDate);
+};
 
 // ==================== STREAMLINED ACTIVE PACKAGE RENDER ====================
 function renderAthleteActivePackage(activeSub) {
@@ -452,6 +608,7 @@ async function loadAthleteHome() {
 
     renderStoryDateStrip();
     await renderAthleteTodayHero();
+    await renderAthleteGymOccupancy(currentStorySelectedDate || new Date().toISOString().split('T')[0]);
     await renderSessionsList('v0-sessions-container', currentStorySelectedDate || new Date().toISOString().split('T')[0]);
   }
 }

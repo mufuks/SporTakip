@@ -739,6 +739,22 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Referans mobil cihaz olarak **Xiaomi Redmi Note 8 Pro (6.53 inç, 1080x2340 fiziksel, 393x851 CSS viewport)** belirlendi.
     - Misafir giriş karşılama kartı (`.v0-guest-hero-card`) tam dikey ve yatay merkeze (`position: fixed; inset: 0; display: flex; justify-content: center; align-items: center;`) oturtularak hem Koyu (Dark) hem Açık (Light) temada doğrulandı.
     - Ekran görüntüleri kaydedildi: `docs/screenshots/redmi_note8_pro_centered_dark.png` ve `docs/screenshots/redmi_note8_pro_centered_light.png`. Sürüm `v3.5.2`.
+- **2026-10-15 (v3.6.0 & v3.6.1 - Sporcu Deneyiminin Sadeleştirilmesi: Salon Doluluğu, Hoca & Saat Görünürlüğü ve Gelişim Hub):**
+  - **Karmaşık Antrenman & Canlı İdman Bloat'unun Kaldırılması:**
+    - Sporcu arayüzünden kafa karıştıran şablonlar, egzersiz kataloğu, canlı kronometre ve set kayıtları sonraya ertelenmek üzere kaldırıldı.
+    - Alt navigasyon barı sporcular için 3 net, ergonomik başparmak sekmesine indirgendi: `[ 🏠 Ana Sayfa ]` `[ 📈 Gelişim ]` `[ 👤 Profilim ]`.
+  - **Canlı Salon Doluluğu Çizelgesi (`#athlete-occupancy-card`):**
+    - Sporcunun günün saatlerine göre salonun sakin veya kalabalık olduğu saatleri görebilmesi için yatay kayan saatlik doluluk hapları (09:00 - 20:00) entegre edildi (`Api.getCapacity(date)`).
+    - Doluluk oranına göre renkli durum göstergeleri (`🟢 Rahat`, `🟡 Doluyor`, `🔴 Dolu`) ve tek dokunuşla seçilen saatteki detay genişletmesi eklendi. Üstteki Instagram Story gün şeridiyle tam senkron çalışır.
+  - **Hangi Hocayla Kaçta Seansı Olduğunun Netleştirilmesi:**
+    - Ana Sayfa "Bugünkü Durum" kartında (`#athlete-today-hero`) sporcunun kayıtlı olduğu seansın saati, başlığı ve antrenörü (`⚡ {Title} · 🏋️ Koç: {CoachName}`) belirgin şekilde görselleştirildi; `[ ✓ SEANSA KAYITLISIN ]` rozetiyle kafa karışıklığı sıfırlandı.
+  - **Gelişim & Ölçümlerim Hub (Boy-Kilo Girişi, İnteraktif SVG Grafiği & Tarihçe):**
+    - `views/athlete/workout.html` ve `workouts.js` yeniden yapılandırılarak sade bir boy-kilo takip merkezine dönüştürüldü.
+    - **Özet Metrik Kartı:** Boy (cm), Güncel Kilo (kg), VKİ Fitlik Rozeti (`Fit / Normal 🟢`, `Zayıf 🔵`, `Fazla Kilolu 🟡`) ve Başlangıçtan Beri Toplam Değişim (`▼ -2.5 kg`).
+    - **Hızlı Ölçüm Giriş Formu:** Boy ve kilo giriş alanı ile tek dokunuşla kaydetme: `[ 💾 Ölçümü Kaydet ve Grafiğe Ekle ]` (`PUT /api/members/{id}/metrics` ve `POST /api/members/{id}/metrics/logs`).
+    - **Dinamik SVG Kilo İlerleme Grafiği:** Min/Max kılavuz çizgileri, neon gradyan dolgu ve dokunmatik veri noktaları ile zaman içindeki kilo trendini gösteren hafif SVG grafik.
+    - **Ölçüm Geçmişi & Silme:** Önceki ölçümlere göre fark göstergeli (+/- kg) geçmiş listesi ve silme aksiyonu.
+  - **Mobil Öncelikli Doğrulama:** Xiaomi Redmi Note 8 Pro (393px × 851px) görünümünde test edildi.
 
 ---
 

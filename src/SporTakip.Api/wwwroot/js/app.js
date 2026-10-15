@@ -25,17 +25,17 @@ import {
   loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,
   updatePushUi, renderNotificationItems
-} from './modules/athlete.js';
+} from './modules/athlete.js?v=3.6.1';
 import { 
   loadWorkoutHub, loadWorkoutTemplates,
   startWorkoutTimer, renderLiveWorkoutView,
   loadWorkoutProgress 
-} from './modules/workouts.js';
+} from './modules/workouts.js?v=3.6.1';
 import { 
   loadSuperAdminView, filterAndRenderSuperAdminUsers,
   updateSortIcons, updateRoleCounts
 } from './modules/admin.js';
-import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js';
+import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.6.1';
 
 // Workspace / App Mode State
 let currentAppMode = localStorage.getItem('sportakip_app_mode') || 'athlete';
@@ -214,39 +214,42 @@ window.updateNavForUserRole = function() {
   }
 
   // 2. Navigation buttons visibility (Desktop & Mobile Bottom Nav)
-  // Athlete Items
+  // Athlete Items: Only shown in athlete mode
   document.querySelectorAll('.nav-athlete-item').forEach(el => {
     const isBottomNav = el.classList.contains('v0-nav-btn');
-    el.style.display = currentAppMode === 'athlete' ? (isBottomNav ? 'flex' : 'inline-flex') : 'none';
+    const shouldShow = currentAppMode === 'athlete';
+    el.style.setProperty('display', shouldShow ? (isBottomNav ? 'flex' : 'inline-flex') : 'none', 'important');
   });
 
-  // Staff Items
+  // Staff Items: Strictly hidden unless user is in staff mode
   document.querySelectorAll('.nav-staff-item, .staff-tab').forEach(el => {
     if (currentAppMode !== 'staff') {
-      el.style.display = 'none';
+      el.style.setProperty('display', 'none', 'important');
       return;
     }
     const tab = el.dataset.tab;
     const isBottomNav = el.classList.contains('v0-nav-btn');
     const displayStyle = isBottomNav ? 'flex' : 'inline-flex';
     if (tab === 'kasa' || tab === 'dashboard') {
-      el.style.display = isAdmin ? displayStyle : 'none';
+      el.style.setProperty('display', isAdmin ? displayStyle : 'none', 'important');
     } else if (tab === 'hakedisim') {
-      el.style.display = isCoach ? displayStyle : 'none';
+      el.style.setProperty('display', isCoach ? displayStyle : 'none', 'important');
     } else {
-      el.style.display = isCoach ? displayStyle : 'none';
+      el.style.setProperty('display', isCoach ? displayStyle : 'none', 'important');
     }
   });
 
-  // SuperAdmin Desktop & Mobile Navigation Items
+  // SuperAdmin Desktop & Mobile Navigation Items: Strictly hidden unless superadmin mode
   const navSuperAdminBtn = document.getElementById('nav-btn-superadmin');
   const mobSuperAdminBtn = document.getElementById('mob-btn-superadmin');
   if (navSuperAdminBtn) {
-    navSuperAdminBtn.style.display = (currentAppMode === 'superadmin' && canAccessAdminPanel) ? 'inline-flex' : 'none';
+    const showSuperAdmin = currentAppMode === 'superadmin' && canAccessAdminPanel;
+    navSuperAdminBtn.style.setProperty('display', showSuperAdmin ? 'inline-flex' : 'none', 'important');
     navSuperAdminBtn.classList.toggle('active', currentTab === 'superadmin');
   }
   if (mobSuperAdminBtn) {
-    mobSuperAdminBtn.style.display = (currentAppMode === 'superadmin' && canAccessAdminPanel) ? 'flex' : 'none';
+    const showSuperAdmin = currentAppMode === 'superadmin' && canAccessAdminPanel;
+    mobSuperAdminBtn.style.setProperty('display', showSuperAdmin ? 'flex' : 'none', 'important');
     mobSuperAdminBtn.classList.toggle('active', currentTab === 'superadmin');
   }
 
@@ -262,8 +265,8 @@ window.updateNavForUserRole = function() {
 
   if (user && token) {
     if (appRoot) appRoot.classList.remove('is-guest-mode');
-    if (headerEl) headerEl.style.setProperty('display', 'flex', 'important');
-    if (bottomNavEl) bottomNavEl.style.setProperty('display', 'flex', 'important');
+    if (headerEl) headerEl.style.removeProperty('display');
+    if (bottomNavEl) bottomNavEl.style.removeProperty('display');
     if (loginHeaderBtn) loginHeaderBtn.style.display = 'none';
     if (headerUserPill) headerUserPill.style.display = 'inline-flex';
     if (greetingName) greetingName.innerText = user.fullName || user.phoneNumber || 'Sporcu';

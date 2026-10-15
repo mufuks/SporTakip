@@ -8,6 +8,89 @@ let activeWorkoutSession = null;
 let workoutTimerInterval = null;
 let currentWorkoutRating = 5;
 
+function renderWodStoryCard() {
+  const dateLabel = document.getElementById('v0-wod-date-label');
+  if (dateLabel) {
+    const today = new Date();
+    const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+    const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    dateLabel.innerText = `${today.getDate()} ${monthNames[today.getMonth()]} ${dayNames[today.getDay()]}`;
+  }
+
+  const user = Api.getUser();
+  const userId = user ? (user.id || user.memberId || 'guest') : 'guest';
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const isCompleted = localStorage.getItem(`sportakip_wod_completed_${todayKey}_${userId}`) === 'true';
+
+  const btn = document.getElementById('btn-wod-complete');
+  const btnText = document.getElementById('wod-complete-btn-text');
+  const streakText = document.getElementById('wod-streak-text');
+  const streakBadge = document.getElementById('wod-streak-badge');
+
+  if (btn && btnText) {
+    if (isCompleted) {
+      btn.classList.add('completed');
+      btnText.innerText = 'Bugünkü İdman Tamamlandı! 🎉';
+      if (streakText) streakText.innerText = '🏆 Bugünün görevi tamamlandı!';
+      if (streakBadge) streakBadge.innerText = '🔥 Harikasın!';
+    } else {
+      btn.classList.remove('completed');
+      btnText.innerText = 'İdmanı Tamamladım';
+    }
+  }
+}
+window.renderWodStoryCard = renderWodStoryCard;
+
+window.handleWodCompletion = function() {
+  const user = Api.getUser();
+  if (!user || !Api.getToken()) {
+    showToast('⚡ İdmanınızı kaydetmek için lütfen telefonunuzla giriş yapın.');
+    if (typeof openOtpDrawer === 'function') openOtpDrawer();
+    return;
+  }
+
+  const userId = user.id || user.memberId || 'athlete';
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const alreadyCompleted = localStorage.getItem(`sportakip_wod_completed_${todayKey}_${userId}`) === 'true';
+
+  const btn = document.getElementById('btn-wod-complete');
+  const btnText = document.getElementById('wod-complete-btn-text');
+  const card = document.getElementById('athlete-wod-story-card');
+
+  if (alreadyCompleted) {
+    showToast('✓ Bugünkü antrenmanı zaten tamamladın! Dinlenmeyi ve bol su içmeyi unutma 💧');
+    return;
+  }
+
+  localStorage.setItem(`sportakip_wod_completed_${todayKey}_${userId}`, 'true');
+
+  if (btn && btnText) {
+    btn.classList.add('completed');
+    btnText.innerText = 'Bugünkü İdman Tamamlandı! 🎉';
+  }
+
+  if (card) {
+    card.classList.add('v0-wod-celebrating');
+    setTimeout(() => card.classList.remove('v0-wod-celebrating'), 2000);
+  }
+
+  showToast('🎉 TEBRİKLER! Bugünkü antrenmanı canavar gibi bitirdin! 🔥');
+};
+
+window.toggleAdvancedWorkoutView = function() {
+  const body = document.getElementById('v0-advanced-workout-body');
+  const arrow = document.getElementById('advanced-toggle-arrow');
+  if (!body) return;
+
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? 'block' : 'none';
+  if (arrow) arrow.innerText = isHidden ? '▲' : '▼';
+
+  if (isHidden) {
+    loadWorkoutTemplates();
+  }
+};
+
 window.switchWorkoutSubTab = function(subtab) {
   currentWorkoutSubTab = subtab;
   document.querySelectorAll('.v0-subtab-btn').forEach(btn => {
@@ -31,34 +114,385 @@ window.switchWorkoutSubTab = function(subtab) {
   else if (subtab === 'progress') loadWorkoutProgress();
 };
 
-async function loadWorkoutHub() {
-  const activeId = localStorage.getItem('sportakip_active_workout_id');
-  const dot = document.getElementById('v0-live-pulse-dot');
+// ==================== ATHLETE PROGRESS & BODY METRICS HUB ====================
+let currentProgressMemberId = null;
 
-  if (activeId) {
-    if (dot) dot.style.display = 'inline-block';
-    try {
-      activeWorkoutSession = await Api.getWorkoutLog(activeId);
-      if (activeWorkoutSession && !activeWorkoutSession.completedAt) {
-        startWorkoutTimer(activeWorkoutSession.startedAt);
-        window.switchWorkoutSubTab('live');
-        return;
-      } else {
-        localStorage.removeItem('sportakip_active_workout_id');
-        activeWorkoutSession = null;
-        if (dot) dot.style.display = 'none';
-      }
-    } catch {
-      localStorage.removeItem('sportakip_active_workout_id');
-      activeWorkoutSession = null;
-      if (dot) dot.style.display = 'none';
+async function loadWorkoutHub() {
+  localStorage.removeItem('sportakip_active_workout_id');
+  if (workoutTimerInterval) {
+    clearInterval(workoutTimerInterval);
+    workoutTimerInterval = null;
+  }
+
+  const summaryCard = document.getElementById('progress-summary-card');
+  const chartCard = document.getElementById('progress-chart-container');
+  const historyCard = document.getElementById('progress-history-container');
+  const dateLabel = document.getElementById('v0-progress-date-label');
+  if (dateLabel) {
+    const today = new Date();
+    dateLabel.innerText = today.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  const user = Api.getUser();
+  const token = Api.getToken();
+
+  if (!user || !token) {
+    if (summaryCard) {
+      summaryCard.innerHTML = `
+        <div style="text-align:center; padding:28px 16px;">
+          <div style="font-size:32px; margin-bottom:8px;">🔒</div>
+          <h3 style="font-size:16px; font-weight:800; color:var(--text-primary); margin:0 0 6px 0;">Gelişim ve Ölçüm Takibi</h3>
+          <p style="font-size:12.5px; color:var(--text-secondary); margin:0 0 16px 0;">Kilo ve boy takibinizi yapmak, değişim grafiğinizi görmek için lütfen giriş yapın.</p>
+          <button type="button" class="v0-btn-submit" onclick="openOtpDrawer()" style="max-width:240px; margin:0 auto; padding:11px 16px; font-size:13px; font-weight:800;">
+            Telefonla Giriş Yap →
+          </button>
+        </div>
+      `;
+    }
+    if (chartCard) chartCard.style.display = 'none';
+    if (historyCard) historyCard.style.display = 'none';
+    return;
+  }
+
+  let memberId = user.memberId;
+  if (!memberId) {
+    const me = await Api.getMe().catch(() => null);
+    if (me && me.memberId) {
+      memberId = me.memberId;
+      user.memberId = me.memberId;
+      Api.setUser(user);
     }
   }
 
-  if (dot) dot.style.display = 'none';
-  window.switchWorkoutSubTab('templates');
+  currentProgressMemberId = memberId;
+  if (!memberId) {
+    if (summaryCard) {
+      summaryCard.innerHTML = `
+        <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:13px;">
+          Sporcu profili eşleştirilemedi. Lütfen salon yöneticisiyle iletişime geçin.
+        </div>
+      `;
+    }
+    return;
+  }
+
+  if (chartCard) chartCard.style.display = 'block';
+  if (historyCard) historyCard.style.display = 'block';
+
+  try {
+    const [progress, memberDetails] = await Promise.all([
+      Api.getMemberMetricProgress(memberId).catch(() => null),
+      Api.getMember(memberId).catch(() => null)
+    ]);
+
+    const heightVal = progress?.heightCm ?? memberDetails?.heightCm ?? null;
+    const weightVal = progress?.currentWeightKg != null ? Number(progress.currentWeightKg) : (memberDetails?.weightKg != null ? Number(memberDetails.weightKg) : null);
+    const startWeight = progress?.startingWeightKg != null ? Number(progress.startingWeightKg) : null;
+    const totalChange = progress?.totalChangeKg != null ? Number(progress.totalChangeKg) : null;
+    const bmiVal = progress?.bmi ?? memberDetails?.bmi ?? null;
+    const bmiCat = progress?.bmiCategory ?? memberDetails?.bmiCategory ?? null;
+
+    // Fill inputs
+    const heightInput = document.getElementById('progress-input-height');
+    const weightInput = document.getElementById('progress-input-weight');
+    if (heightInput && heightVal) heightInput.value = heightVal;
+    if (weightInput && weightVal) weightInput.value = weightVal;
+
+    // Change Pill
+    let changeHtml = '<span style="font-size:12px; font-weight:700; color:var(--text-muted);">Henüz Fark Yok</span>';
+    if (totalChange != null && startWeight != null) {
+      const num = totalChange;
+      if (num < 0) {
+        changeHtml = `<span style="font-size:12px; font-weight:800; color:#10B981; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); padding:3px 8px; border-radius:999px;">▼ ${Math.abs(num).toFixed(1)} kg</span>`;
+      } else if (num > 0) {
+        changeHtml = `<span style="font-size:12px; font-weight:800; color:#F59E0B; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3); padding:3px 8px; border-radius:999px;">▲ +${num.toFixed(1)} kg</span>`;
+      } else {
+        changeHtml = `<span style="font-size:12px; font-weight:800; color:var(--text-secondary); background:rgba(255,255,255,0.08); padding:3px 8px; border-radius:999px;">0.0 kg</span>`;
+      }
+    }
+
+    // BMI Badge color
+    let bmiBadgeHtml = '';
+    if (bmiVal) {
+      let bColor = '#CCFF00';
+      let bBg = 'rgba(204,255,0,0.12)';
+      if (bmiVal < 18.5) { bColor = '#38BDF8'; bBg = 'rgba(56,189,248,0.12)'; }
+      else if (bmiVal >= 25 && bmiVal < 30) { bColor = '#F59E0B'; bBg = 'rgba(245,158,11,0.12)'; }
+      else if (bmiVal >= 30) { bColor = '#EF4444'; bBg = 'rgba(239,68,68,0.12)'; }
+      bmiBadgeHtml = `<span style="font-size:11px; font-weight:800; color:${bColor}; background:${bBg}; border:1px solid ${bColor}; padding:2px 8px; border-radius:999px;">VKİ: ${bmiVal} (${bmiCat || 'Fit'})</span>`;
+    }
+
+    if (summaryCard) {
+      summaryCard.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:15px; font-weight:800; color:var(--text-primary); margin:0;">Vücut Form Özeti</h3>
+          ${bmiBadgeHtml}
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px;">
+          <div style="padding:12px 10px; border-radius:12px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); text-align:center;">
+            <div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Boy</div>
+            <div style="font-size:19px; font-weight:800; color:var(--text-primary); margin-top:2px;">
+              ${heightVal ? `${heightVal} <span style="font-size:11px; font-weight:600; color:var(--text-muted);">cm</span>` : '--'}
+            </div>
+          </div>
+
+          <div style="padding:12px 10px; border-radius:12px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); text-align:center;">
+            <div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Güncel Kilo</div>
+            <div style="font-size:19px; font-weight:800; color:var(--volt-lime); margin-top:2px;">
+              ${weightVal != null ? `${weightVal.toFixed(1)} <span style="font-size:11px; font-weight:600; color:var(--text-muted);">kg</span>` : '--'}
+            </div>
+          </div>
+
+          <div style="padding:12px 10px; border-radius:12px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); text-align:center;">
+            <div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Değişim</div>
+            <div style="margin-top:4px;">
+              ${changeHtml}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Render Chart
+    const logs = progress?.history || [];
+    renderProgressSvgChart(logs);
+
+    // Render History
+    renderProgressHistoryList(logs, memberId);
+
+  } catch (err) {
+    console.warn('Gelişim metrikleri yüklenemedi:', err);
+  }
 }
 window.loadWorkoutHub = loadWorkoutHub;
+
+function renderProgressSvgChart(logs) {
+  const chartCard = document.getElementById('progress-chart-container');
+  if (!chartCard) return;
+
+  if (!logs || logs.length < 2) {
+    chartCard.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="font-size:14.5px; font-weight:800; color:var(--text-primary); margin:0;">Kilo Değişim Grafiği</h3>
+      </div>
+      <div style="text-align:center; padding:24px 16px; border-radius:12px; background:rgba(204,255,0,0.03); border:1px dashed rgba(204,255,0,0.25);">
+        <span style="font-size:28px;">📈</span>
+        <div style="font-size:13.5px; font-weight:800; color:var(--text-primary); margin:6px 0 3px 0;">
+          ${logs && logs.length === 1 ? `İlk Tartı: ${Number(logs[0].weightKg).toFixed(1)} kg` : 'Henüz Yeterli Tartı Yok'}
+        </div>
+        <p style="font-size:12px; color:var(--text-secondary); margin:0 0 10px 0;">
+          ${logs && logs.length === 1 ? 'Değişim eğrinizin oluşması için yukarıdan yeni tartınızı girin.' : 'Zaman içindeki kilo değişim eğrinizi görmek için yukarıdan tartı ekleyin.'}
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  const w = 480;
+  const h = 180;
+  const padL = 38;
+  const padR = 25;
+  const padT = 24;
+  const padB = 32;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  const weights = logs.map(l => Number(l.weightKg));
+  const minW = Math.min(...weights) - 0.5;
+  const maxW = Math.max(...weights) + 0.5;
+  const range = (maxW - minW) || 1;
+
+  const points = logs.map((l, i) => {
+    const x = padL + (i / (logs.length - 1)) * plotW;
+    const y = padT + ((maxW - Number(l.weightKg)) / range) * plotH;
+    return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, log: l };
+  });
+
+  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaD = `${pathD} L ${points[points.length - 1].x} ${h - padB} L ${points[0].x} ${h - padB} Z`;
+
+  const firstDate = new Date(logs[0].recordedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+  const lastDate = new Date(logs[logs.length - 1].recordedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+  const midDate = logs.length > 2 ? new Date(logs[Math.floor(logs.length / 2)].recordedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : '';
+
+  const dotsSvg = points.map(p => {
+    const dStr = new Date(p.log.recordedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+    const tipText = `${dStr}: ${Number(p.log.weightKg).toFixed(1)} kg${p.log.notes ? ` (${p.log.notes})` : ''}`;
+    return `
+      <g class="chart-point" style="cursor:pointer;" onclick="showToast('${escapeJsString(tipText)}')">
+        <circle cx="${p.x}" cy="${p.y}" r="6" fill="#0E0E12" stroke="#CCFF00" stroke-width="2.5" />
+        <circle cx="${p.x}" cy="${p.y}" r="2.5" fill="#CCFF00" />
+        <title>${escapeHtml(tipText)}</title>
+      </g>
+    `;
+  }).join('');
+
+  chartCard.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="font-size:14.5px; font-weight:800; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:8px;">
+        <span>📈</span> Kilo Değişim Grafiği
+      </h3>
+      <span style="font-size:11px; color:var(--volt-lime); font-weight:700;">${logs.length} Ölçüm</span>
+    </div>
+
+    <div style="position:relative; width:100%; overflow:hidden; border-radius:12px; background:rgba(0,0,0,0.28); border:1px solid var(--border-subtle); padding:10px 8px 6px 8px; box-sizing:border-box;">
+      <svg viewBox="0 0 ${w} ${h}" style="width:100%; height:auto; display:block;" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="progress-area-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#CCFF00" stop-opacity="0.32" />
+            <stop offset="100%" stop-color="#CCFF00" stop-opacity="0.0" />
+          </linearGradient>
+        </defs>
+        <line x1="${padL}" y1="${padT}" x2="${w - padR}" y2="${padT}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
+        <line x1="${padL}" y1="${padT + plotH / 2}" x2="${w - padR}" y2="${padT + plotH / 2}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
+        <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="rgba(255,255,255,0.12)" />
+
+        <text x="${padL - 6}" y="${padT + 4}" fill="var(--text-muted)" font-size="9" text-anchor="end" font-weight="600">${Math.round(maxW)}k</text>
+        <text x="${padL - 6}" y="${h - padB + 3}" fill="var(--text-muted)" font-size="9" text-anchor="end" font-weight="600">${Math.round(minW)}k</text>
+
+        <path d="${areaD}" fill="url(#progress-area-grad)" />
+        <path d="${pathD}" fill="none" stroke="#CCFF00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+        ${dotsSvg}
+
+        <text x="${padL}" y="${h - 10}" fill="var(--text-muted)" font-size="10" font-weight="600">${firstDate}</text>
+        ${midDate ? `<text x="${w / 2}" y="${h - 10}" fill="var(--text-muted)" font-size="10" text-anchor="middle" font-weight="600">${midDate}</text>` : ''}
+        <text x="${w - padR}" y="${h - 10}" fill="var(--text-muted)" font-size="10" text-anchor="end" font-weight="600">${lastDate}</text>
+      </svg>
+    </div>
+  `;
+}
+
+function renderProgressHistoryList(logs, memberId) {
+  const historyCard = document.getElementById('progress-history-container');
+  if (!historyCard) return;
+
+  if (!logs || logs.length === 0) {
+    historyCard.innerHTML = `
+      <div style="text-align:center; padding:18px; color:var(--text-muted); font-size:12.5px;">
+        Henüz kaydedilmiş ölçüm bulunmuyor.
+      </div>
+    `;
+    return;
+  }
+
+  // Reverse chronological
+  const sortedLogs = [...logs].reverse();
+
+  const itemsHtml = sortedLogs.map((item, idx) => {
+    const dStr = new Date(item.recordedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const tStr = new Date(item.recordedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    
+    // Compare with the one right after in reverse array (which was prior in time)
+    const prevItem = sortedLogs[idx + 1];
+    let diffBadge = '';
+    if (prevItem) {
+      const diff = Number(item.weightKg) - Number(prevItem.weightKg);
+      if (diff < 0) {
+        diffBadge = `<span style="font-size:11px; font-weight:800; color:#10B981;">▼ ${Math.abs(diff).toFixed(1)} kg</span>`;
+      } else if (diff > 0) {
+        diffBadge = `<span style="font-size:11px; font-weight:800; color:#F59E0B;">▲ +${diff.toFixed(1)} kg</span>`;
+      } else {
+        diffBadge = `<span style="font-size:11px; color:var(--text-muted);">0.0 kg</span>`;
+      }
+    }
+
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border-subtle);">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:15px; font-weight:800; color:var(--text-primary);">${Number(item.weightKg).toFixed(1)} kg</span>
+            ${diffBadge}
+          </div>
+          <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">
+            ${dStr} · ${tStr} ${item.notes ? `— <em>${escapeHtml(item.notes)}</em>` : ''}
+          </div>
+        </div>
+        <button type="button" onclick="handleDeleteProgressLog(${item.id})" title="Ölçümü Sil" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:6px 8px; border-radius:8px;">
+          🗑️
+        </button>
+      </div>
+    `;
+  }).join('');
+
+  historyCard.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h3 style="font-size:14.5px; font-weight:800; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:8px;">
+        <span>📋</span> Ölçüm Geçmişi
+      </h3>
+      <span style="font-size:11px; color:var(--text-muted); font-weight:700;">Toplam ${logs.length} Kayıt</span>
+    </div>
+    <div class="v0-progress-history-list">
+      ${itemsHtml}
+    </div>
+  `;
+}
+
+window.submitProgressMeasurement = async function() {
+  const user = Api.getUser();
+  if (!user || !Api.getToken()) {
+    showToast('Ölçüm kaydetmek için lütfen telefonunuzla giriş yapın.', 'info');
+    if (typeof openOtpDrawer === 'function') openOtpDrawer();
+    return;
+  }
+
+  const memberId = currentProgressMemberId || user.memberId;
+  if (!memberId) {
+    showToast('Kayıtlı sporcu profili bulunamadı.', 'error');
+    return;
+  }
+
+  const heightVal = parseInt(document.getElementById('progress-input-height')?.value || 0);
+  const weightVal = parseFloat(document.getElementById('progress-input-weight')?.value || 0);
+  const notesVal = document.getElementById('progress-input-notes')?.value?.trim() || null;
+
+  if (!weightVal || weightVal <= 20 || weightVal > 400) {
+    showToast('Lütfen geçerli bir kilo değeri giriniz (Örn: 78.5).', 'error');
+    return;
+  }
+
+  try {
+    showToast('⚡ Ölçüm kaydediliyor...');
+    // 1. Profil Boy/Kilo güncelle
+    await Api.updateMemberMetrics(memberId, {
+      heightCm: heightVal > 0 ? heightVal : null,
+      weightKg: weightVal
+    });
+
+    // 2. Tarihçe tartı kaydı ekle
+    await Api.addMemberMetricLog(memberId, {
+      weightKg: weightVal,
+      notes: notesVal
+    });
+
+    showToast('✓ Ölçümünüz kaydedildi ve gelişim grafiğinize eklendi! ⚡');
+    
+    // Clear notes input
+    const notesInput = document.getElementById('progress-input-notes');
+    if (notesInput) notesInput.value = '';
+
+    // Re-render
+    await loadWorkoutHub();
+  } catch (err) {
+    showToast(`Kayıt Hatası: ${err.message}`, 'error');
+  }
+};
+
+window.handleDeleteProgressLog = async function(logId) {
+  const user = Api.getUser();
+  const memberId = currentProgressMemberId || (user && user.memberId);
+  if (!memberId || !logId) return;
+
+  if (!confirm('Bu ölçüm kaydını silmek istediğinize emin misiniz?')) return;
+
+  try {
+    await Api.deleteMemberMetricLog(memberId, logId);
+    showToast('Ölçüm kaydı silindi.');
+    await loadWorkoutHub();
+  } catch (err) {
+    showToast(`Silme Hatası: ${err.message}`, 'error');
+  }
+};
 
 async function loadWorkoutTemplates() {
   const container = document.getElementById('v0-workout-templates-list');

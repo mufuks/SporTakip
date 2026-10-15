@@ -87,21 +87,28 @@
         </div>
       </div>
 
-      <!-- Workout Teaser Card -->
-      <div class="v0-section v0-sidebar-teaser-wrap" id="athlete-workout-teaser-wrap" style="margin-top:12px;">
-        <div class="v0-workout-teaser" onclick="switchAthleteTab('workout')">
-          <div class="v0-workout-emoji-box">🦵</div>
-          <div class="v0-workout-content">
-            <div class="v0-workout-top">
-              <span class="v0-workout-tag" id="teaser-workout-tag">Son Antrenmanım</span>
-              <span class="v0-workout-date" id="teaser-workout-date">· --</span>
-            </div>
-            <p class="v0-workout-name" id="teaser-workout-name">Antrenman Programları</p>
-            <div class="v0-workout-meta" id="teaser-workout-meta">
-              <span>Programları İncele</span>
-            </div>
+      <!-- Salon Doluluğu Canlı Durumu -->
+      <div class="v0-card v0-occupancy-card" id="athlete-occupancy-card" style="margin-top:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:18px;">🏢</span>
+            <h3 style="font-size:15px; font-weight:800; color:var(--text-primary); margin:0;">Salon Doluluğu</h3>
+            <span class="v0-occupancy-badge-current" id="athlete-occupancy-live-badge" style="font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:999px; background:rgba(204,255,0,0.14); color:var(--volt-lime); border:1px solid rgba(204,255,0,0.3);">Canlı</span>
           </div>
-          <span style="color:rgba(255,255,255,0.3); font-size:18px;">›</span>
+          <span style="font-size:11.5px; color:var(--text-muted); font-weight:700;" id="athlete-occupancy-date-label">Bugün</span>
+        </div>
+
+        <p style="font-size:12px; color:var(--text-secondary); margin:0 0 10px 0;">
+          Günün saatlik doluluk oranı ve çalışma alanı yoğunluğu:
+        </p>
+
+        <!-- Horizontal Scrollable Hourly Capacity Strip -->
+        <div class="v0-occupancy-strip" id="athlete-occupancy-strip" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;">
+          <div style="font-size:12px; color:var(--text-muted); padding:10px 0;">Doluluk verileri yükleniyor...</div>
+        </div>
+
+        <!-- Selected Slot Quick Info Box -->
+        <div id="athlete-occupancy-detail-box" style="display:none; margin-top:8px; padding:10px 12px; border-radius:12px; background:rgba(204,255,0,0.06); border:1px solid rgba(204,255,0,0.2); font-size:12px; color:var(--text-primary);">
         </div>
       </div>
     </div>
