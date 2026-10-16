@@ -10,7 +10,7 @@ namespace SporTakip.Api.Controllers;
 [Route("api/[controller]")]
 public class MembersController(GymService gymService) : ControllerBase
 {
-    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin,Coach,Admin")]
     [HttpGet]
     public async Task<ActionResult<List<MemberDto>>> GetMembers(
         [FromQuery] string? search,
@@ -53,7 +53,7 @@ public class MembersController(GymService gymService) : ControllerBase
         return Ok(member);
     }
 
-    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin,Coach,Admin")]
     [HttpPost]
     public async Task<ActionResult<MemberDto>> CreateMember([FromBody] CreateMemberDto dto, CancellationToken ct)
     {
@@ -64,7 +64,7 @@ public class MembersController(GymService gymService) : ControllerBase
         return CreatedAtAction(nameof(GetMember), new { id = member.Id }, member);
     }
 
-    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin,Coach,Admin")]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<MemberDto>> UpdateMember(int id, [FromBody] UpdateMemberDto dto, CancellationToken ct)
     {
@@ -99,7 +99,7 @@ public class MembersController(GymService gymService) : ControllerBase
     /// <summary>
     /// Antrenör, Salon Sahibi ve SuperAdmin için sporcu sağlık kısıtı / sakatlık notunu günceller.
     /// </summary>
-    [Authorize(Roles = "SuperAdmin, Coach, Admin")]
+    [Authorize(Roles = "SuperAdmin,Coach,Admin")]
     [HttpPut("{id:int}/notes")]
     public async Task<ActionResult<MemberDto>> UpdateNotes(int id, [FromBody] UpdateMemberNotesDto dto, CancellationToken ct)
     {

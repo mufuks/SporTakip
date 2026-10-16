@@ -967,7 +967,7 @@ public class GymService(
 
             var oldStatus = existingRecord.Status;
             existingRecord.Status = status;
-            existingRecord.LessonDate = lessonDate;
+            if (dto.LessonDate.HasValue) existingRecord.LessonDate = dto.LessonDate.Value;
             if (attendingTrainer != null) existingRecord.TrainerId = attendingTrainer.Id;
             existingRecord.IsSubstitute = isSubstitute;
             existingRecord.SubstituteShareAmount = substituteShare;

@@ -1,9 +1,9 @@
-import { Api } from '../api.js?v=3.0.0';
+import { Api } from '../api.js?v=3.8.7';
 import { state } from './state.js';
 import { 
   showToast, openModal, closeModal, escapeHtml, escapeJsString, 
-  formatMoney, formatCurrency, getAthleteInitials 
-} from './utils.js';
+  formatMoney, formatCurrency, getAthleteInitials, formatDateToIso, getStartOfWeekMonday
+} from './utils.js?v=3.8.7';
 
 // Staff Module Scoped State
 let activeSubscriptions = [];
@@ -18,48 +18,721 @@ let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth() + 1;
 let currentFilter = 'all';
 
-// ==================== 1. HIZLI YOKLAMA (ATTENDANCE & CAPACITY) ====================
-async function loadAttendanceView() {
-  const container = document.getElementById('attendance-list');
+// Option A: Live Floor Feed State
+let currentDayScope = 'today'; // 'yesterday' | 'today'
+let attendanceSessions = [];
+let workoutTemplatesCache = [];
+let sessionSearchQuery = '';
 
-  // SWR Pattern: Eğer önceden yüklenmiş veri varsa anında çiz (0ms gecikme)
-  if (activeSubscriptions && activeSubscriptions.length > 0) {
-    applyAttendanceFilter(currentFilter);
-    renderCapacityWeekStrip();
-  } else {
-    container.innerHTML = '<div style="color:var(--text-muted); padding:40px; text-align:center;">Antrenman listesi yükleniyor...</div>';
+// ==================== 1. HIZLI YOKLAMA (LIVE FLOOR SESSIONS FEED) ====================
+
+function getScopeTargetDate(scope) {
+  const d = new Date();
+  if (scope === 'yesterday') {
+    d.setDate(d.getDate() - 1);
+  }
+  return formatDateToIso(d);
+}
+
+function updateDayScopeLabels() {
+  const now = new Date();
+  const yest = new Date();
+  yest.setDate(yest.getDate() - 1);
+  const lblYest = document.getElementById('label-scope-yesterday');
+  const lblToday = document.getElementById('label-scope-today');
+  if (lblYest) {
+    lblYest.innerText = `(${yest.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })})`;
+  }
+  if (lblToday) {
+    lblToday.innerText = `(Canlı · ${now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })})`;
+  }
+}
+
+async function switchAttendanceDayScope(scope) {
+  if (scope !== 'yesterday' && scope !== 'today') scope = 'today';
+  currentDayScope = scope;
+  const btnYest = document.getElementById('btn-scope-yesterday');
+  const btnToday = document.getElementById('btn-scope-today');
+  if (btnYest) btnYest.classList.toggle('active', scope === 'yesterday');
+  if (btnToday) btnToday.classList.toggle('active', scope === 'today');
+  await loadAttendanceView();
+}
+window.switchAttendanceDayScope = switchAttendanceDayScope;
+
+async function loadAttendanceView() {
+  updateDayScopeLabels();
+  const feedContainer = document.getElementById('attendance-sessions-feed');
+  const targetDateIso = getScopeTargetDate(currentDayScope);
+  currentCapacityDate = targetDateIso;
+
+  if (feedContainer && (!attendanceSessions || attendanceSessions.length === 0)) {
+    feedContainer.innerHTML = '<div style="color:var(--text-muted); padding:30px; text-align:center;">Seanslar ve sporcu listesi yükleniyor...</div>';
   }
 
   try {
-    // Eğitmenleri ve aktif paketleri paralel al
-    const [trainers, subs] = await Promise.all([
-      Api.getTrainers().catch(() => []),
-      Api.getActiveSubscriptions()
+    const [sessions, capacity, trainers, subs, templates] = await Promise.all([
+      Api.getSessions(targetDateIso, targetDateIso).catch(() => []),
+      Api.getCapacity(targetDateIso).catch(() => []),
+      allTrainers.length > 0 ? Promise.resolve(allTrainers) : Api.getTrainers().catch(() => []),
+      activeSubscriptions.length > 0 ? Promise.resolve(activeSubscriptions) : Api.getActiveSubscriptions().catch(() => []),
+      workoutTemplatesCache.length > 0 ? Promise.resolve(workoutTemplatesCache) : Api.getWorkoutTemplates(true).catch(() => [])
     ]);
-    allTrainers = trainers;
-    activeSubscriptions = subs;
 
-    // Kapasite çizelgesini yükle
-    await loadCapacitySlots();
+    allTrainers = trainers || [];
+    activeSubscriptions = subs || [];
+    workoutTemplatesCache = templates || [];
+    capacitySlotsData = capacity || [];
 
-    applyAttendanceFilter(currentFilter);
+    attendanceSessions = processSessionsFeedData(sessions || [], capacitySlotsData || [], activeSubscriptions);
+
+    renderSessionsAttendanceFeed(attendanceSessions);
+
+    // Legacy sync
+    if (typeof renderCapacityWeekStrip === 'function') renderCapacityWeekStrip();
   } catch (err) {
-    if (!activeSubscriptions || activeSubscriptions.length === 0) {
-      container.innerHTML = `<div style="color:var(--pulse-rose); padding:20px;">Hata: ${err.message}</div>`;
+    console.error('Yoklama akışı yükleme hatası:', err);
+    if (feedContainer) {
+      feedContainer.innerHTML = `<div style="color:var(--pulse-rose); padding:24px; text-align:center;">Hata: ${escapeHtml(err.message || 'Seanslar alınamadı.')}</div>`;
     }
   }
 }
 
+function processSessionsFeedData(slots, capacitySlots, subscriptions) {
+  const result = [];
+  const processedSlotIds = new Set();
+  const coveredHours = new Set();
+
+  // 1. Session Slots (Faz 3)
+  for (const s of slots) {
+    processedSlotIds.add(s.id);
+    const startD = new Date(s.startTime);
+    const endD = new Date(s.endTime);
+    const startHour = startD.getHours();
+    coveredHours.add(startHour);
+
+    const timeSlotStr = `${startD.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} - ${endD.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
+
+    // Build reservation attendees
+    const attendees = (s.reservations || []).map(r => {
+      const sub = subscriptions.find(subItem => subItem.memberId === r.memberId);
+      return {
+        reservationId: r.reservationId,
+        attendanceId: null,
+        subscriptionId: sub ? sub.id : null,
+        memberId: r.memberId,
+        memberName: r.memberName,
+        memberPhone: r.memberPhone,
+        status: r.status, // "Confirmed", "CheckedIn", "Attended", "Cancelled", "Waitlisted"
+        packageName: sub ? sub.packageName : 'Rezervasyon',
+        remainingLessons: sub ? sub.remainingLessons : '-',
+        completedLessons: sub ? sub.completedLessons : 0,
+        totalLessons: sub ? sub.totalLessons : 0,
+        memberNotes: sub ? sub.memberNotes : null,
+        primaryTrainerId: sub ? sub.primaryTrainerId : null
+      };
+    });
+
+    result.push({
+      id: s.id,
+      isVirtual: false,
+      startTime: s.startTime,
+      timeSlot: timeSlotStr,
+      hour: startHour,
+      title: s.title || (s.sessionType === 'PT' ? 'Özel Ders (PT)' : 'Fonksiyonel Grup Dersi'),
+      sessionType: s.sessionType || 'GRUP',
+      trainerName: s.trainerName || 'Eğitmen',
+      trainerId: s.trainerId,
+      capacity: s.capacity || 6,
+      status: s.status || 'Scheduled',
+      notes: s.notes || '',
+      workoutTemplateId: s.workoutTemplateId,
+      workoutTemplateName: s.workoutTemplateName,
+      attendees: attendees
+    });
+  }
+
+  // 2. Capacity Slots (AttendanceRecords not already in a SessionSlot)
+  for (const cap of capacitySlots) {
+    if (cap.totalMembers > 0 && !coveredHours.has(cap.hour)) {
+      coveredHours.add(cap.hour);
+      const capAttendees = (cap.members || []).map(m => {
+        const sub = subscriptions.find(subItem => subItem.id === m.subscriptionId || subItem.memberId === m.memberId);
+        return {
+          reservationId: null,
+          attendanceId: m.attendanceId,
+          subscriptionId: m.subscriptionId,
+          memberId: m.memberId,
+          memberName: m.memberName,
+          memberPhone: m.memberPhone,
+          status: m.status, // "Scheduled", "Attended", "Missed", "Excused"
+          packageName: m.packageName,
+          remainingLessons: m.remainingLessons,
+          completedLessons: sub ? sub.completedLessons : 0,
+          totalLessons: sub ? sub.totalLessons : 0,
+          memberNotes: sub ? sub.memberNotes : null,
+          primaryTrainerId: m.trainerId || (sub ? sub.primaryTrainerId : null)
+        };
+      });
+
+      result.push({
+        id: `cap-${cap.hour}`,
+        isVirtual: true,
+        startTime: `${currentCapacityDate}T${String(cap.hour).padStart(2, '0')}:00:00`,
+        timeSlot: `${cap.timeSlot} - ${String(cap.hour + 1).padStart(2, '0')}:00`,
+        hour: cap.hour,
+        title: `${cap.timeSlot} Stüdyo Dersi`,
+        sessionType: 'GRUP',
+        trainerName: cap.trainers && cap.trainers.length > 0 ? cap.trainers[0].trainerName : 'Nöbetçi Eğitmen',
+        trainerId: cap.trainers && cap.trainers.length > 0 ? cap.trainers[0].trainerId : null,
+        capacity: cap.capacityLimit || 6,
+        status: 'Scheduled',
+        notes: '',
+        workoutTemplateId: null,
+        workoutTemplateName: null,
+        attendees: capAttendees
+      });
+    }
+  }
+
+  // Sort chronologically
+  result.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  return result;
+}
+
+function renderSessionsAttendanceFeed(sessions) {
+  const container = document.getElementById('attendance-sessions-feed');
+  if (!container) return;
+
+  const query = sessionSearchQuery.toLowerCase().trim();
+  let filtered = sessions;
+
+  if (query) {
+    filtered = sessions.filter(s => {
+      const matchTitle = (s.title || '').toLowerCase().includes(query);
+      const matchTrainer = (s.trainerName || '').toLowerCase().includes(query);
+      const matchNotes = (s.notes || '').toLowerCase().includes(query);
+      const matchAttendees = (s.attendees || []).some(a => 
+        (a.memberName || '').toLowerCase().includes(query) || 
+        (a.packageName || '').toLowerCase().includes(query)
+      );
+      return matchTitle || matchTrainer || matchNotes || matchAttendees;
+    });
+  }
+
+  if (filtered.length === 0) {
+    const isYesterday = currentDayScope === 'yesterday';
+    const dayLabel = isYesterday ? 'Dün' : 'Bugün';
+    container.innerHTML = `
+      <div class="glass-card" style="text-align:center; padding:44px 20px;">
+        <div class="v0-guest-tiger-wrap" style="margin-bottom:12px;">
+          <img src="/images/tiger2_badge.png?v=2.7.5" alt="" class="v0-guest-tiger-img">
+        </div>
+        <h3 style="font-size:18px; font-weight:800; color:var(--text-primary); margin-bottom:6px;">
+          ${query ? 'Aramaya Uygun Seans Bulunamadı' : `${dayLabel} için Planlanmış Seans Yok`}
+        </h3>
+        <p style="color:var(--text-secondary); font-size:13px; max-width:320px; margin:0 auto 18px auto; line-height:1.4;">
+          ${query ? 'Farklı bir isim veya hareket deneyebilirsiniz.' : 'Hemen yeni bir stüdyo seansı oluşturabilir veya plansız sporcu katılımı açabilirsiniz.'}
+        </p>
+        ${!query ? `
+          <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="btn-primary" onclick="openScheduleSessionModal()" style="padding:10px 20px; font-size:13px; font-weight:800;">
+              <span>+</span> Seans Planla
+            </button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(session => {
+    const attendees = session.attendees || [];
+    const attendedCount = attendees.filter(a => a.status === 'Attended' || a.status === 'CheckedIn').length;
+    const totalCount = attendees.length;
+    const isFull = totalCount >= session.capacity;
+    const isFilling = totalCount >= 4 && !isFull;
+    const dotColor = isFull ? 'var(--pulse-rose)' : (isFilling ? 'var(--flame-orange)' : 'var(--volt-lime)');
+
+    // WOD Card rendering
+    const hasWodNote = (session.notes && session.notes.trim().length > 0) || session.workoutTemplateName;
+    const wodHtml = hasWodNote ? `
+      <div class="session-wod-card">
+        <div class="session-wod-header">
+          <span style="display:flex; align-items:center; gap:5px;">
+            <span>📝</span> GÜNÜN İDMANI & HAREKETLER (WOD)
+            ${session.workoutTemplateName ? `<span class="lesson-badge badge-green" style="font-size:9.5px; padding:2px 6px;">🔥 ${escapeHtml(session.workoutTemplateName)}</span>` : ''}
+          </span>
+          <button type="button" class="btn-link" style="font-size:11px; color:var(--volt-lime); background:none; border:none; cursor:pointer; font-weight:700; text-decoration:underline;" onclick="openSessionWodNoteModal('${session.id}')">
+            ✏️ Düzenle
+          </button>
+        </div>
+        ${session.notes ? `<div class="session-wod-content">${escapeHtml(session.notes)}</div>` : ''}
+      </div>
+    ` : `
+      <div class="session-wod-card" style="border-style:dotted; opacity:0.85;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <span style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:5px;">
+            <span>📝</span> Günün idmanı veya hareketleri henüz girilmedi.
+          </span>
+          <button type="button" class="btn-sm btn-secondary" onclick="openSessionWodNoteModal('${session.id}')" style="height:30px; font-size:11px; padding:0 10px; font-weight:700; border-color:rgba(204,255,0,0.3); color:var(--volt-lime);">
+            + Not & Hareket Yaz
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Attendees list rendering
+    const attendeesHtml = attendees.length === 0 ? `
+      <div style="padding:14px; text-align:center; background:rgba(255,255,255,0.02); border:1px dashed var(--border-subtle); border-radius:10px;">
+        <span style="color:var(--text-muted); font-size:12px;">Bu seansa henüz kayıtlı sporcu yok.</span>
+        <button type="button" class="btn-link" style="display:block; margin:6px auto 0 auto; font-size:12px; font-weight:800; color:var(--volt-lime); text-decoration:underline; background:none; border:none; cursor:pointer;" onclick="openAddMemberToSessionModal('${session.id}')">
+          + Sporcu Ekle
+        </button>
+      </div>
+    ` : attendees.map(a => {
+      const isAttended = a.status === 'Attended' || a.status === 'CheckedIn';
+      const isMissed = a.status === 'Missed';
+      const isExcused = a.status === 'Excused';
+
+      const cardStateClass = isAttended ? 'attended' : (isMissed ? 'missed' : (isExcused ? 'excused' : ''));
+
+      return `
+        <div class="session-attendee-card ${cardStateClass}">
+          <div class="attendee-info-col">
+            <div class="attendee-name" onclick="openStudentProgressDrawer(${a.memberId}, '${escapeJsString(a.memberName)}')" title="Gelişim profilini gör">
+              <span>👤 ${escapeHtml(a.memberName)}</span>
+              <span class="student-profile-link-icon" style="font-size:11px;">📈</span>
+            </div>
+            <div class="attendee-sub-meta">
+              <span>${escapeHtml(a.packageName)}</span>
+              ${a.remainingLessons !== '-' ? `<span>· <strong>${a.remainingLessons} Ders</strong></span>` : ''}
+              ${a.memberNotes ? `<span style="color:var(--flame-orange); font-weight:700;" title="${escapeHtml(a.memberNotes)}">⚠️ ${escapeHtml(a.memberNotes)}</span>` : ''}
+            </div>
+          </div>
+
+          <div class="attendee-actions-col">
+            ${isAttended ? `
+              <span class="lesson-badge badge-green" style="font-size:11px; padding:4px 8px;">✓ GELDİ</span>
+              <button type="button" class="btn-quick-secondary" onclick="openAttendeeMicroNoteModal(${a.subscriptionId || 0}, ${a.reservationId || 0}, '${escapeJsString(a.memberName)}', ${a.memberId}, '${escapeJsString(a.memberNotes || '')}')" title="İdman notu yaz">
+                <span>💬</span> Not
+              </button>
+              ${a.subscriptionId ? `
+                <button type="button" class="btn-quick-secondary whatsapp" onclick="openWhatsAppModal(${a.subscriptionId})" title="WhatsApp">
+                  <span>💬</span>
+                </button>
+              ` : ''}
+            ` : isMissed ? `
+              <span class="lesson-badge badge-red" style="font-size:11px; padding:4px 8px;">❌ GELMEDİ (YANDI)</span>
+              ${a.subscriptionId ? `
+                <button type="button" class="btn-quick-secondary whatsapp" onclick="openWhatsAppModal(${a.subscriptionId})" title="WhatsApp">
+                  <span>💬</span>
+                </button>
+              ` : ''}
+            ` : isExcused ? `
+              <span class="lesson-badge badge-amber" style="font-size:11px; padding:4px 8px;">🕒 TELAFİ</span>
+              ${a.subscriptionId ? `
+                <button type="button" class="btn-quick-secondary whatsapp" onclick="openWhatsAppModal(${a.subscriptionId})" title="WhatsApp">
+                  <span>💬</span>
+                </button>
+              ` : ''}
+            ` : `
+              <!-- 1-Tap Quick Attendance Button (Thumb-Zone Friendly) -->
+              <button type="button" class="btn-quick-attend" onclick="handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Attended', '${session.id}')" title="Bu sporcunun yoklamasını al (Ders düş)">
+                <span>✓</span> Geldi
+              </button>
+              <button type="button" class="btn-quick-secondary" style="color:var(--pulse-rose);" onclick="handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Missed', '${session.id}')" title="Habersiz gelmedi (Ders Yanar)">
+                <span>❌</span>
+              </button>
+              <button type="button" class="btn-quick-secondary" style="color:var(--flame-orange);" onclick="handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Excused', '${session.id}')" title="Mazeretli (Hak Saklı)">
+                <span>🕒</span>
+              </button>
+              <button type="button" class="btn-quick-secondary" onclick="openAttendeeMicroNoteModal(${a.subscriptionId || 0}, ${a.reservationId || 0}, '${escapeJsString(a.memberName)}', ${a.memberId}, '${escapeJsString(a.memberNotes || '')}')" title="İdman notu yaz">
+                <span>💬</span>
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const pendingAttendees = attendees.filter(a => a.status !== 'Attended' && a.status !== 'CheckedIn');
+    const canCompleteAll = pendingAttendees.length > 0;
+
+    return `
+      <div class="session-feed-card" id="session-feed-${session.id}">
+        <!-- Header -->
+        <div class="session-feed-header">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div class="session-feed-time-badge">
+              <span>🕒</span> ${escapeHtml(session.timeSlot)}
+            </div>
+            <div class="session-feed-meta">
+              <div class="session-feed-title">
+                ${escapeHtml(session.title)}
+              </div>
+              <div class="session-feed-trainer">
+                <span>🏋️</span> ${escapeHtml(session.trainerName)}
+                <span style="display:inline-block; width:4px; height:4px; border-radius:50%; background:var(--text-muted); margin:0 2px;"></span>
+                <span style="color:${dotColor}; font-weight:800;">
+                  <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${dotColor}; margin-right:3px;"></span>
+                  ${totalCount}/${session.capacity} Kişi
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top-Right Actions -->
+          <div class="session-feed-actions">
+            ${!session.isVirtual ? `
+              <button type="button" class="btn-sm btn-secondary" onclick="openEditSessionModal(${session.id})" title="Seans Saat & Detaylarını Düzenle">
+                <span>✏️</span> Düzenle
+              </button>
+            ` : ''}
+            <button type="button" class="btn-sm btn-secondary" onclick="openAddMemberToSessionModal('${session.id}')" title="Plansız gelen sporcuyu bu seansa dahil et">
+              <span>⚡</span> + Sporcu
+            </button>
+            ${canCompleteAll ? `
+              <button type="button" class="btn-sm btn-primary" onclick="handleMarkAllSessionAttended('${session.id}')" title="Kayıtlı ${pendingAttendees.length} sporcunun yoklamasını 'Geldi' say">
+                <span>✓</span> Tümünü Onayla
+              </button>
+            ` : `
+              <span class="lesson-badge badge-green" style="font-size:11px; padding:6px 10px;">✓ Tamamlandı</span>
+            `}
+          </div>
+        </div>
+
+        <!-- WOD Notes Box -->
+        ${wodHtml}
+
+        <!-- Attendees Section -->
+        <div>
+          <div class="session-attendees-header">
+            <span>KATILIMCI SPORCULAR (${attendees.length})</span>
+            <span style="font-size:11px; font-weight:600; color:var(--text-muted);">${attendedCount} Geldi</span>
+          </div>
+          <div class="session-attendees-list" style="margin-top:8px;">
+            ${attendeesHtml}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterSessionAttendees(query) {
+  sessionSearchQuery = query || '';
+  renderSessionsAttendanceFeed(attendanceSessions);
+}
+window.filterSessionAttendees = filterSessionAttendees;
+
+async function handleQuickSessionAttendance(resId, subId, memberName, status, sessionId) {
+  try {
+    let noteText = "Normal katılım";
+    if (status === "Missed") noteText = "3 saat kuralı: Habersiz / geç iptal, hak yandı";
+    else if (status === "Excused") noteText = "3 saat kuralı: En az 3 saat önce haber verildi, telafi hakkı";
+
+    const session = attendanceSessions.find(s => String(s.id) === String(sessionId));
+
+    if (resId && status === 'Attended') {
+      await Api.checkInReservation(resId);
+    } else if (subId) {
+      await Api.markAttendance({
+        subscriptionId: subId,
+        trainerId: session ? session.trainerId : null,
+        lessonDate: session ? session.startTime : null,
+        status: status,
+        notes: noteText
+      });
+    } else {
+      showToast('Sporcu rezervasyon veya paket bilgisi bulunamadı.', 'warning');
+      return;
+    }
+
+    if (status === 'Attended') {
+      showToast(`⚡ ${memberName} yoklaması alındı!`, 'success');
+    } else if (status === 'Missed') {
+      showToast(`❌ ${memberName} gelmedi olarak işlendi (Ders hakkı düştü).`, 'warning');
+    } else if (status === 'Excused') {
+      showToast(`🕒 ${memberName} için mazeretli telafi işlendi (Ders hakkı saklı).`, 'warning');
+    }
+
+    await loadAttendanceView();
+  } catch (err) {
+    showToast(`Hata: ${err.message}`, 'error');
+  }
+}
+window.handleQuickSessionAttendance = handleQuickSessionAttendance;
+
+async function handleMarkAllSessionAttended(sessionId) {
+  const session = attendanceSessions.find(s => String(s.id) === String(sessionId));
+  if (!session || !session.attendees || session.attendees.length === 0) {
+    showToast('Bu seansta sporcu bulunmuyor.', 'info');
+    return;
+  }
+
+  const pending = session.attendees.filter(a => a.status !== 'Attended' && a.status !== 'CheckedIn');
+  if (pending.length === 0) {
+    showToast('Tüm sporcular zaten katıldı olarak işlenmiş.', 'info');
+    return;
+  }
+
+  const confirmed = confirm(`${session.timeSlot} seansındaki ${pending.length} sporcunun yoklaması 'Geldi' olarak onaylansın mı?`);
+  if (!confirmed) return;
+
+  try {
+    showToast('⏳ Yoklamalar kaydediliyor...');
+    let count = 0;
+    for (const a of pending) {
+      try {
+        if (a.reservationId) {
+          await Api.checkInReservation(a.reservationId);
+          count++;
+        } else if (a.subscriptionId) {
+          await Api.markAttendance({
+            subscriptionId: a.subscriptionId,
+            trainerId: session.trainerId,
+            lessonDate: session.startTime,
+            status: 'Attended',
+            notes: 'Toplu seans onayı'
+          });
+          count++;
+        }
+      } catch (itemErr) {
+        console.warn(`Sporcu #${a.memberId} onaylanırken hata:`, itemErr);
+      }
+    }
+
+    showToast(`✓ ${count} sporcunun yoklaması başarıyla tamamlandı!`, 'success');
+    await loadAttendanceView();
+  } catch (err) {
+    showToast(`Toplu onaylama hatası: ${err.message}`, 'error');
+  }
+}
+window.handleMarkAllSessionAttended = handleMarkAllSessionAttended;
+
+function openSessionWodNoteModal(sessionId) {
+  const session = attendanceSessions.find(s => String(s.id) === String(sessionId));
+  if (!session) return;
+
+  const idInput = document.getElementById('wod-note-session-id');
+  const subtitleEl = document.getElementById('wod-note-session-subtitle');
+  const textareaEl = document.getElementById('wod-note-textarea');
+  const selectEl = document.getElementById('wod-note-template-select');
+
+  if (idInput) idInput.value = session.id;
+  if (subtitleEl) subtitleEl.innerText = `${session.title} (${session.timeSlot})`;
+  if (textareaEl) textareaEl.value = session.notes || '';
+
+  if (selectEl) {
+    selectEl.innerHTML = '<option value="">— Serbest İdman / Şablon Seçilmedi —</option>' +
+      workoutTemplatesCache.map(t => 
+        `<option value="${t.id}" ${session.workoutTemplateId === t.id ? 'selected' : ''}>${escapeHtml(t.name)} (${escapeHtml(t.category || 'WOD')})</option>`
+      ).join('');
+  }
+
+  openModal('modal-session-wod-note');
+}
+window.openSessionWodNoteModal = openSessionWodNoteModal;
+
+function handleWodTemplateSelectChange(templateId) {
+  if (!templateId) return;
+  const tmpl = workoutTemplatesCache.find(t => String(t.id) === String(templateId));
+  const textareaEl = document.getElementById('wod-note-textarea');
+  if (tmpl && textareaEl) {
+    let text = `🔥 ${tmpl.name}\n`;
+    if (tmpl.description) text += `${tmpl.description}\n\n`;
+    if (tmpl.exercises && tmpl.exercises.length > 0) {
+      text += tmpl.exercises.map((e, idx) => 
+        `${idx + 1}. ${e.exerciseName || e.name}: ${e.sets} Set x ${e.reps || e.targetReps} Tekrar${e.restSeconds ? ` (${e.restSeconds}sn dinlenme)` : ''}`
+      ).join('\n');
+    }
+    textareaEl.value = text;
+  }
+}
+window.handleWodTemplateSelectChange = handleWodTemplateSelectChange;
+
+async function handleSaveSessionWodNote(e) {
+  e.preventDefault();
+  const sessionId = document.getElementById('wod-note-session-id').value;
+  const notesText = document.getElementById('wod-note-textarea').value;
+  const tmplSelect = document.getElementById('wod-note-template-select');
+  const templateId = tmplSelect && tmplSelect.value ? parseInt(tmplSelect.value) : null;
+
+  try {
+    if (sessionId.startsWith('cap-')) {
+      const session = attendanceSessions.find(s => String(s.id) === String(sessionId));
+      if (session) {
+        session.notes = notesText;
+        session.workoutTemplateId = templateId;
+      }
+      showToast('📝 İdman notu kaydedildi!', 'success');
+      closeModal('modal-session-wod-note');
+      renderSessionsAttendanceFeed(attendanceSessions);
+      return;
+    }
+
+    const slotId = parseInt(sessionId);
+    await Api.updateSession(slotId, {
+      notes: notesText,
+      workoutTemplateId: templateId
+    });
+
+    showToast('📝 Seans günün idmanı ve hareketleri kaydedildi!', 'success');
+    closeModal('modal-session-wod-note');
+    await loadAttendanceView();
+  } catch (err) {
+    showToast(`Hata: ${err.message}`, 'error');
+  }
+}
+window.handleSaveSessionWodNote = handleSaveSessionWodNote;
+
+function openAddMemberToSessionModal(sessionId) {
+  const session = attendanceSessions.find(s => String(s.id) === String(sessionId));
+  if (!session) return;
+
+  const idInput = document.getElementById('add-attendee-session-id');
+  const subtitleEl = document.getElementById('add-attendee-session-subtitle');
+  const selectEl = document.getElementById('add-attendee-sub-select');
+
+  if (idInput) idInput.value = session.id;
+  if (subtitleEl) subtitleEl.innerText = `${session.title} (${session.timeSlot})`;
+
+  // Filter out members already in this session
+  const existingMemberIds = new Set((session.attendees || []).map(a => a.memberId));
+  const availableSubs = activeSubscriptions.filter(s => !existingMemberIds.has(s.memberId));
+
+  if (selectEl) {
+    if (availableSubs.length === 0) {
+      selectEl.innerHTML = '<option value="">Tüm aktif sporcular zaten bu seansta</option>';
+    } else {
+      selectEl.innerHTML = availableSubs.map(s => 
+        `<option value="${s.id}" data-member-id="${s.memberId}">${escapeHtml(s.memberName)} — ${escapeHtml(s.packageName)} (${s.remainingLessons} Ders Kaldı)</option>`
+      ).join('');
+    }
+  }
+
+  openModal('modal-session-add-attendee');
+}
+window.openAddMemberToSessionModal = openAddMemberToSessionModal;
+
+async function handleSaveAddMemberToSession(e) {
+  e.preventDefault();
+  const sessionId = document.getElementById('add-attendee-session-id').value;
+  const subSelect = document.getElementById('add-attendee-sub-select');
+  const autoCheckIn = document.getElementById('add-attendee-auto-checkin')?.checked ?? true;
+
+  if (!subSelect || !subSelect.value) {
+    showToast('Lütfen seansa eklenecek bir sporcu seçin.', 'warning');
+    return;
+  }
+
+  const subId = parseInt(subSelect.value);
+  const selectedOption = subSelect.options[subSelect.selectedIndex];
+  const memberName = selectedOption ? selectedOption.text.split('—')[0].trim() : 'Sporcu';
+
+  const session = attendanceSessions.find(s => String(s.id) === String(sessionId));
+  const trainerId = session ? session.trainerId : null;
+  const sessionTime = session ? session.startTime : `${currentCapacityDate}T18:00:00`;
+
+  try {
+    await Api.scheduleSession({
+      subscriptionId: subId,
+      trainerId: trainerId,
+      sessionTime: sessionTime,
+      notes: 'Hızlı seans katılımı (Walk-in)'
+    });
+
+    if (autoCheckIn) {
+      await Api.markAttendance({
+        subscriptionId: subId,
+        trainerId: trainerId,
+        status: 'Attended',
+        notes: 'Hızlı seans girişi (Plansız katılım)'
+      });
+      showToast(`⚡ ${memberName} seansa eklendi ve yoklaması alındı!`, 'success');
+    } else {
+      showToast(`⚡ ${memberName} seansa dahil edildi!`, 'success');
+    }
+
+    closeModal('modal-session-add-attendee');
+    await loadAttendanceView();
+  } catch (err) {
+    showToast(`Hata: ${err.message}`, 'error');
+  }
+}
+window.handleSaveAddMemberToSession = handleSaveAddMemberToSession;
+
+function openAttendeeMicroNoteModal(subId, resId, memberName, memberId, currentNote) {
+  const subIdInput = document.getElementById('attendee-note-sub-id');
+  const resIdInput = document.getElementById('attendee-note-res-id');
+  const subtitleEl = document.getElementById('attendee-note-modal-subtitle');
+  const textareaEl = document.getElementById('attendee-note-textarea');
+
+  if (subIdInput) subIdInput.value = subId || '';
+  if (resIdInput) resIdInput.value = resId || '';
+  if (subtitleEl) subtitleEl.innerText = `${memberName} · Ders & İdman Notu`;
+  if (textareaEl) {
+    textareaEl.value = currentNote || '';
+    textareaEl.dataset.memberId = memberId || '';
+    textareaEl.dataset.memberName = memberName || '';
+  }
+
+  openModal('modal-attendee-micro-note');
+}
+window.openAttendeeMicroNoteModal = openAttendeeMicroNoteModal;
+
+async function handleSaveAttendeeMicroNote(e) {
+  e.preventDefault();
+  const textareaEl = document.getElementById('attendee-note-textarea');
+  const noteText = textareaEl ? textareaEl.value.trim() : '';
+  const memberId = textareaEl ? parseInt(textareaEl.dataset.memberId) : null;
+  const memberName = textareaEl ? textareaEl.dataset.memberName : 'Sporcu';
+
+  if (!memberId) {
+    showToast('Sporcu ID bulunamadı.', 'warning');
+    return;
+  }
+
+  try {
+    await Api.updateMemberNotes(memberId, noteText);
+    showToast(`💬 ${memberName} için idman notu kaydedildi!`, 'success');
+
+    const sub = activeSubscriptions.find(s => s.memberId === memberId);
+    if (sub) sub.memberNotes = noteText;
+
+    closeModal('modal-attendee-micro-note');
+    await loadAttendanceView();
+  } catch (err) {
+    showToast(`Hata: ${err.message}`, 'error');
+  }
+}
+window.handleSaveAttendeeMicroNote = handleSaveAttendeeMicroNote;
+
+
 // Kapasite Çizelgesi (BR-03)
 function renderCapacityWeekStrip() {
-  const stripEl = document.getElementById('capacity-week-strip');
-  if (!stripEl) return;
-
   const now = new Date();
   const todayIso = formatDateToIso(now);
   const curDate = new Date(currentCapacityDate + 'T00:00:00');
-  const monday = getStartOfWeekMonday(curDate);
 
+  // Update readable date label
+  const labelEl = document.getElementById('capacity-current-date-label');
+  if (labelEl) {
+    const isToday = currentCapacityDate === todayIso;
+    const formatted = curDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', weekday: 'short' });
+    labelEl.innerText = isToday ? `Bugün, ${formatted}` : formatted;
+  }
+
+  // Sync native input
+  const dateInput = document.getElementById('capacity-date-picker');
+  if (dateInput && dateInput.value !== currentCapacityDate) {
+    dateInput.value = currentCapacityDate;
+  }
+
+  const stripEl = document.getElementById('capacity-week-strip');
+  if (!stripEl || stripEl.style.display === 'none') return;
+
+  const monday = getStartOfWeekMonday(curDate);
   const days = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
@@ -86,20 +759,6 @@ function renderCapacityWeekStrip() {
       </div>
     `;
   }).join('');
-
-  // Update readable date label
-  const labelEl = document.getElementById('capacity-current-date-label');
-  if (labelEl) {
-    const isToday = currentCapacityDate === todayIso;
-    const formatted = curDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', weekday: 'short' });
-    labelEl.innerText = isToday ? `Bugün, ${formatted}` : formatted;
-  }
-
-  // Sync native input
-  const dateInput = document.getElementById('capacity-date-picker');
-  if (dateInput && dateInput.value !== currentCapacityDate) {
-    dateInput.value = currentCapacityDate;
-  }
 }
 
 window.selectCapacityDate = async function(dateIso) {
@@ -147,29 +806,68 @@ function renderCapacitySlots(slots) {
   const container = document.getElementById('capacity-slots-list');
   if (!container || !slots) return;
 
-  container.innerHTML = slots.map(slot => {
-    const hasMembers = slot.totalMembers > 0;
-    const statusClass = (slot.statusLevel || 'comfortable').toLowerCase();
-    const isActive = selectedSlotHour === slot.hour;
+  const now = new Date();
+  const todayIso = formatDateToIso(now);
+  const isToday = currentCapacityDate === todayIso;
+  const currentHour = now.getHours();
 
-    let trainerSummary = 'Boş Saat';
-    let trainerShortPills = '';
-    if (slot.trainers && slot.trainers.length > 0) {
-      trainerSummary = slot.trainers.map(t => `${t.trainerName} (${t.memberCount})`).join(', ');
-      trainerShortPills = `<span style="font-size:9.5px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; display:block; margin-top:2px;">${escapeHtml(slot.trainers.map(t => `${t.trainerName.split(' ')[0]}:${t.memberCount}`).join(' '))}</span>`;
+  container.innerHTML = slots.map(slot => {
+    const count = slot.totalMembers || 0;
+    const cap = slot.capacityLimit || 6;
+    const isFull = count >= cap;
+    const isFilling = count >= 4 && !isFull;
+    const isComfortable = count > 0 && count < 4;
+    const isEmpty = count === 0;
+    const isActive = selectedSlotHour === slot.hour;
+    const isPast = isToday && slot.hour < currentHour;
+
+    let dotColor = '#10B981';
+    let dotText = 'Rahat';
+    let pillBg = 'rgba(255, 255, 255, 0.03)';
+    let pillBorder = 'rgba(255, 255, 255, 0.08)';
+
+    if (isFull) {
+      dotColor = '#EF4444';
+      dotText = 'Dolu';
+      pillBg = 'rgba(239, 68, 68, 0.12)';
+      pillBorder = 'rgba(239, 68, 68, 0.3)';
+    } else if (isFilling) {
+      dotColor = '#F59E0B';
+      dotText = 'Doluyor';
+      pillBg = 'rgba(245, 158, 11, 0.12)';
+      pillBorder = 'rgba(245, 158, 11, 0.3)';
+    } else if (isComfortable) {
+      dotColor = '#10B981';
+      dotText = `${count} Kişi`;
+      pillBg = 'rgba(16, 185, 129, 0.09)';
+      pillBorder = 'rgba(16, 185, 129, 0.25)';
+    } else if (isEmpty) {
+      dotColor = 'var(--text-muted)';
+      dotText = 'Boş';
     }
 
-    const countLabel = hasMembers ? `${slot.totalMembers}/${slot.capacityLimit}` : 'Boş';
+    let trainerShort = '';
+    if (slot.trainers && slot.trainers.length > 0) {
+      trainerShort = slot.trainers.map(t => `${t.trainerName.split(' ')[0]}:${t.memberCount}`).join(' ');
+    }
+
+    const activeStyles = isActive
+      ? 'background:rgba(204,255,0,0.18) !important; border-color:#CCFF00 !important; box-shadow:0 0 12px rgba(204,255,0,0.28); transform:translateY(-1px);'
+      : '';
 
     return `
       <button type="button"
-              class="v0-cal-day-cell capacity-hour-cell ${hasMembers ? 'has-session ' + statusClass : 'empty'} ${isActive ? 'active' : ''}"
+              class="capacity-slot-pill ${isActive ? 'active' : ''}"
               onclick="selectSlotHour(${slot.hour})"
-              title="${slot.timeSlot} - ${hasMembers ? slot.totalMembers + '/' + slot.capacityLimit + ' Kişi (' + trainerSummary + ')' : 'Boş Saat (Kayıt yok)'}">
-        <span class="v0-cal-day-num">${slot.timeSlot}</span>
-        <span class="v0-cal-day-sub">${countLabel}</span>
-        ${trainerShortPills}
-        <span class="v0-cal-dot ${statusClass}"></span>
+              style="flex:0 0 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:7px 11px; border-radius:12px; background:${pillBg}; border:1px solid ${pillBorder}; cursor:pointer; min-width:72px; transition:all 0.2s ease; ${isPast ? 'opacity:0.55;' : ''} ${activeStyles}"
+              title="${slot.timeSlot} - ${count}/${cap} kişi ${trainerShort ? '(' + trainerShort + ')' : ''}">
+        <span style="font-size:12px; font-weight:800; color:var(--text-primary); letter-spacing:0.02em;">${slot.timeSlot.split(' ')[0]}</span>
+        <span style="font-size:11px; font-weight:700; color:${count > 0 ? dotColor : 'var(--text-muted)'};">${count}/${cap}</span>
+        <span style="font-size:9.5px; font-weight:700; color:${dotColor}; display:inline-flex; align-items:center; gap:3px;">
+          <span style="width:5px; height:5px; border-radius:50%; background:${dotColor};"></span>
+          ${dotText}
+        </span>
+        ${trainerShort ? `<span style="font-size:8.5px; color:var(--text-muted); max-width:64px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px;">${escapeHtml(trainerShort)}</span>` : ''}
       </button>
     `;
   }).join('');
@@ -332,10 +1030,16 @@ function renderAttendanceList(subs) {
     return;
   }
 
+  const countLabel = document.getElementById('attendance-count-label');
+  if (countLabel) {
+    countLabel.innerText = `Kayıtlı Sporcular (${subs.length})`;
+  }
+
   container.innerHTML = subs.map(sub => {
     const isCritical = sub.remainingLessons <= 1;
     const isExpiring = sub.remainingLessons === 2;
-    const cardClass = isCritical ? 'attendee-card critical' : (isExpiring ? 'attendee-card expiring' : 'attendee-card');
+    // User requested cards start collapsed by default
+    const cardClass = (isCritical ? 'attendee-card critical' : (isExpiring ? 'attendee-card expiring' : 'attendee-card')) + ' collapsed';
 
     const badgeColor = isCritical ? 'badge-red' : (isExpiring ? 'badge-amber' : 'badge-green');
     const badgeText = `${sub.completedLessons}/${sub.totalLessons} DERS`;
@@ -375,106 +1079,160 @@ function renderAttendanceList(subs) {
     }
 
     const attendanceStatus = slotMemberRecord?.status;
+    let statusDotClass = 'status-pending';
+    let statusSummaryBadge = `<span class="lesson-badge ${badgeColor}">${sub.remainingLessons} DERS KALDI</span>`;
+    if (attendanceStatus === 'Attended') {
+      statusDotClass = 'status-attended';
+      statusSummaryBadge = `<span class="lesson-badge badge-green" style="font-size:10.5px;">✓ GELDİ</span>`;
+    } else if (attendanceStatus === 'Missed') {
+      statusDotClass = 'status-missed';
+      statusSummaryBadge = `<span class="lesson-badge badge-red" style="font-size:10.5px;">❌ GELMEDİ</span>`;
+    } else if (attendanceStatus === 'Excused') {
+      statusDotClass = 'status-excused';
+      statusSummaryBadge = `<span class="lesson-badge badge-amber" style="font-size:10.5px;">🕒 TELAFİ</span>`;
+    }
 
     return `
       <div class="${cardClass}" id="sub-card-${sub.id}">
-        <div class="card-top">
-          <div>
-            <div class="member-name">${escapeHtml(sub.memberName)}</div>
-            <div class="package-name">${escapeHtml(sub.packageName)}</div>
+        <!-- 1. Compact Clickable Header Summary (Always Visible) -->
+        <div class="attendee-card-summary" onclick="toggleAttendeeCard(${sub.id})" title="Detayları aç / daralt">
+          <div class="attendee-summary-left">
+            <span class="attendee-status-indicator ${statusDotClass}"></span>
+            <div class="attendee-summary-names">
+              <div class="member-name clickable-name" onclick="event.stopPropagation(); openStudentProgressDrawer(${sub.memberId}, '${escapeJsString(sub.memberName)}')" title="Öğrencinin gelişimini ve ölçümlerini gör">
+                ${escapeHtml(sub.memberName)} <span class="student-profile-link-icon" title="Gelişim Çizelgesi">📈</span>
+              </div>
+              <div class="package-name">${escapeHtml(sub.packageName)}</div>
+            </div>
           </div>
-          <span class="lesson-badge ${badgeColor}">${sub.remainingLessons} DERS KALDI</span>
-        </div>
-
-        <!-- Hevy-Style Visual Set Progress -->
-        <div class="lesson-progress-container">
-          <div class="progress-header">
-            <span style="color:var(--text-secondary); font-size:11px; font-weight:700;">DERS İLERLEMESİ</span>
-            <span style="font-family:var(--font-heading); font-weight:800; font-size:12px; color:var(--text-primary);">${badgeText}</span>
-          </div>
-          <div class="progress-segments">
-            ${segments.join('')}
+          <div class="attendee-summary-right">
+            ${sub.memberNotes ? `<span class="summary-injury-badge" title="${escapeHtml(sub.memberNotes)}">⚠️</span>` : ''}
+            ${statusSummaryBadge}
+            <span class="attendee-chevron" id="chevron-${sub.id}">▼</span>
           </div>
         </div>
 
-        <div class="v0-injury-badge-wrap ${sub.memberNotes ? '' : 'no-notes'}">
-          <div class="v0-injury-badge-content" title="${escapeHtml(sub.memberNotes || 'Sağlık / Sakatlık notu yok')}">
-            <span>${sub.memberNotes ? '⚠️' : '🩺'}</span>
-            <span>${escapeHtml(sub.memberNotes || 'Sağlık / Sakatlık notu yok')}</span>
+        <!-- 2. Collapsible Details Body (Hidden by default when .collapsed) -->
+        <div class="attendee-card-details" id="card-details-${sub.id}">
+          <!-- Hevy-Style Visual Set Progress -->
+          <div class="lesson-progress-container">
+            <div class="progress-header">
+              <span style="color:var(--text-secondary); font-size:11px; font-weight:700;">DERS İLERLEMESİ</span>
+              <span style="font-family:var(--font-heading); font-weight:800; font-size:12px; color:var(--text-primary);">${badgeText}</span>
+            </div>
+            <div class="progress-segments">
+              ${segments.join('')}
+            </div>
           </div>
-          <button type="button" class="v0-injury-edit-btn" onclick="openEditMemberNotesModal(${sub.memberId}, '${escapeHtml(sub.memberName)}', '${escapeJsString(sub.memberNotes || '')}')" title="Sporcunun sakatlık/sağlık kısıtını düzenle">
-            <span>✏️</span> ${sub.memberNotes ? 'Düzenle' : 'Not Ekle'}
-          </button>
-        </div>
 
-        <!-- Hoca Seçici & İkame Kuralı (%40) -->
-        <div class="coach-picker-box">
-          <span style="color:var(--text-muted); font-size:11px; font-weight:700;">DERSİ VEREN:</span>
-          <select id="sub-coach-${sub.id}" onchange="handleTrainerSelectionChange(${sub.id}, ${primaryTrainerId})" ${attendanceStatus ? 'disabled style="opacity:0.75;"' : ''}>
-            ${allTrainers.map(t => `<option value="${t.id}" ${t.id === primaryTrainerId ? 'selected' : ''}>${escapeHtml(t.fullName)} (${escapeHtml(t.role)})</option>`).join('')}
-          </select>
-        </div>
-        <div id="sub-substitute-badge-${sub.id}" style="display:none; font-size:11.5px; color:var(--flame-orange); font-weight:800; background:rgba(255,85,0,0.12); padding:4px 8px; border-radius:4px; border:1px solid rgba(255,85,0,0.3);">
-          <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-xs"> İkame Seans: %40 Hak Ediş Yazılacak
-        </div>
-
-        <div style="font-size:12px; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;">
-          <span>Paket: ${formatMoney(sub.price)}</span>
-          ${sub.remainingBalance > 0 
-            ? `<span style="color:var(--flame-orange); font-weight:800;">Kalan Borç: ${formatMoney(sub.remainingBalance)}</span>` 
-            : '<span style="color:var(--volt-lime); font-weight:700;">Ödendi ✓</span>'}
-        </div>
-
-        <!-- Yoklama Aksiyonları (Tek seferlik kesin kayıt & Çelişki önleme) -->
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          ${attendanceStatus === 'Attended' ? `
-            <div class="touch-btn already-attended" style="background:rgba(204,255,0,0.14); border:1px solid var(--volt-lime); color:var(--volt-lime); cursor:default; justify-content:center; font-weight:800; padding:12px; font-size:13.5px;" title="Yoklama kesinleşti: Bu sporcu seansa katıldı">
-              <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:6px;"> ✓ BU SEANSTA GELDİ (${sub.completedLessons}. Ders ${attendanceHourLabel ? '· ' + attendanceHourLabel : ''})
+          <div class="v0-injury-badge-wrap ${sub.memberNotes ? '' : 'no-notes'}">
+            <div class="v0-injury-badge-content" title="${escapeHtml(sub.memberNotes || 'Sağlık / Sakatlık notu yok')}">
+              <span>${sub.memberNotes ? '⚠️' : '🩺'}</span>
+              <span class="v0-injury-badge-text">${escapeHtml(sub.memberNotes || 'Sağlık / Sakatlık notu yok')}</span>
             </div>
-            <div style="display:flex; justify-content:flex-end;">
-              <button class="action-btn-sm whatsapp" style="width:100%; justify-content:center;" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
-                <span>💬</span> WhatsApp Mesajı Gönder
-              </button>
-            </div>
-          ` : attendanceStatus === 'Missed' ? `
-            <div class="touch-btn already-attended" style="background:rgba(239,68,68,0.14); border:1px solid var(--pulse-rose); color:var(--pulse-rose); cursor:default; justify-content:center; font-weight:800; padding:12px; font-size:13.5px;" title="Yoklama kesinleşti: Gelmedi (Hak yandı)">
-              <span>❌</span> BU SEANSTA GELMEDİ (Ders Yandı)
-            </div>
-            <div style="display:flex; justify-content:flex-end;">
-              <button class="action-btn-sm whatsapp" style="width:100%; justify-content:center;" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
-                <span>💬</span> WhatsApp Mesajı Gönder
-              </button>
-            </div>
-          ` : attendanceStatus === 'Excused' ? `
-            <div class="touch-btn already-attended" style="background:rgba(245,158,11,0.14); border:1px solid var(--flame-orange); color:var(--flame-orange); cursor:default; justify-content:center; font-weight:800; padding:12px; font-size:13.5px;" title="Yoklama kesinleşti: Mazeretli telafi">
-              <span>🕒</span> MAZERETLİ TELAFİ (Ders Saklı)
-            </div>
-            <div style="display:flex; justify-content:flex-end;">
-              <button class="action-btn-sm whatsapp" style="width:100%; justify-content:center;" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
-                <span>💬</span> WhatsApp Mesajı Gönder
-              </button>
-            </div>
-          ` : `
-            <button class="touch-btn btn-attend" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Attended')">
-              <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:4px;"> GELDİ (DERS DÜŞ)
+            <button type="button" class="v0-injury-edit-btn" onclick="openEditMemberNotesModal(${sub.memberId}, '${escapeHtml(sub.memberName)}', '${escapeJsString(sub.memberNotes || '')}')" title="Sporcunun sakatlık/sağlık kısıtını düzenle">
+              <span>✏️</span> ${sub.memberNotes ? 'Düzenle' : 'Not Ekle'}
             </button>
-            <div style="display:flex; gap:8px;">
-              <button class="action-btn-sm" style="color:var(--pulse-rose);" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Missed')" title="3 saatten az kala haber veya habersiz gelmedi (Ders Yanar)">
-                <span>❌</span> Gelmedi (Yandı)
+          </div>
+
+          <!-- Hoca Seçici & İkame Kuralı (%40) -->
+          <div class="coach-picker-box">
+            <span style="color:var(--text-muted); font-size:11px; font-weight:700;">DERSİ VEREN:</span>
+            <select id="sub-coach-${sub.id}" onchange="handleTrainerSelectionChange(${sub.id}, ${primaryTrainerId})" ${attendanceStatus ? 'disabled style="opacity:0.75;"' : ''}>
+              ${allTrainers.map(t => `<option value="${t.id}" ${t.id === primaryTrainerId ? 'selected' : ''}>${escapeHtml(t.fullName)} (${escapeHtml(t.role)})</option>`).join('')}
+            </select>
+          </div>
+          <div id="sub-substitute-badge-${sub.id}" style="display:none; font-size:11.5px; color:var(--flame-orange); font-weight:800; background:rgba(255,85,0,0.12); padding:4px 8px; border-radius:4px; border:1px solid rgba(255,85,0,0.3);">
+            <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-xs"> İkame Seans: %40 Hak Ediş Yazılacak
+          </div>
+
+          <div style="font-size:12px; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;">
+            <span>Paket: ${formatMoney(sub.price)}</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button type="button" class="btn-link" style="font-size:11.5px; color:var(--volt-lime); background:none; border:none; padding:0; cursor:pointer; font-weight:700; text-decoration:underline;" onclick="openStudentProgressDrawer(${sub.memberId}, '${escapeJsString(sub.memberName)}')">
+                📈 Gelişimi Gör
               </button>
-              <button class="action-btn-sm" style="color:var(--flame-orange);" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Excused')" title="En az 3 saat önce haber verdi (Hak Saklı)">
-                <span>🕒</span> Mazeretli Telafi
-              </button>
-              <button class="action-btn-sm whatsapp" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
-                <span>💬</span> WhatsApp
-              </button>
+              ${sub.remainingBalance > 0 
+                ? `<span style="color:var(--flame-orange); font-weight:800;">Kalan: ${formatMoney(sub.remainingBalance)}</span>` 
+                : '<span style="color:var(--volt-lime); font-weight:700;">Ödendi ✓</span>'}
             </div>
-          `}
+          </div>
+
+          <!-- Yoklama Aksiyonları (Tek seferlik kesin kayıt & Çelişki önleme) -->
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${attendanceStatus === 'Attended' ? `
+              <div class="touch-btn already-attended" style="background:rgba(204,255,0,0.14); border:1px solid var(--volt-lime); color:var(--volt-lime); cursor:default; justify-content:center; font-weight:800; padding:12px; font-size:13.5px;" title="Yoklama kesinleşti: Bu sporcu seansa katıldı">
+                <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:6px;"> ✓ BU SEANSTA GELDİ (${sub.completedLessons}. Ders ${attendanceHourLabel ? '· ' + attendanceHourLabel : ''})
+              </div>
+              <div style="display:flex; justify-content:flex-end;">
+                <button class="action-btn-sm whatsapp" style="width:100%; justify-content:center;" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
+                  <span>💬</span> WhatsApp Mesajı Gönder
+                </button>
+              </div>
+            ` : attendanceStatus === 'Missed' ? `
+              <div class="touch-btn already-attended" style="background:rgba(239,68,68,0.14); border:1px solid var(--pulse-rose); color:var(--pulse-rose); cursor:default; justify-content:center; font-weight:800; padding:12px; font-size:13.5px;" title="Yoklama kesinleşti: Gelmedi (Hak yandı)">
+                <span>❌</span> BU SEANSTA GELMEDİ (Ders Yandı)
+              </div>
+              <div style="display:flex; justify-content:flex-end;">
+                <button class="action-btn-sm whatsapp" style="width:100%; justify-content:center;" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
+                  <span>💬</span> WhatsApp Mesajı Gönder
+                </button>
+              </div>
+            ` : attendanceStatus === 'Excused' ? `
+              <div class="touch-btn already-attended" style="background:rgba(245,158,11,0.14); border:1px solid var(--flame-orange); color:var(--flame-orange); cursor:default; justify-content:center; font-weight:800; padding:12px; font-size:13.5px;" title="Yoklama kesinleşti: Mazeretli telafi">
+                <span>🕒</span> MAZERETLİ TELAFİ (Ders Saklı)
+              </div>
+              <div style="display:flex; justify-content:flex-end;">
+                <button class="action-btn-sm whatsapp" style="width:100%; justify-content:center;" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
+                  <span>💬</span> WhatsApp Mesajı Gönder
+                </button>
+              </div>
+            ` : `
+              <button class="touch-btn btn-attend" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Attended')">
+                <img src="/images/tiger1_badge.png?v=2.7.5" alt="" class="tiger-icon-inline tiger-icon-sm" style="margin-right:4px;"> GELDİ (DERS DÜŞ)
+              </button>
+              <div class="attendee-actions-secondary">
+                <button class="action-btn-sm" style="color:var(--pulse-rose);" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Missed')" title="3 saatten az kala haber veya habersiz gelmedi (Ders Yanar)">
+                  <span>❌</span> Gelmedi (Yandı)
+                </button>
+                <button class="action-btn-sm" style="color:var(--flame-orange);" onclick="handleQuickAttendance(${sub.id}, '${escapeHtml(sub.memberName)}', 'Excused')" title="En az 3 saat önce haber verdi (Hak Saklı)">
+                  <span>🕒</span> Mazeretli Telafi
+                </button>
+                <button class="action-btn-sm whatsapp" onclick="openWhatsAppModal(${sub.id})" title="WhatsApp Akıllı Hatırlatma Şablonları">
+                  <span>💬</span> WhatsApp
+                </button>
+              </div>
+            `}
+          </div>
         </div>
       </div>
     `;
   }).join('');
 }
+
+window.toggleAttendeeCard = function(subId) {
+  const card = document.getElementById(`sub-card-${subId}`);
+  if (!card) return;
+  card.classList.toggle('collapsed');
+  const chev = document.getElementById(`chevron-${subId}`);
+  if (chev) {
+    chev.innerText = card.classList.contains('collapsed') ? '▼' : '▲';
+  }
+};
+
+window.toggleAllAttendanceCards = function() {
+  const cards = document.querySelectorAll('.attendance-grid .attendee-card');
+  if (cards.length === 0) return;
+  const anyCollapsed = Array.from(cards).some(c => c.classList.contains('collapsed'));
+  cards.forEach(c => {
+    c.classList.toggle('collapsed', !anyCollapsed);
+    const subId = c.id.replace('sub-card-', '');
+    const chev = document.getElementById(`chevron-${subId}`);
+    if (chev) chev.innerText = anyCollapsed ? '▲' : '▼';
+  });
+  const btn = document.getElementById('btn-toggle-all-cards');
+  if (btn) btn.innerHTML = anyCollapsed ? '<span>↕️</span> Tümünü Kapat' : '<span>↕️</span> Tümünü Aç';
+};
 
 window.handleTrainerSelectionChange = function(subId, primaryTrainerId) {
   const select = document.getElementById(`sub-coach-${subId}`);
@@ -671,23 +1429,28 @@ function renderMembersTable(members, container) {
   }).join('');
 }
 
-// ==================== 3. ÜYELER ====================
+// ==================== 3. ÜYELER & ÖĞRENCİLERİM GELİŞİM HUB ====================
 async function loadMembersView(search = '') {
   const container = document.getElementById('members-table-body');
+  const cardsContainer = document.getElementById('student-cards-grid');
 
   // SWR Pattern: Arama yapılmıyorsa ve hafızada üye listesi varsa anında göster (0ms)
   if (!search && allMembers && allMembers.length > 0) {
-    renderMembersTable(allMembers, container);
+    if (container) renderMembersTable(allMembers, container);
+    if (cardsContainer) renderStudentCards(allMembers, cardsContainer);
   } else if (!allMembers || allMembers.length === 0 || search) {
-    container.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:24px;">Yükleniyor...</td></tr>';
+    if (container) container.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:24px;">Yükleniyor...</td></tr>';
+    if (cardsContainer) cardsContainer.innerHTML = '<div style="color:var(--text-muted); padding:32px; text-align:center;">Öğrenci listesi yükleniyor...</div>';
   }
 
   try {
     allMembers = await Api.getMembers(search);
-    renderMembersTable(allMembers, container);
+    if (container) renderMembersTable(allMembers, container);
+    if (cardsContainer) renderStudentCards(allMembers, cardsContainer);
   } catch (err) {
     if (!allMembers || allMembers.length === 0) {
-      container.innerHTML = `<tr><td colspan="6" style="color:var(--pulse-rose);">Hata: ${err.message}</td></tr>`;
+      if (container) container.innerHTML = `<tr><td colspan="6" style="color:var(--pulse-rose);">Hata: ${err.message}</td></tr>`;
+      if (cardsContainer) cardsContainer.innerHTML = `<div style="color:var(--pulse-rose); padding:24px; text-align:center;">Hata: ${err.message}</div>`;
     }
   }
 }
@@ -700,6 +1463,503 @@ window.handleMemberSearch = function(text) {
   }, 300);
 };
 
+function renderStudentCards(members, container) {
+  if (!container) return;
+  if (!members || members.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; color:var(--text-muted); padding:40px 16px; background:var(--bg-surface); border-radius:16px; border:1px dashed var(--border-subtle);">
+        <div style="font-size:28px; margin-bottom:8px;">👥</div>
+        <div style="font-weight:700; font-size:14px; color:var(--text-secondary);">Kayıtlı Öğrenci Bulunamadı</div>
+        <div style="font-size:12px; margin-top:4px;">Arama kriterini değiştirin veya yeni sporcu ekleyin.</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = members.map(m => {
+    const sub = m.activeSubscription;
+    const initials = getAthleteInitials(m.fullName);
+    let subStatusBadge = `<span style="font-size:11.5px; color:var(--text-muted);">Aktif Paket Yok</span>`;
+    let remainingText = '';
+    if (sub) {
+      if (sub.status === 'Frozen') {
+        subStatusBadge = `<span class="lesson-badge badge-cyan" style="font-size:11px; background:rgba(56,189,248,0.15); color:#38BDF8; border:1px solid rgba(56,189,248,0.3);">❄️ Donduruldu</span>`;
+      } else {
+        const isCritical = sub.remainingLessons <= 1;
+        const isExpiring = sub.remainingLessons === 2;
+        const colorClass = isCritical ? 'badge-red' : (isExpiring ? 'badge-amber' : 'badge-green');
+        subStatusBadge = `<span class="lesson-badge ${colorClass}" style="font-size:11px;">⚡ ${escapeHtml(sub.packageName)}</span>`;
+        remainingText = `<strong style="color:${isCritical ? 'var(--pulse-rose)' : 'var(--volt-lime)'}; font-size:12px;">${sub.remainingLessons} Ders Kaldı</strong>`;
+      }
+    }
+
+    const hasMedical = !!(m.medicalConditions);
+
+    return `
+      <div class="student-card" id="student-card-${m.id}">
+        <div class="student-card-header">
+          <div class="student-card-identity">
+            <div class="student-avatar">${escapeHtml(initials)}</div>
+            <div class="student-meta">
+              <div class="student-name">${escapeHtml(m.fullName)}</div>
+              <div class="student-phone">
+                <span>📞</span> ${m.phone ? escapeHtml(m.phone) : '-'}
+              </div>
+            </div>
+          </div>
+          <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+            ${subStatusBadge}
+            ${remainingText}
+          </div>
+        </div>
+
+        ${hasMedical ? `
+          <div style="font-size:11.5px; font-weight:700; color:#FF453A; background:rgba(255,69,58,0.12); padding:4px 10px; border-radius:8px; border:1px solid rgba(255,69,58,0.25); display:flex; align-items:center; gap:6px;">
+            <span>⚠️</span> <span>${escapeHtml(m.medicalConditions)}</span>
+          </div>
+        ` : ''}
+
+        ${m.notes && !hasMedical ? `
+          <div style="font-size:11.5px; color:var(--text-muted); background:var(--bg-surface-elevated); padding:4px 10px; border-radius:8px;">
+            <span>📝</span> ${escapeHtml(m.notes)}
+          </div>
+        ` : ''}
+
+        <div class="student-card-actions">
+          <button type="button" class="btn-primary btn-sm" onclick="openStudentProgressDrawer(${m.id}, '${escapeJsString(m.fullName)}')">
+            <span>📈</span> Gelişim & Tartı
+          </button>
+          <button type="button" class="btn-secondary btn-sm" style="color:var(--volt-lime); border-color:rgba(204,255,0,0.3);" onclick="openTemplateBuilderForMember(${m.id}, '${escapeJsString(m.fullName)}')">
+            <span>🏋️</span> Program Yaz
+          </button>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:6px; border-top:1px solid var(--border-subtle); font-size:11.5px;">
+          <span style="color:var(--text-muted);">${m.totalSubscriptionsCount || 1}. Sezon / Dönem</span>
+          <div style="display:flex; gap:8px;">
+            ${m.phone ? `
+              <button type="button" class="btn-link" style="color:#25D366; background:none; border:none; padding:0; cursor:pointer; font-size:11.5px; font-weight:700;" onclick="window.open('https://wa.me/${encodeURIComponent(m.phone.replace(/[^0-9]/g, ''))}', '_blank')">
+                💬 WhatsApp
+              </button>
+            ` : ''}
+            <button type="button" class="btn-link" style="color:var(--text-secondary); background:none; border:none; padding:0; cursor:pointer; font-size:11.5px;" onclick="openEditMemberModal(${m.id})">
+              ✏️ Düzenle
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterStudentsList(filterType) {
+  document.querySelectorAll('[data-student-filter]').forEach(chip => {
+    chip.classList.toggle('active', chip.dataset.studentFilter === filterType);
+  });
+
+  if (!allMembers) return;
+
+  let filtered = allMembers;
+  if (filterType === 'active') {
+    filtered = allMembers.filter(m => m.activeSubscription && m.activeSubscription.status === 'Active' && m.activeSubscription.remainingLessons > 0);
+  } else if (filterType === 'expiring') {
+    filtered = allMembers.filter(m => m.activeSubscription && m.activeSubscription.remainingLessons <= 2 && m.activeSubscription.remainingLessons > 0);
+  } else if (filterType === 'medical') {
+    filtered = allMembers.filter(m => !!(m.medicalConditions || m.notes));
+  }
+
+  const grid = document.getElementById('student-cards-grid');
+  if (grid) renderStudentCards(filtered, grid);
+  const table = document.getElementById('members-table-body');
+  if (table) renderMembersTable(filtered, table);
+}
+
+async function openStudentProgressDrawer(memberId, memberName) {
+  const nameEl = document.getElementById('student-progress-name');
+  const avatarEl = document.getElementById('student-progress-avatar');
+  const subBadgeEl = document.getElementById('student-progress-sub-badge');
+  const injuryBox = document.getElementById('student-progress-injury-box');
+  const injuryText = document.getElementById('student-progress-injury-text');
+  const chartContainer = document.getElementById('student-progress-chart-container');
+  const historySection = document.getElementById('student-metrics-history-section');
+  const btnWeighIn = document.getElementById('btn-open-student-weighin');
+  const btnWaShare = document.getElementById('btn-student-wa-share');
+  const btnEditInjury = document.getElementById('btn-edit-student-injury');
+
+  if (nameEl) nameEl.textContent = memberName;
+  if (avatarEl) avatarEl.textContent = getAthleteInitials(memberName);
+  if (subBadgeEl) subBadgeEl.textContent = 'Veriler yükleniyor...';
+  if (chartContainer) chartContainer.innerHTML = '<div style="color:var(--text-muted); padding:30px; text-align:center;">Ölçüm geçmişi yükleniyor...</div>';
+  if (historySection) historySection.innerHTML = '<div style="color:var(--text-muted); padding:16px; text-align:center; font-size:12px;">Ölçüm geçmişi yükleniyor...</div>';
+
+  if (btnWeighIn) {
+    btnWeighIn.onclick = () => openAddStudentMetricModal(memberId, memberName);
+  }
+
+  // Open modal early for snappy UX
+  openModal('modal-student-progress');
+
+  try {
+    const [progress, member] = await Promise.all([
+      Api.getMemberMetricProgress(memberId),
+      Api.getMember(memberId).catch(() => null)
+    ]);
+
+    if (member && subBadgeEl) {
+      const activeSub = member.activeSubscription;
+      if (activeSub) {
+        subBadgeEl.textContent = `${activeSub.packageName} · ${activeSub.remainingLessons}/${activeSub.totalLessons} Ders Kaldı`;
+      } else {
+        subBadgeEl.textContent = 'Aktif Paket Yok';
+      }
+
+      // Injury / Medical condition alert box
+      const medNotes = member.medicalConditions || member.notes;
+      if (medNotes) {
+        if (injuryBox) injuryBox.style.display = 'block';
+        if (injuryText) injuryText.textContent = medNotes;
+        if (btnEditInjury) {
+          btnEditInjury.onclick = () => openEditMemberNotesModal(memberId, memberName, medNotes);
+        }
+      } else {
+        if (injuryBox) injuryBox.style.display = 'none';
+      }
+
+      // WhatsApp Share button
+      if (btnWaShare) {
+        if (member.phone) {
+          btnWaShare.style.display = 'inline-flex';
+          btnWaShare.onclick = () => {
+            const currentKg = progress?.currentWeightKg ? `${progress.currentWeightKg} kg` : '-';
+            const changeKg = progress?.totalChangeKg != null ? (progress.totalChangeKg > 0 ? '+' : '') + progress.totalChangeKg + ' kg' : '-';
+            const text = encodeURIComponent(`Merhaba ${memberName},\nSporTakip gelişim özetin:\nGüncel Kilo: ${currentKg}\nToplam Değişim: ${changeKg}\nHarika gidiyorsun! 💪`);
+            window.open(`https://wa.me/${member.phone.replace(/[^0-9]/g, '')}?text=${text}`, '_blank');
+          };
+        } else {
+          btnWaShare.style.display = 'none';
+        }
+      }
+    }
+
+    // KPIs
+    const startW = document.getElementById('student-kpi-start-weight');
+    const currW = document.getElementById('student-kpi-current-weight');
+    const diffW = document.getElementById('student-kpi-diff-weight');
+    const bmiW = document.getElementById('student-kpi-bmi');
+
+    if (startW) startW.textContent = progress?.startingWeightKg ? `${progress.startingWeightKg} kg` : '-';
+    if (currW) currW.textContent = progress?.currentWeightKg ? `${progress.currentWeightKg} kg` : '-';
+
+    if (diffW) {
+      if (progress?.totalChangeKg != null) {
+        const sign = progress.totalChangeKg > 0 ? '+' : '';
+        diffW.textContent = `${sign}${progress.totalChangeKg} kg`;
+        diffW.style.color = progress.totalChangeKg <= 0 ? 'var(--volt-lime)' : 'var(--flame-orange)';
+      } else {
+        diffW.textContent = '-';
+        diffW.style.color = 'var(--text-primary)';
+      }
+    }
+
+    if (bmiW) {
+      if (progress?.bmi) {
+        bmiW.innerHTML = `${Number(progress.bmi).toFixed(1)} <span style="font-size:9.5px; color:var(--text-muted); font-weight:600;">(${escapeHtml(progress.bmiCategory || '')})</span>`;
+      } else {
+        bmiW.textContent = '-';
+      }
+    }
+
+    // Chart
+    const history = progress?.history || [];
+
+    if (history.length >= 2) {
+      renderStudentProgressChart(history, chartContainer);
+    } else if (history.length === 1) {
+      chartContainer.innerHTML = `
+        <div style="padding:20px; text-align:center; background:rgba(0,0,0,0.25); border-radius:12px; border:1px solid var(--border-subtle);">
+          <div style="font-size:24px; margin-bottom:6px;">⚖️</div>
+          <div style="font-size:13.5px; font-weight:700; color:var(--text-primary);">İlk Ölçüm: ${history[0].weightKg} kg</div>
+          <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">Trend grafiği çizmek için en az 2 ölçüm gereklidir.</div>
+        </div>
+      `;
+    } else {
+      chartContainer.innerHTML = `
+        <div style="padding:24px; text-align:center; background:rgba(0,0,0,0.25); border-radius:12px; border:1px dashed var(--border-subtle);">
+          <div style="font-size:24px; margin-bottom:6px;">📊</div>
+          <div style="font-size:13px; font-weight:700; color:var(--text-muted);">Henüz kilo / tartı kaydı bulunmuyor.</div>
+          <button type="button" class="btn-primary" style="margin-top:10px; font-size:12px; padding:6px 14px; border-radius:8px;" onclick="openAddStudentMetricModal(${memberId}, '${escapeJsString(memberName)}')">
+            + İlk Tartıyı Ekle
+          </button>
+        </div>
+      `;
+    }
+
+    // Render Collapsible & Paginated History Section
+    renderStudentMetricsHistory(history, memberId, memberName);
+
+  } catch (err) {
+    if (chartContainer) chartContainer.innerHTML = `<div style="color:var(--pulse-rose); padding:16px;">Gelişim verisi alınamadı: ${err.message}</div>`;
+  }
+}
+
+function renderStudentProgressChart(logs, chartCard) {
+  if (!chartCard || !logs || logs.length < 2) return;
+
+  const w = 480;
+  const h = 180;
+  const padL = 38;
+  const padR = 25;
+  const padT = 24;
+  const padB = 32;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  const sorted = [...logs].sort((a, b) => new Date(a.recordedAt) - new Date(b.recordedAt));
+  const weights = sorted.map(l => Number(l.weightKg));
+  const minW = Math.min(...weights) - 0.5;
+  const maxW = Math.max(...weights) + 0.5;
+  const range = (maxW - minW) || 1;
+
+  const points = sorted.map((l, i) => {
+    const x = padL + (i / (sorted.length - 1)) * plotW;
+    const y = padT + ((maxW - Number(l.weightKg)) / range) * plotH;
+    return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, log: l };
+  });
+
+  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaD = `${pathD} L ${points[points.length - 1].x} ${h - padB} L ${points[0].x} ${h - padB} Z`;
+
+  const firstDate = new Date(sorted[0].recordedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+  const lastDate = new Date(sorted[sorted.length - 1].recordedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+
+  const dotsSvg = points.map(p => {
+    const dStr = new Date(p.log.recordedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+    const tipText = `${dStr}: ${Number(p.log.weightKg).toFixed(1)} kg${p.log.notes ? ` (${p.log.notes})` : ''}`;
+    return `
+      <g class="chart-point" style="cursor:pointer;" onclick="showToast('${escapeJsString(tipText)}')">
+        <circle cx="${p.x}" cy="${p.y}" r="6" fill="#0E0E12" stroke="#CCFF00" stroke-width="2.5" />
+        <circle cx="${p.x}" cy="${p.y}" r="2.5" fill="#CCFF00" />
+        <title>${escapeHtml(tipText)}</title>
+      </g>
+    `;
+  }).join('');
+
+  chartCard.innerHTML = `
+    <div style="position:relative; width:100%; overflow:hidden; border-radius:12px; background:rgba(0,0,0,0.28); border:1px solid var(--border-subtle); padding:10px 8px 6px 8px; box-sizing:border-box;">
+      <svg viewBox="0 0 ${w} ${h}" style="width:100%; height:auto; display:block;" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="student-progress-area-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#CCFF00" stop-opacity="0.32" />
+            <stop offset="100%" stop-color="#CCFF00" stop-opacity="0.0" />
+          </linearGradient>
+        </defs>
+        <line x1="${padL}" y1="${padT}" x2="${w - padR}" y2="${padT}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
+        <line x1="${padL}" y1="${padT + plotH / 2}" x2="${w - padR}" y2="${padT + plotH / 2}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
+        <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="rgba(255,255,255,0.12)" />
+
+        <text x="${padL - 6}" y="${padT + 4}" fill="var(--text-muted)" font-size="9" text-anchor="end" font-weight="600">${Math.round(maxW)}k</text>
+        <text x="${padL - 6}" y="${h - padB + 3}" fill="var(--text-muted)" font-size="9" text-anchor="end" font-weight="600">${Math.round(minW)}k</text>
+
+        <path d="${areaD}" fill="url(#student-progress-area-grad)" />
+        <path d="${pathD}" fill="none" stroke="#CCFF00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+        ${dotsSvg}
+
+        <text x="${padL}" y="${h - 10}" fill="var(--text-muted)" font-size="10" font-weight="600">${firstDate}</text>
+        <text x="${w - padR}" y="${h - 10}" fill="var(--text-muted)" font-size="10" text-anchor="end" font-weight="600">${lastDate}</text>
+      </svg>
+    </div>
+  `;
+}
+
+function openAddStudentMetricModal(memberId, memberName) {
+  document.getElementById('add-log-member-id').value = memberId;
+  const nameEl = document.getElementById('add-student-log-member-name');
+  if (nameEl) nameEl.textContent = memberName;
+  document.getElementById('add-log-weight').value = '';
+  document.getElementById('add-log-bodyfat').value = '';
+  document.getElementById('add-log-muscle').value = '';
+  document.getElementById('add-log-notes').value = '';
+  document.getElementById('add-log-date').value = new Date().toISOString().split('T')[0];
+  openModal('modal-add-student-log');
+}
+
+async function handleSaveStudentMetricLog(e) {
+  e.preventDefault();
+  const memberId = document.getElementById('add-log-member-id').value;
+  const weight = parseFloat(document.getElementById('add-log-weight').value);
+  const bodyFat = document.getElementById('add-log-bodyfat').value ? parseFloat(document.getElementById('add-log-bodyfat').value) : null;
+  const muscle = document.getElementById('add-log-muscle').value ? parseFloat(document.getElementById('add-log-muscle').value) : null;
+  const dateStr = document.getElementById('add-log-date').value;
+  const notes = document.getElementById('add-log-notes').value.trim() || null;
+
+  if (!memberId || isNaN(weight)) {
+    showToast('Lütfen geçerli bir kilo değeri girin.', 'error');
+    return;
+  }
+
+  try {
+    await Api.addMemberMetricLog(memberId, {
+      weightKg: weight,
+      bodyFatPercentage: bodyFat,
+      muscleMassKg: muscle,
+      recordedAt: dateStr ? new Date(dateStr).toISOString() : new Date().toISOString(),
+      notes: notes
+    });
+
+    showToast('Ölçüm ve tartı kaydı başarıyla eklendi! ⚖️', 'success');
+    closeModal('modal-add-student-log');
+
+    // If student progress drawer is open, refresh it!
+    const memberName = document.getElementById('add-student-log-member-name')?.textContent || '';
+    if (document.getElementById('modal-student-progress')?.classList.contains('open')) {
+      openStudentProgressDrawer(memberId, memberName);
+    }
+  } catch (err) {
+    showToast(`Ölçüm kaydedilemedi: ${err.message}`, 'error');
+  }
+}
+
+
+// ==================== STUDENT METRICS HISTORY (COLLAPSIBLE & PAGINATED) ====================
+let cachedStudentMetricLogs = [];
+let cachedStudentMemberId = null;
+let cachedStudentMemberName = '';
+let currentStudentMetricPage = 1;
+let isStudentMetricsHistoryOpen = false;
+const STUDENT_METRIC_PAGE_SIZE = 3;
+
+function toggleStudentMetricsHistory() {
+  isStudentMetricsHistoryOpen = !isStudentMetricsHistoryOpen;
+  renderStudentMetricsHistory(cachedStudentMetricLogs, cachedStudentMemberId, cachedStudentMemberName);
+}
+
+function changeStudentMetricPage(newPage) {
+  currentStudentMetricPage = newPage;
+  renderStudentMetricsHistory(cachedStudentMetricLogs, cachedStudentMemberId, cachedStudentMemberName);
+}
+
+async function handleDeleteStudentMetric(memberId, logId) {
+  if (!confirm('Bu tartı kaydını silmek istediğinizden emin misiniz?')) return;
+  try {
+    await Api.deleteMemberMetricLog(memberId, logId);
+    showToast('Ölçüm kaydı silindi.', 'info');
+    openStudentProgressDrawer(memberId, cachedStudentMemberName);
+  } catch (err) {
+    showToast(`Kayıt silinemedi: ${err.message}`, 'error');
+  }
+}
+
+function renderStudentMetricsHistory(logs, memberId, memberName) {
+  cachedStudentMetricLogs = logs || [];
+  cachedStudentMemberId = memberId;
+  if (memberName) cachedStudentMemberName = memberName;
+
+  const historyCard = document.getElementById('student-metrics-history-section');
+  if (!historyCard) return;
+
+  const totalItems = cachedStudentMetricLogs.length;
+  if (totalItems === 0) {
+    historyCard.innerHTML = `
+      <div style="padding:14px 12px; background:rgba(0,0,0,0.22); border-radius:12px; border:1px dashed var(--border-subtle); text-align:center;">
+        <span style="font-size:12px; color:var(--text-muted);">Henüz ölçüm & tartı kaydı bulunmuyor.</span>
+      </div>
+    `;
+    return;
+  }
+
+  // Sorted reverse chronological (newest first)
+  const sorted = [...cachedStudentMetricLogs].sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt));
+  const totalPages = Math.max(1, Math.ceil(totalItems / STUDENT_METRIC_PAGE_SIZE));
+  if (currentStudentMetricPage > totalPages) currentStudentMetricPage = totalPages;
+  if (currentStudentMetricPage < 1) currentStudentMetricPage = 1;
+
+  const startIdx = (currentStudentMetricPage - 1) * STUDENT_METRIC_PAGE_SIZE;
+  const pageItems = sorted.slice(startIdx, startIdx + STUDENT_METRIC_PAGE_SIZE);
+
+  const itemsHtml = pageItems.map((log, idx) => {
+    const globalIdx = startIdx + idx;
+    const dStr = new Date(log.recordedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    // Compare with the one right after in reverse array (which was prior in time)
+    const prevItem = sorted[globalIdx + 1];
+    let diffBadge = '';
+    if (prevItem) {
+      const diff = Number(log.weightKg) - Number(prevItem.weightKg);
+      if (diff < 0) {
+        diffBadge = `<span style="font-size:10.5px; font-weight:800; color:#10B981; background:rgba(16,185,129,0.14); padding:1px 6px; border-radius:6px; border:1px solid rgba(16,185,129,0.25);">▼ ${Math.abs(diff).toFixed(1)} kg</span>`;
+      } else if (diff > 0) {
+        diffBadge = `<span style="font-size:10.5px; font-weight:800; color:#F59E0B; background:rgba(245,158,11,0.14); padding:1px 6px; border-radius:6px; border:1px solid rgba(245,158,11,0.25);">▲ +${diff.toFixed(1)} kg</span>`;
+      } else {
+        diffBadge = `<span style="font-size:10px; color:var(--text-muted); background:var(--bg-surface-elevated); padding:1px 6px; border-radius:6px;">0.0 kg</span>`;
+      }
+    }
+
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:var(--bg-surface-elevated); border-radius:10px; border:1px solid var(--border-subtle);">
+        <div>
+          <div style="font-size:13px; font-weight:800; color:var(--text-primary); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span>${Number(log.weightKg).toFixed(1)} kg</span>
+            ${diffBadge}
+            ${log.bodyFatPercentage ? `<span style="font-size:10.5px; color:var(--cyber-cyan); font-weight:600;">%${log.bodyFatPercentage} Yağ</span>` : ''}
+            ${log.muscleMassKg ? `<span style="font-size:10.5px; color:var(--volt-lime); font-weight:600;">${log.muscleMassKg}kg Kas</span>` : ''}
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:3px; display:flex; align-items:center; gap:6px;">
+            <span>📅 ${dStr}</span>
+            ${log.notes ? `<span>· 📝 <em>${escapeHtml(log.notes)}</em></span>` : ''}
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" class="btn-icon-subtle" onclick="handleDeleteStudentMetric(${memberId}, ${log.id})" title="Bu ölçüm kaydını sil" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:13px; padding:6px; border-radius:6px; opacity:0.75; transition:opacity 0.2s ease;">
+            🗑️
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const paginationHtml = totalPages > 1 ? `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:10px; border-top:1px solid var(--border-subtle);">
+      <button type="button" class="res-page-btn" ${currentStudentMetricPage === 1 ? 'disabled' : ''} style="background:var(--bg-surface-elevated); border:1px solid var(--border-medium); color:var(--text-primary); font-size:11px; font-weight:800; padding:5px 12px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; ${currentStudentMetricPage === 1 ? 'opacity:0.3; cursor:not-allowed; border-color:transparent; background:rgba(255,255,255,0.02); color:var(--text-muted);' : ''}" onclick="changeStudentMetricPage(${currentStudentMetricPage - 1})">
+        <span>◀</span> Önceki
+      </button>
+      <div style="font-size:10.5px; font-weight:800; color:var(--volt-lime); background:var(--volt-lime-muted); padding:3px 10px; border-radius:999px; border:1px solid rgba(204,255,0,0.25); display:inline-flex; align-items:center; gap:4px;">
+        <span>Sayfa</span>
+        <strong style="color:var(--text-primary); font-size:11px;">${currentStudentMetricPage}</strong>
+        <span style="color:var(--text-muted);">/</span>
+        <span style="color:var(--text-secondary);">${totalPages}</span>
+      </div>
+      <button type="button" class="res-page-btn" ${currentStudentMetricPage === totalPages ? 'disabled' : ''} style="background:var(--bg-surface-elevated); border:1px solid var(--border-medium); color:var(--text-primary); font-size:11px; font-weight:800; padding:5px 12px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; ${currentStudentMetricPage === totalPages ? 'opacity:0.3; cursor:not-allowed; border-color:transparent; background:rgba(255,255,255,0.02); color:var(--text-muted);' : ''}" onclick="changeStudentMetricPage(${currentStudentMetricPage + 1})">
+        Sonraki <span>▶</span>
+      </button>
+    </div>
+  ` : '';
+
+  historyCard.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:12px; transition:background 0.2s ease;" onclick="toggleStudentMetricsHistory()">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:14px;">📋</span>
+        <span style="font-size:12px; font-weight:800; color:var(--text-primary); text-transform:uppercase; letter-spacing:0.03em;">
+          Ölçüm & Tartı Geçmişi
+        </span>
+        <span style="font-size:10px; font-weight:800; color:var(--volt-lime); background:var(--volt-lime-muted); padding:2px 8px; border-radius:999px; border:1px solid rgba(204,255,0,0.25);">
+          ${totalItems} Kayıt
+        </span>
+      </div>
+      <button type="button" style="background:var(--bg-surface-elevated); border:1px solid var(--border-medium); color:var(--text-secondary); font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; pointer-events:none;">
+        <span>${isStudentMetricsHistoryOpen ? 'Gizle' : 'Görüntüle'}</span>
+        <span style="transition:transform 0.2s ease; display:inline-block; transform:${isStudentMetricsHistoryOpen ? 'rotate(180deg)' : 'rotate(0deg)'};">▾</span>
+      </button>
+    </div>
+
+    ${isStudentMetricsHistoryOpen ? `
+      <div class="animate-fade-in" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+        ${itemsHtml}
+        ${paginationHtml}
+      </div>
+    ` : ''}
+  `;
+}
 
 function getRoleBadgeHtml(role) {
   const r = (role || '').trim();
@@ -1111,6 +2371,16 @@ async function loadCalendarView(year, month) {
   const statsDiv = document.getElementById('cal-month-stats');
   if (!grid) return;
 
+  const d = new Date();
+  if (typeof year !== 'number' || isNaN(year) || year <= 0) {
+    year = calYear || d.getFullYear();
+  }
+  if (typeof month !== 'number' || isNaN(month) || month < 1 || month > 12) {
+    month = calMonth || (d.getMonth() + 1);
+  }
+  calYear = year;
+  calMonth = month;
+
   grid.innerHTML = '<div style="grid-column: 1 / -1; padding: 48px; text-align: center; color: var(--text-muted);">Takvim yükleniyor...</div>';
 
   try {
@@ -1420,6 +2690,10 @@ window.handleSaveMemberNotes = async function(e) {
       await loadAttendanceView();
     } else if (currentTab === 'uyeler') {
       await loadMembersView();
+    }
+    if (document.getElementById('modal-student-progress')?.classList.contains('open')) {
+      const name = document.getElementById('student-progress-name')?.textContent || '';
+      openStudentProgressDrawer(memberId, name);
     }
   } catch (err) {
     showToast(`Not kaydedilemedi: ${err.message}`, 'error');
@@ -1857,6 +3131,17 @@ window.handleStaffUnfreezeSub = async function(subId, memberName) {
 
 window.switchDashboardSubTab = switchDashboardSubTab;
 window.loadAttendanceView = loadAttendanceView;
+window.switchAttendanceDayScope = switchAttendanceDayScope;
+window.filterSessionAttendees = filterSessionAttendees;
+window.handleQuickSessionAttendance = handleQuickSessionAttendance;
+window.handleMarkAllSessionAttended = handleMarkAllSessionAttended;
+window.openSessionWodNoteModal = openSessionWodNoteModal;
+window.handleWodTemplateSelectChange = handleWodTemplateSelectChange;
+window.handleSaveSessionWodNote = handleSaveSessionWodNote;
+window.openAddMemberToSessionModal = openAddMemberToSessionModal;
+window.handleSaveAddMemberToSession = handleSaveAddMemberToSession;
+window.openAttendeeMicroNoteModal = openAttendeeMicroNoteModal;
+window.handleSaveAttendeeMicroNote = handleSaveAttendeeMicroNote;
 window.renderCapacityWeekStrip = renderCapacityWeekStrip;
 window.loadCapacitySlots = loadCapacitySlots;
 window.renderCapacitySlots = renderCapacitySlots;
@@ -1874,12 +3159,31 @@ window.renderPackagesTable = renderPackagesTable;
 window.loadCalendarView = loadCalendarView;
 window.renderCalendarGrid = renderCalendarGrid;
 window.openScheduleModal = openScheduleSessionModal;
+window.renderStudentCards = renderStudentCards;
+window.filterStudentsList = filterStudentsList;
+window.openStudentProgressDrawer = openStudentProgressDrawer;
+window.openAddStudentMetricModal = openAddStudentMetricModal;
+window.handleSaveStudentMetricLog = handleSaveStudentMetricLog;
+window.renderStudentMetricsHistory = renderStudentMetricsHistory;
+window.toggleStudentMetricsHistory = toggleStudentMetricsHistory;
+window.changeStudentMetricPage = changeStudentMetricPage;
+window.handleDeleteStudentMetric = handleDeleteStudentMetric;
 
 export {
   switchDashboardSubTab,
-  loadAttendanceView, renderCapacityWeekStrip, loadCapacitySlots, renderCapacitySlots,
+  loadAttendanceView, switchAttendanceDayScope, filterSessionAttendees,
+  handleQuickSessionAttendance, handleMarkAllSessionAttended,
+  openSessionWodNoteModal, handleWodTemplateSelectChange, handleSaveSessionWodNote,
+  openAddMemberToSessionModal, handleSaveAddMemberToSession,
+  openAttendeeMicroNoteModal, handleSaveAttendeeMicroNote,
+  renderCapacityWeekStrip, loadCapacitySlots, renderCapacitySlots,
   applyAttendanceFilter, renderAttendanceList, loadDashboardView, renderMembersTable,
   loadMembersView, getRoleBadgeHtml, loadKasaView, loadMyEarningsView,
   loadTrainers, renderTrainersTable, updateTrainerSelects, loadPackagesAdmin,
-  renderPackagesTable, loadCalendarView, renderCalendarGrid
+  renderPackagesTable, loadCalendarView, renderCalendarGrid,
+  renderStudentCards, filterStudentsList, openStudentProgressDrawer,
+  openAddStudentMetricModal, handleSaveStudentMetricLog,
+  renderStudentMetricsHistory, toggleStudentMetricsHistory,
+  changeStudentMetricPage, handleDeleteStudentMetric
 };
+

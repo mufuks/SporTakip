@@ -153,3 +153,105 @@
       </form>
     </div>
   </div>
+
+  <!-- 3. Seans WOD / Günün Hareketleri Not Modalı -->
+  <div class="modal-backdrop" id="modal-session-wod-note">
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="display:flex; align-items:center; gap:8px;"><span>📝</span> Günün İdmanı / Hareketler</h3>
+          <span class="text-volt" style="font-weight:700; font-size:12.5px;" id="wod-note-session-subtitle">Seans İdman Notu</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-session-wod-note')">✕</button>
+      </div>
+      <form id="session-wod-note-form" onsubmit="handleSaveSessionWodNote(event)">
+        <input type="hidden" id="wod-note-session-id">
+
+        <div class="form-group">
+          <label style="font-size:12px; font-weight:700; color:var(--text-secondary); display:flex; justify-content:space-between;">
+            <span>Hazır WOD Şablonu (İsteğe Bağlı)</span>
+            <span style="color:var(--volt-lime); font-size:11px;">Otomatik Doldur</span>
+          </label>
+          <select id="wod-note-template-select" class="form-control" onchange="handleWodTemplateSelectChange(this.value)">
+            <option value="">— Serbest İdman / Şablon Seçilmedi —</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size:12px; font-weight:700; color:var(--text-secondary);">
+            Günün Hareketleri & Notlar *
+          </label>
+          <textarea id="wod-note-textarea" class="form-control" rows="5" style="resize:vertical; font-family:var(--font-mono, monospace); font-size:12.5px; line-height:1.4;" placeholder="Örn:&#10;1. Back Squat 4x8 (RPE 8)&#10;2. Kettlebell Swing 3x15 @ 24kg&#10;3. AMRAP 6': 10 Burpee, 15 Sit-up" required></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-session-wod-note')">Vazgeç</button>
+          <button type="submit" class="btn-primary">💾 Notu Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. Seansa Sporcu Ekleme (Plansız Giriş / Walk-in) Modalı -->
+  <div class="modal-backdrop" id="modal-session-add-attendee">
+    <div class="modal-content" style="max-width:440px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="display:flex; align-items:center; gap:8px;"><span>⚡</span> Seansa Sporcu Ekle</h3>
+          <span class="text-volt" style="font-weight:700; font-size:12.5px;" id="add-attendee-session-subtitle">Hızlı Katılım</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-session-add-attendee')">✕</button>
+      </div>
+      <form id="session-add-attendee-form" onsubmit="handleSaveAddMemberToSession(event)">
+        <input type="hidden" id="add-attendee-session-id">
+
+        <div class="form-group">
+          <label style="font-size:12px; font-weight:700; color:var(--text-secondary);">Aktif Üye Seçin *</label>
+          <select id="add-attendee-sub-select" class="form-control" required>
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-top:10px;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-secondary); display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="add-attendee-auto-checkin" checked style="accent-color:var(--volt-lime); width:16px; height:16px;">
+            <span>Eklendiğinde yoklamasını doğrudan <strong>"GELDI"</strong> say</span>
+          </label>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-session-add-attendee')">Vazgeç</button>
+          <button type="submit" class="btn-primary">✓ Seansa Dahil Et</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. Sporcuya Özel İdman / Form Notu Modalı -->
+  <div class="modal-backdrop" id="modal-attendee-micro-note">
+    <div class="modal-content" style="max-width:420px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="display:flex; align-items:center; gap:8px;"><span>💬</span> Sporcu İdman Notu</h3>
+          <span class="text-volt" style="font-weight:700; font-size:12.5px;" id="attendee-note-modal-subtitle">Ders Notu</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-attendee-micro-note')">✕</button>
+      </div>
+      <form id="attendee-micro-note-form" onsubmit="handleSaveAttendeeMicroNote(event)">
+        <input type="hidden" id="attendee-note-sub-id">
+        <input type="hidden" id="attendee-note-res-id">
+
+        <div class="form-group">
+          <label style="font-size:12px; font-weight:700; color:var(--text-secondary);">
+            Antrenman, Form veya Ağırlık Notu
+          </label>
+          <textarea id="attendee-note-textarea" class="form-control" rows="3" placeholder="Örn: Sol omuzda hafif ağrı vardı, dambıl 10kg ile çalıştı. Squat 85kg PR yaptı!" required></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn-secondary" onclick="closeModal('modal-attendee-micro-note')">Vazgeç</button>
+          <button type="submit" class="btn-primary">💾 Notu Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>

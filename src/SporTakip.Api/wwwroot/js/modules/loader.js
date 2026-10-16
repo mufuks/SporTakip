@@ -2,10 +2,11 @@
 const partialCache = new Map();
 
 export async function fetchPartial(url) {
-  if (partialCache.has(url)) {
+  if (partialCache.has(url) && !window.location.search.includes('reload')) {
     return partialCache.get(url);
   }
-  const cacheBustUrl = url.includes('?') ? url : `${url}?v=3.6.0`;
+  const sep = url.includes('?') ? '&' : '?';
+  const cacheBustUrl = `${url}${sep}v=3.8.8&_t=${Date.now()}`;
   const res = await fetch(cacheBustUrl);
   if (!res.ok) {
     throw new Error(`Kısmi HTML yüklenemedi: ${url} (${res.status})`);
@@ -32,6 +33,12 @@ export const viewRoutes = {
 export async function ensureViewLoaded(tabName) {
   const route = viewRoutes[tabName];
   if (!route) return null;
+
+  if (window.location.search.includes('reload')) {
+    const existing = document.getElementById(route.id);
+    if (existing) existing.remove();
+    partialCache.delete(route.file);
+  }
 
   let el = document.getElementById(route.id);
   if (el && (tabName !== 'workout' || el.querySelector('#progress-summary-card'))) return el;
@@ -75,7 +82,12 @@ export async function preloadModals() {
       while (temp.firstElementChild) {
         const child = temp.firstElementChild;
         if (child.id && document.getElementById(child.id)) {
-          child.remove();
+          if (window.location.search.includes('reload')) {
+            document.getElementById(child.id).remove();
+            container.appendChild(child);
+          } else {
+            child.remove();
+          }
         } else {
           container.appendChild(child);
         }

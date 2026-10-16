@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>PWA Cache Reset</title>
+</head>
+<body style="background:#090b10; color:#CCFF00; font-family:sans-serif; padding:40px; text-align:center;">
+  <h2>🧹 Önbellek ve Eski Servis Çalışanı Temizleniyor...</h2>
+  <div id="log" style="color:#aaa; font-size:14px; margin-top:20px;">İşlem başladı...</div>
+
+  <script>
+    (async function() {
+      const log = document.getElementById('log');
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const r of regs) {
+            await r.unregister();
+            log.innerHTML += '<br>✓ ServiceWorker kaldırıldı: ' + r.scope;
+          }
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (const k of keys) {
+            await caches.delete(k);
+            log.innerHTML += '<br>✓ Önbellek silindi: ' + k;
+          }
+        }
+        sessionStorage.clear();
+        log.innerHTML += '<br><strong style="color:#10B981;">Tamamlandı! Yoklama ekranına yönlendiriliyor...</strong>';
+        setTimeout(() => {
+          window.location.replace('/?reload=true&tab=yoklama&_t=' + Date.now());
+        }, 600);
+      } catch (err) {
+        log.innerHTML += '<br><strong style="color:#ef4444;">Hata: ' + err.message + '</strong>';
+      }
+    })();
+  </script>
+</body>
+</html>

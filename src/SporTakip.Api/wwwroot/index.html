@@ -15,6 +15,14 @@
       } catch (e) {
         document.documentElement.setAttribute('data-theme', 'dark');
       }
+      window.openOtpDrawer = window.openOtpDrawer || function() {
+        var d = document.getElementById('v0-otp-drawer');
+        if (d) d.classList.add('open');
+      };
+      window.closeOtpDrawer = window.closeOtpDrawer || function() {
+        var d = document.getElementById('v0-otp-drawer');
+        if (d) d.classList.remove('open');
+      };
     })();
   </script>
 
@@ -29,7 +37,7 @@
   <meta name="apple-mobile-web-app-title" content="SporTakip">
   
   <!-- CSS -->
-  <link rel="stylesheet" href="/css/app.css?v=3.7.8">
+  <link rel="stylesheet" href="/css/app.css?v=3.8.8">
 
   <!-- Immediate Critical Guest Mode Styles (Ensures header and bottom nav are 100% hidden on frame 0) -->
   <style>
@@ -156,6 +164,10 @@
       transition: all 0.2s ease !important;
     }
 
+    .v0-nav-btn * {
+      pointer-events: none !important;
+    }
+
     .v0-nav-btn[style*="display: none"],
     .v0-nav-btn[style*="display:none"] {
       display: none !important;
@@ -262,6 +274,12 @@
         <!-- 2. Salon Masası Sekmeleri (Sadece staff modunda görünür) -->
         <button type="button" class="v0-desk-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="yoklama" id="nav-btn-yoklama" style="display:none;" onclick="navigateTo('yoklama')">
           <span>📋</span> Seans & Yoklama
+        </button>
+        <button type="button" class="v0-desk-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="takvim" id="nav-btn-takvim" style="display:none;" onclick="navigateTo('takvim')">
+          <span>📅</span> Seans Takvimi
+        </button>
+        <button type="button" class="v0-desk-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="uyeler" id="nav-btn-uyeler" style="display:none;" onclick="navigateTo('uyeler')">
+          <span>👥</span> Öğrencilerim
         </button>
         <button type="button" class="v0-desk-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="hakedisim" id="nav-btn-hakedisim" style="display:none;" onclick="navigateTo('hakedisim')">
           <span>💵</span> Kazancım
@@ -472,6 +490,14 @@
           <span class="v0-nav-icon">📋</span>
           <span class="v0-nav-label">Yoklama</span>
         </button>
+        <button type="button" class="v0-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="takvim" id="mob-btn-takvim" style="display:none;" onclick="navigateTo('takvim')">
+          <span class="v0-nav-icon">📅</span>
+          <span class="v0-nav-label">Takvim</span>
+        </button>
+        <button type="button" class="v0-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="uyeler" id="mob-btn-uyeler" style="display:none;" onclick="navigateTo('uyeler')">
+          <span class="v0-nav-icon">👥</span>
+          <span class="v0-nav-label">Öğrenciler</span>
+        </button>
         <button type="button" class="v0-nav-btn nav-staff-item staff-tab" data-mode="staff" data-tab="hakedisim" id="mob-btn-hakedisim" style="display:none;" onclick="navigateTo('hakedisim')">
           <span class="v0-nav-icon">💵</span>
           <span class="v0-nav-label">Kazancım</span>
@@ -554,7 +580,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Javascript -->
-  <script type="module" src="/js/app.js?v=3.7.8"></script>
+  <script type="module" src="/js/app.js?v=3.8.8"></script>
 </body>
 </html>
 

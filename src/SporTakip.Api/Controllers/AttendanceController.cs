@@ -65,14 +65,11 @@ public class AttendanceController(GymService gymService) : ControllerBase
 
     [HttpGet("calendar-month")]
     [Authorize]
-    public async Task<ActionResult<MonthCalendarDto>> GetMonthCalendar([FromQuery] int? year, [FromQuery] int? month, CancellationToken ct)
+    public async Task<ActionResult<MonthCalendarDto>> GetMonthCalendar([FromQuery] string? year, [FromQuery] string? month, CancellationToken ct)
     {
         var now = DateTime.UtcNow;
-        int targetYear = year ?? now.Year;
-        int targetMonth = month ?? now.Month;
-
-        if (targetMonth < 1 || targetMonth > 12)
-            return BadRequest(new { error = "Geçersiz ay parametresi." });
+        int targetYear = int.TryParse(year, out var y) && y > 1900 && y < 3000 ? y : now.Year;
+        int targetMonth = int.TryParse(month, out var m) && m >= 1 && m <= 12 ? m : now.Month;
 
         var calendar = await gymService.GetMonthlyCalendarAsync(targetYear, targetMonth, ct);
         return Ok(calendar);

@@ -600,8 +600,12 @@ h1, h2, h3, h4, .brand-title {
 /* ==================== ATTENDEE CARDS (HEVY-INSPIRED) ==================== */
 .attendance-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 @media (min-width: 640px) {
@@ -622,6 +626,10 @@ h1, h2, h3, h4, .brand-title {
   position: relative;
   box-shadow: var(--shadow-card);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .attendee-card:hover {
@@ -656,6 +664,15 @@ h1, h2, h3, h4, .brand-title {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.card-top > div:first-child {
+  min-width: 0;
+  flex: 1;
 }
 
 .member-name {
@@ -663,6 +680,8 @@ h1, h2, h3, h4, .brand-title {
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.02em;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .package-name {
@@ -692,10 +711,13 @@ h1, h2, h3, h4, .brand-title {
   display: flex;
   gap: 4px;
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .segment {
   flex: 1;
+  min-width: 0;
   height: 6px;
   background: var(--border-medium);
   border-radius: var(--radius-full);
@@ -797,6 +819,7 @@ h1, h2, h3, h4, .brand-title {
   white-space: nowrap;
   letter-spacing: 0.02em;
   line-height: 1.25;
+  flex-shrink: 0;
 }
 
 .badge-green { 
@@ -848,6 +871,8 @@ h1, h2, h3, h4, .brand-title {
 /* High-Impact Punchy Action Buttons */
 .touch-btn {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 15px 18px;
   border: none;
   border-radius: var(--radius-md);
@@ -893,13 +918,19 @@ h1, h2, h3, h4, .brand-title {
   box-shadow: 0 8px 28px -2px rgba(204, 255, 0, 0.5);
 }
 
-.card-actions-extra {
+.card-actions-extra,
+.attendee-actions-secondary {
   display: flex;
   gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .action-btn-sm {
   flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 9px 12px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -1255,6 +1286,149 @@ table.custom-table tr:hover td {
   background: linear-gradient(180deg, rgba(204, 255, 0, 0.03) 0%, rgba(17, 21, 31, 0.95) 100%);
 }
 
+.capacity-slots-strip {
+  display: flex !important;
+  gap: 8px !important;
+  overflow-x: auto !important;
+  padding-bottom: 6px !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  grid-template-columns: none !important;
+}
+
+.capacity-slots-strip::-webkit-scrollbar {
+  display: none !important;
+}
+
+.capacity-slot-pill {
+  flex: 0 0 auto;
+  user-select: none;
+}
+
+.capacity-slot-pill:hover {
+  border-color: rgba(204, 255, 0, 0.4) !important;
+}
+
+.capacity-slot-pill.active {
+  background: rgba(204, 255, 0, 0.18) !important;
+  border-color: #CCFF00 !important;
+  box-shadow: 0 0 12px rgba(204, 255, 0, 0.28);
+}
+
+/* ==================== Option A: Live Floor Sessions & Day Scope ==================== */
+.day-scope-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.day-scope-btn {
+  flex: 1;
+  min-height: 42px;
+  border-radius: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-weight: 800;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.day-scope-btn:active {
+  transform: scale(0.98);
+}
+
+.day-scope-btn.active {
+  background: rgba(204, 255, 0, 0.14) !important;
+  border-color: var(--volt-lime) !important;
+  color: var(--volt-lime) !important;
+  box-shadow: 0 0 14px rgba(204, 255, 0, 0.22);
+}
+
+.sessions-feed-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.session-feed-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.session-feed-card.ongoing {
+  border-color: rgba(204, 255, 0, 0.45);
+  box-shadow: 0 0 18px rgba(204, 255, 0, 0.15);
+}
+
+.session-feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.session-feed-time-badge {
+  background: rgba(204, 255, 0, 0.14);
+  color: var(--volt-lime);
+  border: 1px solid rgba(204, 255, 0, 0.3);
+  font-weight: 800;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.session-wod-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.session-attendee-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.session-attendee-card.attended {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.session-attendee-card.missed {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.05);
+}
+
 .capacity-slots-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
@@ -1584,6 +1758,9 @@ table.custom-table tr:hover td {
   padding: 6px 10px;
   border-radius: var(--radius-xs);
   font-size: 12px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .coach-picker-box select {
@@ -1595,6 +1772,11 @@ table.custom-table tr:hover td {
   outline: none;
   cursor: pointer;
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .coach-picker-box select option {
@@ -2420,8 +2602,8 @@ table.custom-table tr:hover td {
 @media (max-width: 640px) {
   .v0-app-header {
     flex-wrap: wrap !important;
-    row-gap: 8px !important;
-    padding: 10px 14px 10px 14px !important;
+    row-gap: 6px !important;
+    padding: 8px 12px 6px 12px !important;
   }
   .v0-header-left {
     order: 1 !important;
@@ -2429,7 +2611,7 @@ table.custom-table tr:hover td {
     gap: 8px !important;
   }
   .v0-desktop-brand-title {
-    font-size: 15px !important;
+    font-size: 14px !important;
   }
   .v0-desktop-brand-sub {
     display: none !important;
@@ -2443,8 +2625,8 @@ table.custom-table tr:hover td {
     order: 3 !important;
     width: 100% !important;
     display: flex;
-    padding: 3px !important;
-    margin-top: 2px !important;
+    padding: 2px !important;
+    margin-top: 1px !important;
     box-sizing: border-box !important;
   }
   .v0-mode-switcher[style*="display: none"],
@@ -2454,10 +2636,10 @@ table.custom-table tr:hover td {
   .v0-mode-btn {
     flex: 1 !important;
     justify-content: center !important;
-    padding: 6px 12px !important;
-    font-size: 11.5px !important;
+    padding: 5px 10px !important;
+    font-size: 11px !important;
     text-align: center !important;
-    gap: 5px !important;
+    gap: 4px !important;
   }
   .v0-header-user-pill {
     display: none !important;
@@ -3882,6 +4064,9 @@ table.custom-table tr:hover td {
   padding: 7px 10px;
   margin: 4px 0;
   transition: all 0.2s ease;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .v0-injury-badge-wrap.no-notes {
@@ -3896,13 +4081,27 @@ table.custom-table tr:hover td {
 
 .v0-injury-badge-content {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   font-size: 12px;
   color: var(--flame-orange);
   font-weight: 600;
   line-height: 1.35;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.v0-injury-badge-content > span:first-child {
+  flex-shrink: 0;
+  line-height: 1.35;
+}
+
+.v0-injury-badge-content span:last-child,
+.v0-injury-badge-text {
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .v0-injury-badge-wrap.no-notes .v0-injury-badge-content {
@@ -3921,9 +4120,12 @@ table.custom-table tr:hover td {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
+  margin-top: 1px;
   gap: 3px;
   transition: all 0.15s ease;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .v0-injury-edit-btn:hover {
@@ -4218,19 +4420,62 @@ table.custom-table tr:hover td {
 
   /* 6. Attendance Floor Cards (Hızlı Yoklama) */
   .attendance-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .attendee-card {
     padding: 14px !important;
     border-radius: 16px !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
   .touch-btn.btn-attend {
     min-height: 46px !important;
     font-size: 13px !important;
     font-weight: 800 !important;
+    padding: 12px 14px !important;
+    box-sizing: border-box !important;
+  }
+
+  .touch-btn.already-attended {
+    padding: 10px 8px !important;
+    font-size: 12px !important;
+    box-sizing: border-box !important;
+    text-align: center;
+    justify-content: center;
+    word-break: break-word;
+  }
+
+  .attendee-actions-secondary {
+    display: flex !important;
+    gap: 6px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .attendee-actions-secondary .action-btn-sm {
+    padding: 8px 4px !important;
+    font-size: 11px !important;
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    box-sizing: border-box !important;
+  }
+
+  .lesson-badge {
+    font-size: 11px !important;
+    padding: 3px 8px !important;
   }
 
   /* 7. KPI / Stats Grids on Mobile */
@@ -5463,6 +5708,570 @@ body:has(.is-guest-mode) {
   color: var(--text-primary);
   border-color: var(--border-medium);
 }
+
+/* ==================== ATTENDEE COLLAPSIBLE CARD ==================== */
+.attendee-card.collapsed {
+  padding: 12px 14px !important;
+  gap: 0 !important;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.attendee-card.collapsed .attendee-card-details {
+  display: none !important;
+}
+
+.attendee-card-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  cursor: pointer;
+  user-select: none;
+}
+
+.attendee-summary-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.attendee-status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.attendee-status-indicator.status-attended {
+  background: var(--volt-lime);
+  box-shadow: 0 0 8px var(--volt-lime-glow);
+}
+
+.attendee-status-indicator.status-missed {
+  background: var(--pulse-rose);
+  box-shadow: 0 0 8px rgba(255, 69, 58, 0.4);
+}
+
+.attendee-status-indicator.status-excused {
+  background: var(--cyber-cyan);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+.attendee-status-indicator.status-pending {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.attendee-summary-names {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.attendee-summary-names .member-name {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.attendee-summary-names .member-name.clickable-name {
+  cursor: pointer;
+}
+
+.attendee-summary-names .member-name.clickable-name:hover {
+  color: var(--volt-lime);
+}
+
+.student-profile-link-icon {
+  font-size: 12px;
+  opacity: 0.8;
+  transition: transform 0.15s ease;
+}
+
+.clickable-name:hover .student-profile-link-icon {
+  transform: scale(1.25);
+}
+
+.attendee-summary-names .package-name {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attendee-summary-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.summary-injury-badge {
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(255, 69, 58, 0.15);
+  border: 1px solid rgba(255, 69, 58, 0.3);
+}
+
+.attendee-chevron {
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+.attendee-card:not(.collapsed) .attendee-chevron {
+  transform: rotate(180deg);
+}
+
+.attendee-card:not(.collapsed) .attendee-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+/* ==================== COACH STUDENT HUB & CARDS ==================== */
+.student-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.student-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+}
+
+.student-card:hover {
+  border-color: var(--volt-lime);
+  transform: translateY(-2px);
+}
+
+.student-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.student-card-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.student-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(204, 255, 0, 0.15), rgba(56, 189, 248, 0.15));
+  border: 1px solid rgba(204, 255, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.student-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.student-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-phone {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.student-card-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.student-card-actions .btn-sm {
+  height: 36px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+@media (max-width: 768px) {
+  .desktop-only-table {
+    display: none !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .student-cards-grid {
+    display: none;
+  }
+  .desktop-only-table {
+    display: block;
+  }
+}
+
+/* ==================== OPTION A: LIVE FLOOR SESSIONS FEED & WOD STYLES ==================== */
+.day-scope-selector {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.day-scope-btn {
+  flex: 1;
+  height: 46px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.day-scope-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.day-scope-btn.active {
+  background: rgba(204, 255, 0, 0.12) !important;
+  border-color: var(--volt-lime) !important;
+  color: var(--volt-lime) !important;
+  font-weight: 800;
+  box-shadow: 0 0 16px rgba(204, 255, 0, 0.18);
+}
+
+.sessions-feed-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 24px;
+  box-sizing: border-box;
+}
+
+.session-feed-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.session-feed-card:hover {
+  border-color: rgba(204, 255, 0, 0.3);
+}
+
+.session-feed-card.completed {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(16, 185, 129, 0.03) 100%);
+}
+
+.session-feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.session-feed-time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: rgba(204, 255, 0, 0.12);
+  border: 1px solid rgba(204, 255, 0, 0.25);
+  color: var(--volt-lime);
+  font-size: 13px;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+  flex-shrink: 0;
+}
+
+.session-feed-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+
+.session-feed-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.session-feed-trainer {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.session-feed-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.session-feed-actions .btn-sm {
+  height: 34px;
+  padding: 0 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* WOD Card */
+.session-wod-card {
+  background: linear-gradient(135deg, rgba(204, 255, 0, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px dashed rgba(204, 255, 0, 0.28);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.session-wod-card:hover {
+  border-color: var(--volt-lime);
+  background: linear-gradient(135deg, rgba(204, 255, 0, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+
+.session-wod-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--volt-lime);
+  letter-spacing: 0.04em;
+}
+
+.session-wod-content {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  font-family: var(--font-mono, monospace);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.session-attendees-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-secondary);
+}
+
+.session-attendees-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session-attendee-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.session-attendee-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.session-attendee-card.attended {
+  border-color: rgba(204, 255, 0, 0.25);
+  background: rgba(204, 255, 0, 0.04);
+}
+
+.session-attendee-card.missed {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.session-attendee-card.excused {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.04);
+}
+
+.attendee-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.attendee-name {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attendee-name:hover {
+  color: var(--volt-lime);
+}
+
+.attendee-sub-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.attendee-actions-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.btn-quick-attend {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--volt-lime);
+  color: #000;
+  border: none;
+  font-weight: 800;
+  font-size: 12.5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(204, 255, 0, 0.25);
+  transition: all 0.15s ease;
+}
+
+.btn-quick-attend:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(204, 255, 0, 0.4);
+}
+
+.btn-quick-secondary {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-quick-secondary:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
 
 
 

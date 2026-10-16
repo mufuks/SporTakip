@@ -1,4 +1,4 @@
-import { Api } from './api.js?v=3.6.8';
+import { Api } from './api.js?v=3.8.0';
 import { state } from './modules/state.js';
 import { 
   applyTheme, toggleTheme, showToast, openModal, closeModal, 
@@ -20,7 +20,7 @@ import {
   loadTrainers, renderTrainersTable, updateTrainerSelects,
   loadPackagesAdmin, renderPackagesTable,
   loadCalendarView, renderCalendarGrid
-} from './modules/staff.js?v=3.6.5';
+} from './modules/staff.js?v=3.8.7';
 import { 
   loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,
@@ -35,7 +35,7 @@ import {
   loadSuperAdminView, filterAndRenderSuperAdminUsers,
   updateSortIcons, updateRoleCounts
 } from './modules/admin.js';
-import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.6.1';
+import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.8.5';
 
 // Workspace / App Mode State
 let currentAppMode = localStorage.getItem('sportakip_app_mode') || 'athlete';
@@ -127,11 +127,7 @@ window.navigateTo = async function(tabName) {
     if (typeof switchDashboardSubTab === 'function') switchDashboardSubTab('finance');
   }
   else if (tabName === 'uyeler') {
-    await ensureViewLoaded('dashboard');
-    document.querySelectorAll('.v0-section').forEach(el => el.style.display = 'none');
-    const dashEl = document.getElementById('view-dashboard');
-    if (dashEl) dashEl.style.display = 'block';
-    if (typeof switchDashboardSubTab === 'function') switchDashboardSubTab('members');
+    loadMembersView();
   }
   else if (tabName === 'kasa') {
     await ensureViewLoaded('dashboard');
@@ -383,15 +379,21 @@ function initPwaInstallFlow() {
 }
 
 // ==================== BOOTSTRAP ====================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.has('reload') || urlParams.has('nocache')) {
     if ('caches' in window) {
-      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
+      await caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
+    }
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) {
+        await reg.unregister();
+      }
     }
   }
 
-  if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator && !urlParams.has('reload') && !urlParams.has('nocache')) {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
       reg.update();
     }).catch((err) => {
@@ -415,6 +417,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }).catch(() => {});
   }
 
-  const requestedTab = urlParams.get('tab') || localStorage.getItem('sportakip_tab') || 'home';
+  const user = Api.getUser();
+  const roles = user && user.roles ? user.roles : (user && user.role ? [user.role] : []);
+  const isStaffUser = roles.includes('Coach') || roles.includes('Admin');
+  const savedMode = localStorage.getItem('sportakip_app_mode');
+  const savedTab = localStorage.getItem('sportakip_tab');
+
+  let defaultTab = 'home';
+  if (isStaffUser && savedMode === 'staff') {
+    defaultTab = 'yoklama';
+  } else if (isStaffUser && !savedMode) {
+    defaultTab = 'yoklama';
+    localStorage.setItem('sportakip_app_mode', 'staff');
+  }
+
+  const hashTab = window.location.hash ? window.location.hash.replace('#', '') : null;
+  const requestedTab = urlParams.get('tab') || hashTab || savedTab || defaultTab;
   window.navigateTo(requestedTab);
+});
+
+window.addEventListener('hashchange', () => {
+  const hashTab = window.location.hash ? window.location.hash.replace('#', '') : null;
+  if (hashTab && hashTab !== window.currentTab) {
+    window.navigateTo(hashTab);
+  }
 });

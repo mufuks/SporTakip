@@ -297,7 +297,10 @@ export const Api = {
   },
 
   getMonthCalendar(year, month) {
-    return this.get(`/attendance/calendar-month?year=${year}&month=${month}`);
+    const now = new Date();
+    const y = (typeof year === 'number' && !isNaN(year) && year > 0) ? year : now.getFullYear();
+    const m = (typeof month === 'number' && !isNaN(month) && month >= 1 && month <= 12) ? month : (now.getMonth() + 1);
+    return this.get(`/attendance/calendar-month?year=${y}&month=${m}`);
   },
 
   // Members (V1)
