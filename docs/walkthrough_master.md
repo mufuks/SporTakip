@@ -1043,8 +1043,9 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
       - Telefon inputunda geçerli numara girildikten sonra `Enter` tuşuna basıldığında doğrudan `submitSendOtp()` tetiklenir.
       - 6 haneli OTP kutucuklarının (`.v0-otp-box`) herhangi birinde `Enter` tuşuna basıldığında doğrudan `submitVerifyOtp()` tetiklenir.
     - **DOM Önleme & Koruma (`loader.js`):** `preloadModals()` çalışırken sayfada halihazırda var olan `#v0-otp-drawer` DOM öğesi korunarak kullanıcının yazma esnasında modalın sıfırlanması engellendi.
+    - **ES Modül Derleme Hatasının Düzeltilmesi (`staff.js`):** `openCreateSessionModal` ve `openEditSessionModal` fonksiyonlarının yalnızca `window` nesnesine bağlanıp alt `export { ... }` bloğunda yerel kapsam tanımı olmadan dışa aktarılmaya çalışılması nedeniyle tarayıcıların fırlattığı derleme zamanı `SyntaxError: Export 'openCreateSessionModal' is not defined in module` hatası giderildi. Fonksiyonlar doğrudan `export async function` olarak tanımlandı. Tüm modül zincirinin (`app.js`, `auth.js`) başarıyla ayağa kalkması ve `submitSendOtp`'nin sorunsuz çalışması sağlandı.
   - **Derleme & Test Doğrulaması:**
-    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.19`.
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.20`.
 
 ---
 

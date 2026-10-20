@@ -1,13 +1,13 @@
-const CACHE_NAME = 'sportakip-shell-v3.8.19';
+const CACHE_NAME = 'sportakip-shell-v3.8.20';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon.ico',
-  '/css/app.css?v=3.8.19',
-  '/js/app.js?v=3.8.19',
-  '/js/api.js?v=3.8.19',
+  '/css/app.css?v=3.8.20',
+  '/js/app.js?v=3.8.20',
+  '/js/api.js?v=3.8.20',
   '/js/modules/state.js',
   '/js/modules/utils.js',
   '/js/modules/auth.js',

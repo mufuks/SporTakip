@@ -3053,7 +3053,7 @@ window.handleScheduleModalHourChange = function() {
 
 // ==================== AKILLI STÜDYO SEANS YÖNETİCİSİ (CREATE & EDIT - TEK AKIŞ) ====================
 
-window.openCreateSessionModal = async function(opts = {}) {
+export async function openCreateSessionModal(opts = {}) {
   try {
     if (!allTrainers || allTrainers.length === 0) {
       allTrainers = await Api.getTrainers().catch(() => []);
@@ -3128,9 +3128,10 @@ window.openCreateSessionModal = async function(opts = {}) {
   } catch (err) {
     showToast(`Seans açma ekranı yüklenemedi: ${err.message}`, 'error');
   }
-};
-window.openScheduleSessionModal = window.openCreateSessionModal;
-window.openScheduleModal = window.openCreateSessionModal;
+}
+window.openCreateSessionModal = openCreateSessionModal;
+window.openScheduleSessionModal = openCreateSessionModal;
+window.openScheduleModal = openCreateSessionModal;
 window.openScheduleModalForSelectedDate = function() {
   window.openCreateSessionModal({ date: calSelectedDate });
 };
@@ -3175,7 +3176,7 @@ window.handleSessionTypeChange = function(newType) {
 };
 
 // ==================== VAR OLAN SEANSI DÜZENLEME ====================
-window.openEditSessionModal = async function(slotId) {
+export async function openEditSessionModal(slotId) {
   try {
     const slot = await Api.getSessionById(slotId);
     if (!slot) {
@@ -3270,7 +3271,8 @@ window.openEditSessionModal = async function(slotId) {
   } catch (err) {
     showToast(`Seans yüklenemedi: ${err.message}`, 'error');
   }
-};
+}
+window.openEditSessionModal = openEditSessionModal;
 
 window.handleSaveEditSession = async function(e) {
   e.preventDefault();
@@ -3452,7 +3454,6 @@ export {
   openSessionWodNoteModal, handleWodTemplateSelectChange, handleSaveSessionWodNote,
   openAddMemberToSessionModal, handleSaveAddMemberToSession,
   openAttendeeMicroNoteModal, handleSaveAttendeeMicroNote,
-  openCreateSessionModal, openEditSessionModal,
   loadDashboardView, renderMembersTable,
   loadMembersView, getRoleBadgeHtml, loadMyEarningsView,
   loadTrainers, renderTrainersTable, updateTrainerSelects, loadPackagesAdmin,

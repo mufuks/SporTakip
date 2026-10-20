@@ -11,7 +11,7 @@ import {
   startOtpTimer, handlePhoneInput, submitSendOtp, resendOtp, checkCodeComplete,
   submitVerifyOtp, setupOtpBoxListeners, updateAppAvatars, handleLogout,
   handleAvatarClick, handleAvatarFileUpload, resetAvatarToDefault 
-} from './modules/auth.js?v=3.8.19';
+} from './modules/auth.js?v=3.8.20';
 import { 
   loadAttendanceView,
   loadDashboardView, loadMembersView, getRoleBadgeHtml,
@@ -19,7 +19,7 @@ import {
   loadTrainers, renderTrainersTable, updateTrainerSelects,
   loadPackagesAdmin, renderPackagesTable,
   loadCalendarView, renderCalendarGrid
-} from './modules/staff.js?v=3.8.18';
+} from './modules/staff.js?v=3.8.20';
 import { 
   loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,
@@ -34,7 +34,7 @@ import {
   loadSuperAdminView, filterAndRenderSuperAdminUsers,
   updateSortIcons, updateRoleCounts
 } from './modules/admin.js';
-import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.8.19';
+import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.8.20';
 
 // Workspace / App Mode State
 let currentAppMode = localStorage.getItem('sportakip_app_mode') || 'athlete';
