@@ -13,14 +13,13 @@ import {
   handleAvatarClick, handleAvatarFileUpload, resetAvatarToDefault 
 } from './modules/auth.js?v=3.6.5';
 import { 
-  loadAttendanceView, renderCapacityWeekStrip, loadCapacitySlots, renderCapacitySlots,
-  applyAttendanceFilter, renderAttendanceList,
+  loadAttendanceView,
   loadDashboardView, loadMembersView, getRoleBadgeHtml,
-  loadKasaView, loadMyEarningsView, switchDashboardSubTab,
+  loadMyEarningsView, switchDashboardSubTab,
   loadTrainers, renderTrainersTable, updateTrainerSelects,
   loadPackagesAdmin, renderPackagesTable,
   loadCalendarView, renderCalendarGrid
-} from './modules/staff.js?v=3.8.17';
+} from './modules/staff.js?v=3.8.18';
 import { 
   loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,

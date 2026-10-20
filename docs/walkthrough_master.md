@@ -1017,6 +1017,18 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
       - `[✏️ Sporcu Profilini Düzenle]` (iletişim, sağlık kısıtı, aktiflik ayarları)
   - **Derleme & Test Doğrulaması:**
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.17`.
+- **2026-10-20 (v3.8.18 - Faz 72: Sadeleştirme Reformu 4. Adım - Ölü Sayfalar, Asılı Exportlar & Legacy DOM Temizliği):**
+  - **Kullanıcı İhtiyacı & Sadelik Hedefi:** Kod tabanında artık kullanılmayan, başka modern ekranlarla ikame edilmiş veya tanımsız kalmış ölü sayfaların, asılı import/exportların ve gizli DOM artıklarının temizlenerek sistem ayak izinin küçültülmesi.
+  - **Ölü `kasa.html` Sayfasının Kaldırılması:**
+    - Eski "Aylık Bordro" sayfası olan `views/staff/kasa.html`, modern `views/staff/hakedisim.html` ve `views/staff/dashboard.html` ile tamamen ikame edilmiş olduğundan projeden silindi (`git rm`).
+    - `loader.js` içindeki `viewRoutes.kasa` eşlemesi ve `sw.js` içindeki precache girdisi temizlendi.
+  - **Asılı Export & Tanımsız Bağlantıların Temizliği (`staff.js`, `app.js`):**
+    - `staff.js` içerisinde gövdesi bulunmayan 6 tanımsız fonksiyon (`renderCapacityWeekStrip`, `loadCapacitySlots`, `renderCapacitySlots`, `applyAttendanceFilter`, `renderAttendanceList`, `loadKasaView`) hem `window` global bağlayıcılarından hem de ES modül `export { ... }` listesinden arındırıldı.
+    - `app.js` içerisindeki ölü importlar temizlenerek temiz modül yüklemesi sağlandı.
+  - **Gizli DOM Artıklarının Temizlenmesi (`yoklama.html`):**
+    - `yoklama.html` altında yer alan 4 adet eski gizli div (`#attendance-list`, `#capacity-slots-list`, `#slot-details-box`, `#capacity-week-strip`) DOM ağacından çıkarıldı.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.18`.
 
 ---
 

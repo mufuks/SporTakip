@@ -6,7 +6,7 @@ export async function fetchPartial(url) {
     return partialCache.get(url);
   }
   const sep = url.includes('?') ? '&' : '?';
-  const cacheBustUrl = `${url}${sep}v=3.8.17&_t=${Date.now()}`;
+  const cacheBustUrl = `${url}${sep}v=3.8.18&_t=${Date.now()}`;
   const res = await fetch(cacheBustUrl);
   if (!res.ok) {
     throw new Error(`Kısmi HTML yüklenemedi: ${url} (${res.status})`);
@@ -25,7 +25,6 @@ export const viewRoutes = {
   takvim: { file: '/views/staff/takvim.html', id: 'view-takvim' },
   dashboard: { file: '/views/staff/dashboard.html', id: 'view-dashboard' },
   uyeler: { file: '/views/staff/uyeler.html', id: 'view-uyeler' },
-  kasa: { file: '/views/staff/kasa.html', id: 'view-kasa' },
   hakedisim: { file: '/views/staff/hakedisim.html', id: 'view-hakedisim' },
   superadmin: { file: '/views/admin/superadmin.html', id: 'view-superadmin' }
 };

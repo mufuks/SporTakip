@@ -3424,15 +3424,9 @@ window.openAddMemberToSessionModal = openAddMemberToSessionModal;
 window.handleSaveAddMemberToSession = handleSaveAddMemberToSession;
 window.openAttendeeMicroNoteModal = openAttendeeMicroNoteModal;
 window.handleSaveAttendeeMicroNote = handleSaveAttendeeMicroNote;
-window.renderCapacityWeekStrip = renderCapacityWeekStrip;
-window.loadCapacitySlots = loadCapacitySlots;
-window.renderCapacitySlots = renderCapacitySlots;
-window.applyAttendanceFilter = applyAttendanceFilter;
-window.renderAttendanceList = renderAttendanceList;
 window.loadDashboardView = loadDashboardView;
 window.loadMembersView = loadMembersView;
 window.getRoleBadgeHtml = getRoleBadgeHtml;
-window.loadKasaView = loadKasaView;
 window.loadTrainers = loadTrainers;
 window.renderTrainersTable = renderTrainersTable;
 window.updateTrainerSelects = updateTrainerSelects;
@@ -3459,9 +3453,8 @@ export {
   openAddMemberToSessionModal, handleSaveAddMemberToSession,
   openAttendeeMicroNoteModal, handleSaveAttendeeMicroNote,
   openCreateSessionModal, openEditSessionModal,
-  renderCapacityWeekStrip, loadCapacitySlots, renderCapacitySlots,
-  applyAttendanceFilter, renderAttendanceList, loadDashboardView, renderMembersTable,
-  loadMembersView, getRoleBadgeHtml, loadKasaView, loadMyEarningsView,
+  loadDashboardView, renderMembersTable,
+  loadMembersView, getRoleBadgeHtml, loadMyEarningsView,
   loadTrainers, renderTrainersTable, updateTrainerSelects, loadPackagesAdmin,
   renderPackagesTable, loadCalendarView, renderCalendarGrid,
   renderStudentCards, filterStudentsList, openStudentProgressDrawer,
