@@ -3037,71 +3037,126 @@ window.handleScheduleModalHourChange = function() {
   checkScheduleHourWarning();
 };
 
-function checkScheduleHourWarning() {
-  const hourSelect = document.getElementById('schedule-hour');
-  const warningBanner = document.getElementById('schedule-capacity-warning');
-  if (!hourSelect || !warningBanner) return;
+// ==================== AKILLI STÜDYO SEANS YÖNETİCİSİ (CREATE & EDIT - TEK AKIŞ) ====================
 
-  const hour = parseInt(hourSelect.value);
-  const slot = capacitySlotsData?.find(s => s.hour === hour);
-  if (slot && slot.totalMembers >= slot.capacityLimit) {
-    warningBanner.style.display = 'block';
-  } else {
-    warningBanner.style.display = 'none';
-  }
-}
-
-function openScheduleSessionModal() {
-  const subSelect = document.getElementById('schedule-sub-select');
-  if (activeSubscriptions.length === 0) {
-    showToast('Planlama yapmak için en az bir aktif üye paketi olmalıdır.', 'warning');
-    return;
-  }
-
-  subSelect.innerHTML = activeSubscriptions.map(s =>
-    `<option value="${s.id}">${escapeHtml(s.memberName)} — ${escapeHtml(s.packageName)} (${s.remainingLessons} Ders Kaldı)</option>`
-  ).join('');
-
-  const trainerSelect = document.getElementById('schedule-trainer-select');
-  trainerSelect.innerHTML = allTrainers.map(t =>
-    `<option value="${t.id}">${escapeHtml(t.fullName)} (${escapeHtml(t.role)})</option>`
-  ).join('');
-
-  const dateInput = document.getElementById('schedule-date');
-  if (dateInput) {
-    dateInput.value = currentCapacityDate;
-    populateScheduleHourOptions(currentCapacityDate);
-  }
-
-  openModal('modal-schedule-session');
-}
-window.openScheduleSessionModal = openScheduleSessionModal;
-
-window.handleScheduleSession = async function(e) {
-  e.preventDefault();
-  const subId = parseInt(document.getElementById('schedule-sub-select').value);
-  const trainerId = parseInt(document.getElementById('schedule-trainer-select').value);
-  const dateStr = document.getElementById('schedule-date').value;
-  const hour = parseInt(document.getElementById('schedule-hour').value);
-  const notes = document.getElementById('schedule-notes').value;
-
-  // Local wall-clock ISO string (without trailing Z) so server preserves local hour 19:00
-  const sessionTimeStr = `${dateStr}T${hour.toString().padStart(2, '0')}:00:00`;
-
+window.openCreateSessionModal = async function(opts = {}) {
   try {
-    await Api.scheduleSession({
-      subscriptionId: subId,
-      trainerId: trainerId,
-      sessionTime: sessionTimeStr,
-      notes: notes
-    });
+    if (!allTrainers || allTrainers.length === 0) {
+      allTrainers = await Api.getTrainers().catch(() => []);
+    }
+    const trainerSelect = document.getElementById('edit-session-trainer');
+    if (trainerSelect) {
+      trainerSelect.innerHTML = allTrainers.map(t =>
+        `<option value="${t.id}">${escapeHtml(t.fullName)} (${escapeHtml(t.role)})</option>`
+      ).join('');
+    }
 
-    showToast(`⚡ Seans saat ${hour}:00 için stüdyoya başarıyla planlandı!`);
-    closeModal('modal-schedule-session');
-    await loadCapacitySlots();
-    await loadAttendanceView();
+    // Modal Header & Button Mode: Create
+    const modalIcon = document.getElementById('edit-session-icon');
+    const modalTitle = document.getElementById('edit-session-modal-title');
+    const subtitle = document.getElementById('edit-session-subtitle');
+    const submitBtn = document.getElementById('edit-session-submit-btn');
+    const deleteBtn = document.getElementById('edit-session-delete-btn');
+    const statusGroup = document.getElementById('edit-session-status-group');
+    const attendeesInfo = document.getElementById('edit-session-attendees-info');
+
+    if (modalIcon) modalIcon.textContent = '✨';
+    if (modalTitle) modalTitle.textContent = 'Yeni Seans Oluştur';
+    if (subtitle) subtitle.textContent = 'Stüdyo Seans Slotu & WOD Programı';
+    if (submitBtn) submitBtn.textContent = '✨ Seansı Başlat / Aç';
+    if (deleteBtn) deleteBtn.style.display = 'none';
+    if (statusGroup) statusGroup.style.display = 'none';
+    if (attendeesInfo) attendeesInfo.style.display = 'none';
+
+    document.getElementById('edit-session-id').value = '';
+    document.getElementById('edit-session-title').value = 'Grup Fonksiyonel İdman';
+
+    const capacityInput = document.getElementById('edit-session-capacity');
+    if (capacityInput) {
+      capacityInput.value = 6;
+      capacityInput.min = 1;
+    }
+
+    const conflictBanner = document.getElementById('edit-session-conflict-banner');
+    if (conflictBanner) {
+      conflictBanner.style.display = 'none';
+      conflictBanner.textContent = '';
+    }
+
+    document.getElementById('edit-session-type').value = 'GRUP';
+    document.getElementById('edit-session-status').value = 'Scheduled';
+    document.getElementById('edit-session-notes').value = '';
+
+    // Date & Hours
+    const todayStr = (opts.date || currentCapacityDate || formatDateToIso(new Date()));
+    document.getElementById('edit-session-date').value = todayStr;
+
+    const startH = (typeof opts.hour === 'number' && !isNaN(opts.hour)) ? opts.hour : 18;
+    const endH = (startH + 1) % 24;
+    document.getElementById('edit-session-start-time').value = `${String(startH).padStart(2, '0')}:00`;
+    document.getElementById('edit-session-end-time').value = `${String(endH).padStart(2, '0')}:00`;
+
+    // Load Workout Templates (WOD)
+    try {
+      const templates = await Api.getWorkoutTemplates(true).catch(() => []);
+      const templateSelect = document.getElementById('edit-session-workout-template');
+      if (templateSelect) {
+        templateSelect.innerHTML = `<option value="">— Program Yok / Serbest İdman —</option>` +
+          (templates || []).map(t =>
+            `<option value="${t.id}">${escapeHtml(t.name)} (${t.category} · ${(t.exercises || []).length} egzersiz)</option>`
+          ).join('');
+      }
+    } catch (e) {
+      console.warn('WOD şablonları yüklenemedi:', e);
+    }
+
+    openModal('modal-edit-session');
   } catch (err) {
-    showToast(`Hata: ${err.message}`, 'error');
+    showToast(`Seans açma ekranı yüklenemedi: ${err.message}`, 'error');
+  }
+};
+window.openScheduleSessionModal = window.openCreateSessionModal;
+window.openScheduleModal = window.openCreateSessionModal;
+window.openScheduleModalForSelectedDate = function() {
+  window.openCreateSessionModal({ date: calSelectedDate });
+};
+
+// Start time değiştiğinde otomatik +1 saat bitiş saati hesaplama
+window.handleSessionStartTimeChange = function(newStartTime) {
+  if (!newStartTime) return;
+  const parts = newStartTime.split(':');
+  if (parts.length < 2) return;
+  let h = parseInt(parts[0]);
+  let m = parseInt(parts[1]);
+  if (isNaN(h) || isNaN(m)) return;
+  let endH = (h + 1) % 24;
+  const endInput = document.getElementById('edit-session-end-time');
+  if (endInput) {
+    endInput.value = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+};
+
+// Seans türüne göre kontenjan ve başlık akıllı varsayılanları
+window.handleSessionTypeChange = function(newType) {
+  const capInput = document.getElementById('edit-session-capacity');
+  const titleInput = document.getElementById('edit-session-title');
+  const isCreate = !document.getElementById('edit-session-id').value;
+
+  if (newType === 'PT') {
+    if (capInput) capInput.value = 1;
+    if (isCreate && titleInput && (!titleInput.value || titleInput.value.includes('Grup') || titleInput.value.includes('Serbest'))) {
+      titleInput.value = 'Bireysel PT Seansı';
+    }
+  } else if (newType === 'GRUP') {
+    if (capInput) capInput.value = 6;
+    if (isCreate && titleInput && (!titleInput.value || titleInput.value.includes('Bireysel') || titleInput.value.includes('Serbest'))) {
+      titleInput.value = 'Grup Fonksiyonel İdman';
+    }
+  } else if (newType === 'OPEN_GYM') {
+    if (capInput) capInput.value = 12;
+    if (isCreate && titleInput && (!titleInput.value || titleInput.value.includes('Grup') || titleInput.value.includes('Bireysel'))) {
+      titleInput.value = 'Serbest Çalışma / Open Gym';
+    }
   }
 };
 
@@ -3123,6 +3178,23 @@ window.openEditSessionModal = async function(slotId) {
         `<option value="${t.id}" ${t.id === slot.trainerId ? 'selected' : ''}>${escapeHtml(t.fullName)} (${escapeHtml(t.role)})</option>`
       ).join('');
     }
+
+    // Modal Header & Button Mode: Edit
+    const modalIcon = document.getElementById('edit-session-icon');
+    const modalTitle = document.getElementById('edit-session-modal-title');
+    const subtitle = document.getElementById('edit-session-subtitle');
+    const submitBtn = document.getElementById('edit-session-submit-btn');
+    const deleteBtn = document.getElementById('edit-session-delete-btn');
+    const statusGroup = document.getElementById('edit-session-status-group');
+    const attendeesInfo = document.getElementById('edit-session-attendees-info');
+
+    if (modalIcon) modalIcon.textContent = '✏️';
+    if (modalTitle) modalTitle.textContent = 'Seansı Düzenle';
+    if (subtitle) subtitle.textContent = `${slot.trainerName} — ${slot.title || 'Seans'} (#${slot.id})`;
+    if (submitBtn) submitBtn.textContent = '💾 Değişiklikleri Kaydet';
+    if (deleteBtn) deleteBtn.style.display = 'inline-block';
+    if (statusGroup) statusGroup.style.display = 'block';
+    if (attendeesInfo) attendeesInfo.style.display = 'block';
 
     document.getElementById('edit-session-id').value = slot.id;
     document.getElementById('edit-session-title').value = slot.title || '';
@@ -3180,11 +3252,6 @@ window.openEditSessionModal = async function(slotId) {
     document.getElementById('edit-session-start-time').value = `${startH}:${startM}`;
     document.getElementById('edit-session-end-time').value = `${endH}:${endM}`;
 
-    const subtitle = document.getElementById('edit-session-subtitle');
-    if (subtitle) {
-      subtitle.innerText = `${slot.trainerName} — ${slot.title || 'Seans'} (#${slot.id})`;
-    }
-
     openModal('modal-edit-session');
   } catch (err) {
     showToast(`Seans yüklenemedi: ${err.message}`, 'error');
@@ -3193,7 +3260,10 @@ window.openEditSessionModal = async function(slotId) {
 
 window.handleSaveEditSession = async function(e) {
   e.preventDefault();
-  const slotId = parseInt(document.getElementById('edit-session-id').value);
+  const slotIdVal = document.getElementById('edit-session-id').value;
+  const slotId = slotIdVal ? parseInt(slotIdVal) : 0;
+  const isCreate = !slotId;
+
   const title = document.getElementById('edit-session-title').value.trim();
   const trainerId = parseInt(document.getElementById('edit-session-trainer').value);
   const dateStr = document.getElementById('edit-session-date').value;
@@ -3204,7 +3274,7 @@ window.handleSaveEditSession = async function(e) {
   const status = document.getElementById('edit-session-status').value;
   const notes = document.getElementById('edit-session-notes').value.trim();
   const templateVal = document.getElementById('edit-session-workout-template') ? document.getElementById('edit-session-workout-template').value : '';
-  const workoutTemplateId = templateVal ? parseInt(templateVal) : 0;
+  const workoutTemplateId = templateVal ? parseInt(templateVal) : null;
 
   const startIso = `${dateStr}T${startTimeStr}:00`;
   const endIso = `${dateStr}T${endTimeStr}:00`;
@@ -3222,43 +3292,60 @@ window.handleSaveEditSession = async function(e) {
     return;
   }
 
-  const activeAttendeesCount = parseInt(document.getElementById('edit-session-attendees-count')?.textContent || '0');
-  if (capacity < activeAttendeesCount) {
-    const msg = `Kapasite (${capacity}), seansa kayıtlı aktif sporcu sayısından (${activeAttendeesCount}) az olamaz.`;
-    if (conflictBanner) {
-      conflictBanner.textContent = `⚠️ ${msg}`;
-      conflictBanner.style.display = 'block';
+  if (!isCreate) {
+    const activeAttendeesCount = parseInt(document.getElementById('edit-session-attendees-count')?.textContent || '0');
+    if (capacity < activeAttendeesCount) {
+      const msg = `Kapasite (${capacity}), seansa kayıtlı aktif sporcu sayısından (${activeAttendeesCount}) az olamaz.`;
+      if (conflictBanner) {
+        conflictBanner.textContent = `⚠️ ${msg}`;
+        conflictBanner.style.display = 'block';
+      }
+      showToast(msg, 'error');
+      return;
     }
-    showToast(msg, 'error');
-    return;
   }
 
   try {
-    await Api.updateSession(slotId, {
-      startTime: startIso,
-      endTime: endIso,
-      trainerId: trainerId,
-      capacity: capacity,
-      sessionType: sessionType,
-      title: title,
-      notes: notes,
-      status: status,
-      workoutTemplateId: workoutTemplateId
-    });
+    if (isCreate) {
+      await Api.createSession({
+        startTime: startIso,
+        endTime: endIso,
+        trainerId: trainerId,
+        capacity: capacity,
+        sessionType: sessionType,
+        title: title,
+        notes: notes,
+        workoutTemplateId: workoutTemplateId
+      });
+      showToast('⚡ Yeni seans stüdyo takvimine başarıyla eklendi!', 'success');
+    } else {
+      await Api.updateSession(slotId, {
+        startTime: startIso,
+        endTime: endIso,
+        trainerId: trainerId,
+        capacity: capacity,
+        sessionType: sessionType,
+        title: title,
+        notes: notes,
+        status: status,
+        workoutTemplateId: workoutTemplateId || 0
+      });
+      showToast('✓ Seans saati ve bilgileri başarıyla güncellendi!', 'success');
+    }
 
-    showToast('✓ Seans saati ve bilgileri başarıyla güncellendi!', 'success');
     closeModal('modal-edit-session');
 
     await loadAthleteHome();
     if (currentAthleteTab === 'sessions') await loadAthleteSessionsView();
     if (typeof loadCapacitySlots === 'function') await loadCapacitySlots();
     if (typeof loadAttendanceView === 'function') await loadAttendanceView();
+    if (typeof loadCalendarView === 'function') await loadCalendarView();
   } catch (err) {
     if (conflictBanner) {
       conflictBanner.textContent = `⚠️ ${err.message}`;
       conflictBanner.style.display = 'block';
     }
-    showToast(`Güncelleme Hatası: ${err.message}`, 'error');
+    showToast(`İşlem Hatası: ${err.message}`, 'error');
   }
 };
 
@@ -3357,6 +3444,7 @@ export {
   openSessionWodNoteModal, handleWodTemplateSelectChange, handleSaveSessionWodNote,
   openAddMemberToSessionModal, handleSaveAddMemberToSession,
   openAttendeeMicroNoteModal, handleSaveAttendeeMicroNote,
+  openCreateSessionModal, openEditSessionModal,
   renderCapacityWeekStrip, loadCapacitySlots, renderCapacitySlots,
   applyAttendanceFilter, renderAttendanceList, loadDashboardView, renderMembersTable,
   loadMembersView, getRoleBadgeHtml, loadKasaView, loadMyEarningsView,

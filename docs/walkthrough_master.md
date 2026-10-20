@@ -987,6 +987,20 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Cache İzolasyonu & Sürüm Güncellemesi:**
     - `sw.js`, `loader.js`, `index.html` ve `app.js` varlık sorguları `v3.8.15` sürümüne yükseltilerek istemci önbellek çakışmaları bertaraf edildi.
     - `dotnet test`: 118/118 test (%100) başarılı.
+- **2026-10-20 (v3.8.16 - Faz 70: Sadeleştirme Reformu 2. Adım - Seans Planlama & Oluşturma Akışının Sadeleştirilmesi):**
+  - **Kullanıcı İhtiyacı & Sadelik Hedefi:** Var olan iki ayrı seans modalı (eski üye atama modalı `modal-schedule-session` ile seans düzenleme modalı `modal-edit-session`) birleştirilerek stüdyo operasyonu tek akıllı seans yöneticisi (`openCreateSessionModal` / `openEditSessionModal`) altında toplandı.
+  - **Tek Birleşik Akıllı Seans Modalı (`session-modals.html`):**
+    - Eski 60 satırlık artık `modal-schedule-session` kaldırıldı.
+    - `#modal-edit-session` hem "✨ Yeni Seans Oluştur" hem de "✏️ Seansı Düzenle" durumlarını dinamik başlık, ikon, alt yazı ve buton metni ile kusursuzca destekleyecek şekilde genişletildi.
+    - Seans oluşturulurken silme butonu ve durum grubu gizlenir; seans düzenlenirken ise aktif kayıtlı sporcu sayısı ve güvenli silme/iptal aksiyonu görünür.
+  - **Akıllı Otomatik Doldurma & Sıfır Sürtünme (Ergonomi):**
+    - **Otomatik Bitiş Saati:** Başlangıç saati seçildiğinde veya değiştirildiğinde bitiş saati otomatik olarak `+1 saat` sonrasına ayarlanır (örn. 18:00 -> 19:00).
+    - **Akıllı Kontenjan & Başlık Presetleri:** Seans türü `PT` seçildiğinde kontenjan anında `1`, başlık `Bireysel PT Seansı` olur; `GRUP` seçildiğinde kontenjan `6`, başlık `Grup Fonksiyonel İdman` olur; `OPEN_GYM` seçildiğinde kontenjan `12`, başlık `Serbest Çalışma / Open Gym` olarak ayarlanır.
+  - **Doğrudan Erişim Noktaları:**
+    - `yoklama.html` üst gün seçici çubuğuna başparmak dostu `[✨ Yeni Seans]` butonu eklendi.
+    - `takvim.html` üzerindeki "+ Seans Planla" ve gün detayındaki "+ Bu Güne Seans Ekle" butonları doğrudan bu yeni akıllı modalı tetikler.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.16`.
 
 ---
 
