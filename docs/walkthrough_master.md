@@ -1070,6 +1070,15 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Service Worker (`sw.js`), script ve stil varlıkları `v3.8.22` sürümüne yükseltilerek tam cache busting sağlandı.
   - **Derleme & Test Doğrulaması:**
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.22`.
+- **2026-10-20 (v3.8.23 - Faz 76: Global ve Mobil Sayfa Alt Dolgularının (110-120px) Sadeleştirilmesi):**
+  - **Kullanıcı Geri Bildirimi:** `app.css` içerisindeki `#v0-view-profile`, `#v0-view-sessions`, `#v0-view-workout` (110-120px) ve mobil personel görünümleri (`#view-yoklama`, `#view-takvim`, `#view-dashboard` vb. 110px) alt dolgularının aşırı geniş olup olmadığı soruldu ve sadeleştirilmesi onaylandı.
+  - **Geliştirilen Çözümler:**
+    - **Global Alt Dolgular ([app.css](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/css/app.css)):** `#v0-view-profile`, `#v0-view-sessions` ve `#v0-view-workout` için 110-120px olan yapay alt dolgular `24px` değerine çekildi.
+    - **Mobil Kabuk Tabanı:** `.v0-athlete-shell` temel alt dolgusu `120px` yerine sabit 64px alt navigasyona tam uyumlu `74px` olarak standardize edildi.
+    - **Mobil Personel ve Üye Paneli:** `#view-yoklama`, `#view-takvim`, `#view-dashboard`, `#view-uyeler`, `#view-kasa`, `#view-hakedisim` için mobil alt dolgusu `110px !important` yerine `20px !important`, üst marjini `14px` yerine `6px` seviyesine optimize edildi.
+    - Service Worker (`sw.js`), script ve stil varlıkları `v3.8.23` sürümüne yükseltilerek tam cache busting sağlandı.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.23`.
 
 ---
 

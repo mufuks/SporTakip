@@ -2124,7 +2124,7 @@ table.custom-table tr:hover td {
   color: var(--text-primary);
   position: relative;
   overflow-x: hidden;
-  padding-bottom: 120px;
+  padding-bottom: 74px;
   font-family: var(--font-body);
   transition: background-color 0.25s ease, color 0.25s ease;
 }
@@ -2871,15 +2871,15 @@ table.custom-table tr:hover td {
 }
 
 #v0-view-profile {
-  padding-bottom: 120px;
+  padding-bottom: 24px;
 }
 
 #v0-view-sessions {
-  padding-bottom: 110px;
+  padding-bottom: 24px;
 }
 
 #v0-view-workout {
-  padding-bottom: 110px;
+  padding-bottom: 24px;
 }
 
 .v0-section-header {
@@ -4321,8 +4321,8 @@ table.custom-table tr:hover td {
   #view-uyeler, 
   #view-kasa, 
   #view-hakedisim {
-    padding: 0 16px 110px 16px !important;
-    margin-top: 14px !important;
+    padding: 0 16px 20px 16px !important;
+    margin-top: 6px !important;
   }
 
   .v0-home-main .v0-section,
