@@ -141,7 +141,9 @@ public class GymService(
                     remaining,
                     remaining <= 0,
                     s.SalonShareAmount,
-                    s.TrainerShareAmount
+                    s.TrainerShareAmount,
+                    null,
+                    m.MedicalConditions
                 );
             }
 
@@ -337,7 +339,7 @@ public class GymService(
         return true;
     }
 
-    public async Task<MemberDto?> UpdateMemberNotesAsync(int memberId, string? notes, CancellationToken cancellationToken = default)
+    public async Task<MemberDto?> UpdateMemberNotesAsync(int memberId, string? notes, string? medicalConditions = null, CancellationToken cancellationToken = default)
     {
         var member = await db.Members
             .Include(m => m.Subscriptions)
@@ -348,7 +350,14 @@ public class GymService(
 
         if (member == null) return null;
 
-        member.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        if (notes != null)
+        {
+            member.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        }
+        if (medicalConditions != null)
+        {
+            member.MedicalConditions = string.IsNullOrWhiteSpace(medicalConditions) ? null : medicalConditions.Trim();
+        }
         await db.SaveChangesAsync(cancellationToken);
 
         var activeSub = member.Subscriptions.FirstOrDefault(s => s.Status == "Active" || s.Status == "Frozen");
@@ -1663,7 +1672,8 @@ public class GymService(
             s.IsFullyPaid,
             s.SalonShareAmount,
             s.TrainerShareAmount,
-            freezeDto
+            freezeDto,
+            s.Member?.MedicalConditions
         );
     }
 

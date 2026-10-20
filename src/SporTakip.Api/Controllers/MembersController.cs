@@ -103,7 +103,7 @@ public class MembersController(GymService gymService) : ControllerBase
     [HttpPut("{id:int}/notes")]
     public async Task<ActionResult<MemberDto>> UpdateNotes(int id, [FromBody] UpdateMemberNotesDto dto, CancellationToken ct)
     {
-        var result = await gymService.UpdateMemberNotesAsync(id, dto.Notes, ct);
+        var result = await gymService.UpdateMemberNotesAsync(id, dto.Notes, dto.MedicalConditions, ct);
         if (result == null) return NotFound("Sporcu bulunamadı.");
         return Ok(result);
     }

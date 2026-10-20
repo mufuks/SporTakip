@@ -158,7 +158,8 @@ public record SubscriptionSummaryDto(
     bool IsFullyPaid,
     decimal SalonShareAmount,
     decimal TrainerShareAmount,
-    FreezeRecordDto? ActiveFreeze = null
+    FreezeRecordDto? ActiveFreeze = null,
+    string? MemberMedicalConditions = null
 );
 
 public record CreateSubscriptionDto(
@@ -339,7 +340,7 @@ public record MonthCalendarDto(
     List<MonthCalendarDayDto> Days
 );
 
-public record UpdateMemberNotesDto(string? Notes);
+public record UpdateMemberNotesDto(string? Notes, string? MedicalConditions = null);
 
 public record TrainerPersonalEarningsDto(
     int TrainerId,

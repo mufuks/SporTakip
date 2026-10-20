@@ -6,7 +6,7 @@ export async function fetchPartial(url) {
     return partialCache.get(url);
   }
   const sep = url.includes('?') ? '&' : '?';
-  const cacheBustUrl = `${url}${sep}v=3.8.9&_t=${Date.now()}`;
+  const cacheBustUrl = `${url}${sep}v=3.8.12&_t=${Date.now()}`;
   const res = await fetch(cacheBustUrl);
   if (!res.ok) {
     throw new Error(`Kısmi HTML yüklenemedi: ${url} (${res.status})`);
@@ -81,16 +81,11 @@ export async function preloadModals() {
       temp.innerHTML = html.trim();
       while (temp.firstElementChild) {
         const child = temp.firstElementChild;
-        if (child.id && document.getElementById(child.id)) {
-          if (window.location.search.includes('reload')) {
-            document.getElementById(child.id).remove();
-            container.appendChild(child);
-          } else {
-            child.remove();
-          }
-        } else {
-          container.appendChild(child);
+        if (child.id) {
+          const old = document.getElementById(child.id);
+          if (old) old.remove();
         }
+        container.appendChild(child);
       }
     } catch (err) {
       console.warn('[Loader] Modal preload failed for', file, err);

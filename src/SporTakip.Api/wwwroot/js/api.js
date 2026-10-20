@@ -324,8 +324,8 @@ export const Api = {
     return this.put(`/members/${id}/metrics`, data);
   },
 
-  updateMemberNotes(id, notes) {
-    return this.put(`/members/${id}/notes`, { notes });
+  updateMemberNotes(id, notes, medicalConditions = null) {
+    return this.put(`/members/${id}/notes`, { notes, medicalConditions });
   },
 
   getMemberMetricProgress(id) {

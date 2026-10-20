@@ -1,7 +1,10 @@
 <div class="modal-backdrop" id="modal-new-member">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width:500px;">
       <div class="modal-header">
-        <h3>Yeni Sporcu Kaydı</h3>
+        <div>
+          <h3>Yeni Sporcu Kaydı</h3>
+          <span class="text-volt" style="font-weight:700; font-size:13px;">Profil & İletişim Bilgileri</span>
+        </div>
         <button class="modal-close" onclick="closeModal('modal-new-member')">✕</button>
       </div>
       <form id="new-member-form" onsubmit="handleCreateMember(event)">
@@ -9,17 +12,23 @@
           <label>Ad Soyad *</label>
           <input type="text" id="m-name" class="form-control" placeholder="Örn: Ayşe Yılmaz" required>
         </div>
-        <div class="form-group">
-          <label>Telefon Numarası</label>
-          <input type="tel" id="m-phone" class="form-control" placeholder="05XXXXXXXXX">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Telefon Numarası</label>
+            <input type="tel" id="m-phone" class="form-control" placeholder="05XXXXXXXXX">
+          </div>
+          <div class="form-group">
+            <label>E-posta (İsteğe Bağlı)</label>
+            <input type="email" id="m-email" class="form-control" placeholder="ornek@email.com">
+          </div>
         </div>
         <div class="form-group">
-          <label>⚠️ Sağlık / Sakatlık İkazı (Yoklamada ve profilde kırmızı ikaz olarak çıkar)</label>
-          <input type="text" id="m-medical" class="form-control" placeholder="Örn: Bel fıtığı, ağır deadlift yasak, menisküs">
+          <label style="color:#f87171; font-weight:700;">⚠️ Kritik Sağlık / Sakatlık Uyarısı <small style="color:var(--text-muted); font-weight:400;">(Yoklama & seanslarda kırmızı ikaz)</small></label>
+          <input type="text" id="m-medical" class="form-control" placeholder="Örn: Bel fıtığı L4-L5, menisküs hassasiyeti, ağır squat yasak">
         </div>
         <div class="form-group">
-          <label>Sağlık / Antrenman Notu (Bel fıtığı, sakatlık vb.)</label>
-          <input type="text" id="m-notes" class="form-control" placeholder="Örn: Menisküs hassasiyeti var">
+          <label style="font-weight:700;">📝 Genel Notlar & Tercihler <small style="color:var(--text-muted); font-weight:400;">(Hedefler, tercihler, spor geçmişi)</small></label>
+          <input type="text" id="m-notes" class="form-control" placeholder="Örn: Hedef yağ yakımı ve kondisyon, akşam saatleri uygun">
         </div>
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
           <button type="button" class="btn-secondary" onclick="closeModal('modal-new-member')">İptal</button>
@@ -77,18 +86,14 @@
           </div>
         </div>
         <div class="form-group">
-          <label>Sağlık / Antrenman Notu (Sakatlık, hassasiyet)</label>
-          <input type="text" id="edit-m-notes" class="form-control" placeholder="Örn: Menisküs hassasiyeti var, diz zorlanmamalı">
+          <label style="color:#f87171; font-weight:700;">⚠️ Kritik Sağlık / Sakatlık Uyarısı <small style="color:var(--text-muted); font-weight:400;">(Yoklama & seanslarda kırmızı ikaz)</small></label>
+          <input type="text" id="edit-m-medical" class="form-control" placeholder="Örn: Bel fıtığı L4-L5, menisküs hassasiyeti, ağır squat yasak">
         </div>
         <div class="form-group">
-          <label>⚠️ Sağlık / Sakatlık İkazı (Yoklamada ve profilde kırmızı ikaz olarak çıkar)</label>
-          <input type="text" id="edit-m-medical" class="form-control" placeholder="Örn: Bel fıtığı, ağır deadlift yasak, menisküs">
+          <label style="font-weight:700;">📝 Genel Notlar & Tercihler <small style="color:var(--text-muted); font-weight:400;">(Hedefler, tercihler, spor geçmişi)</small></label>
+          <input type="text" id="edit-m-notes" class="form-control" placeholder="Örn: Hedef yağ yakımı ve kondisyon, akşam saatleri uygun">
         </div>
         <div class="form-group" style="display:flex; align-items:center; gap:10px; margin-top:14px; padding:10px 14px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:12px;">
-
-
-
-
           <input type="checkbox" id="edit-m-active" style="width:18px; height:18px; accent-color:var(--volt-lime); cursor:pointer;">
           <label for="edit-m-active" style="margin:0; font-size:13px; font-weight:700; color:var(--text-primary); cursor:pointer;">Aktif Sporcu (Kaydı Açık)</label>
         </div>

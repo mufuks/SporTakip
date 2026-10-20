@@ -930,7 +930,25 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Mobilde Reels/Feed Tarzı Seans Prim Kartları (`.hakedis-cards-feed`):** 7 kolonlu `custom-table` mobilde (`<= 768px`) gizlendi; yerine tek elle rahat okunan `.hakedis-session-card` feed'i entegre edildi. Her kart: Tarih/saat (`📅 16 Eki Cum · 19:00`), sağ üstte yeşil Volt Lime prim rozeti (`+₺150`), sporcu adı (`Atlet_3`), paket bilgisi, ders rozeti (`8. Ders`) ve katılım rozetleri (`Asıl Hoca`, `Geldi ✓`) sunar. Masaüstü görünümde klasik tablo (`.desktop-only-table`) korunur.
   - **Dinamik Ay Seçici (Last 6 Months):** Sabit hardcoded aylar yerine, içinde bulunulan aydan geriye doğru 6 ayı dinamik oluşturan ve mevcut ayı `(Bu Ay)` olarak belirten dinamik ay seçici devreye alındı.
   - **Service Worker Network-First:** `.js` ve `.css` dosyaları Service Worker'da (`sw.js`) Network-First stratejisine geçirilerek mobil istemcilerde kod güncellemelerinin anında yansıması sağlandı; mobil görünümde `padding-bottom: 110px !important;` ile alt navigasyon barı çakışması önlendi.
-  - **Sürüm:** `v3.8.11` olarak güncellendi. 114/114 birim testi %100 başarılı.
+- **2026-10-20 (v3.8.12 - Faz 66: Sporcu Ekleme & Düzenleme Modallarının Eşitlenmesi, Sağlık İkazı / Not Ayrımı & Dinamik Önbellek İyileştirmesi):**
+  - **Kullanıcı Talebi & Hedef:** Yeni üye kaydı (`#modal-new-member`) ile üye düzenleme (`#modal-edit-member`) arasındaki alan tutarsızlıklarının giderilmesi; `MedicalConditions` (seans/yoklama kırmızı ikazı) ile `Notes` (genel antrenör/sporcu hedefleri) arasındaki kavram karmaşasının netleştirilmesi.
+  - **Eşitlenmiş Modal Hiyerarşisi (`member-modals.html`):**
+    - Her iki modalda da `Ad Soyad *`, 2 sütunlu `Telefon Numarası` & `E-posta (İsteğe Bağlı)` yapısı sağlandı.
+    - Kırmızı uyarı rozetiyle `⚠️ Kritik Sağlık / Sakatlık Uyarısı (Yoklama & seanslarda kırmızı ikaz)` alanı (`#m-medical`, `#edit-m-medical`) belirginleştirildi.
+    - Genel antrenör ve sporcu hedefleri için `📝 Genel Notlar & Tercihler (Hedefler, tercihler, spor geçmişi)` alanı (`#m-notes`, `#edit-m-notes`) bağımsız bir kimliğe kavuşturuldu.
+    - Düzenleme modalında boy/kilo/yaş/cinsiyet ve temiz `Aktif Sporcu (Kaydı Açık)` kontrolü korundu.
+  - **Backend DTO & Servis Senkronizasyonu (`Dtos.cs`, `GymService.cs`, `MembersController.cs`):**
+    - `SubscriptionSummaryDto` modeline `string? MemberMedicalConditions = null` eklendi; `GetMembersAsync` ve `MapToSubscriptionSummary` sorgularında `m.MedicalConditions` eksiksiz taşındı.
+    - `UpdateMemberNotesDto` modeline `string? MedicalConditions = null` dahil edildi ve `UpdateMemberNotesAsync` hem `Notes` hem `MedicalConditions` değerlerini güncelleyecek şekilde genişletildi.
+  - **Frontend Mantığı & Dinamik Modal Entegrasyonu (`staff.js`, `api.js`, `loader.js`):**
+    - `handleCreateMember`: `m-name`, `m-phone`, `m-email`, `m-notes`, `m-medical` alanlarını boşluklardan arındırarak (trim) `Api.createMember`'a iletir.
+    - Sporcu kartında (`loadMembersView`): Hem `⚠️ [medicalConditions]` kırmızı ikazı hem de `📝 [notes]` genel notu aynı anda varsa ikisi de şık rozetlerle gösterilir.
+    - Yoklama kartında (`renderAttendeeCard`): `sub.memberMedicalConditions || sub.memberNotes` varlığında başlıkta `⚠️` ikazı, gövdede uygun ikon (`⚠️` veya `📝`) ve `openEditMemberNotesModal` ile her iki alanı senkron güncelleyen akış sağlandı.
+    - `loader.js`: `preloadModals` fonksiyonunda önceden DOM'da bulunan modal elemanlarının yeni çekilen güncel HTML parçalarıyla anında değiştirilmesi (`old.remove()`, `container.appendChild(child)`) sağlanarak bayat (stale) modal DOM sorunu tamamen çözüldü.
+  - **Doğrulama & Mobil Benchmark (Xiaomi Redmi Note 8 Pro - 393px × 851px):**
+    - `dotnet build`: 0 warning, 0 error.
+    - `dotnet test`: 114/114 test (%100) başarılı.
+    - Tarayıcı alt ajanı ile Xiaomi Redmi Note 8 Pro çözünürlüğünde her iki modalın açılışı, 2'li telefon/e-posta yerleşimi, kırmızı sağlık ikazı ve genel not alanları görsel olarak doğrulanıp onaylandı (`v3.8.12`).
 
 ---
 

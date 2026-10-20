@@ -1106,7 +1106,7 @@ function renderAttendanceList(subs) {
             </div>
           </div>
           <div class="attendee-summary-right">
-            ${sub.memberNotes ? `<span class="summary-injury-badge" title="${escapeHtml(sub.memberNotes)}">⚠️</span>` : ''}
+            ${(sub.memberMedicalConditions || sub.memberNotes) ? `<span class="summary-injury-badge" title="${escapeHtml(sub.memberMedicalConditions ? ('⚠️ ' + sub.memberMedicalConditions) : (sub.memberNotes || ''))}">⚠️</span>` : ''}
             ${statusSummaryBadge}
             <span class="attendee-chevron" id="chevron-${sub.id}">▼</span>
           </div>
@@ -1125,13 +1125,13 @@ function renderAttendanceList(subs) {
             </div>
           </div>
 
-          <div class="v0-injury-badge-wrap ${sub.memberNotes ? '' : 'no-notes'}">
-            <div class="v0-injury-badge-content" title="${escapeHtml(sub.memberNotes || 'Sağlık / Sakatlık notu yok')}">
-              <span>${sub.memberNotes ? '⚠️' : '🩺'}</span>
-              <span class="v0-injury-badge-text">${escapeHtml(sub.memberNotes || 'Sağlık / Sakatlık notu yok')}</span>
+          <div class="v0-injury-badge-wrap ${(sub.memberMedicalConditions || sub.memberNotes) ? '' : 'no-notes'}">
+            <div class="v0-injury-badge-content" title="${escapeHtml(sub.memberMedicalConditions || sub.memberNotes || 'Sağlık / Sakatlık notu yok')}">
+              <span>${sub.memberMedicalConditions ? '⚠️' : (sub.memberNotes ? '📝' : '🩺')}</span>
+              <span class="v0-injury-badge-text">${escapeHtml(sub.memberMedicalConditions ? ('⚠️ ' + sub.memberMedicalConditions) : (sub.memberNotes || 'Sağlık / Sakatlık notu yok'))}</span>
             </div>
-            <button type="button" class="v0-injury-edit-btn" onclick="openEditMemberNotesModal(${sub.memberId}, '${escapeHtml(sub.memberName)}', '${escapeJsString(sub.memberNotes || '')}')" title="Sporcunun sakatlık/sağlık kısıtını düzenle">
-              <span>✏️</span> ${sub.memberNotes ? 'Düzenle' : 'Not Ekle'}
+            <button type="button" class="v0-injury-edit-btn" onclick="openEditMemberNotesModal(${sub.memberId}, '${escapeHtml(sub.memberName)}', '${escapeJsString(sub.memberMedicalConditions || sub.memberNotes || '')}')" title="Sporcunun sakatlık/sağlık kısıtını düzenle">
+              <span>✏️</span> ${(sub.memberMedicalConditions || sub.memberNotes) ? 'Düzenle' : 'Not Ekle'}
             </button>
           </div>
 
@@ -1514,14 +1514,14 @@ function renderStudentCards(members, container) {
         </div>
 
         ${hasMedical ? `
-          <div style="font-size:11.5px; font-weight:700; color:#FF453A; background:rgba(255,69,58,0.12); padding:4px 10px; border-radius:8px; border:1px solid rgba(255,69,58,0.25); display:flex; align-items:center; gap:6px;">
-            <span>⚠️</span> <span>${escapeHtml(m.medicalConditions)}</span>
+          <div style="font-size:11.5px; font-weight:700; color:#FF453A; background:rgba(255,69,58,0.12); padding:5px 10px; border-radius:8px; border:1px solid rgba(255,69,58,0.25); display:flex; align-items:flex-start; gap:6px;">
+            <span style="flex-shrink:0;">⚠️</span> <span style="line-height:1.35;">${escapeHtml(m.medicalConditions)}</span>
           </div>
         ` : ''}
 
-        ${m.notes && !hasMedical ? `
-          <div style="font-size:11.5px; color:var(--text-muted); background:var(--bg-surface-elevated); padding:4px 10px; border-radius:8px;">
-            <span>📝</span> ${escapeHtml(m.notes)}
+        ${m.notes ? `
+          <div style="font-size:11.5px; color:var(--text-secondary); background:var(--bg-surface-elevated); padding:5px 10px; border-radius:8px; display:flex; align-items:flex-start; gap:6px; border:1px solid var(--border-subtle);">
+            <span style="flex-shrink:0;">📝</span> <span style="line-height:1.35;">${escapeHtml(m.notes)}</span>
           </div>
         ` : ''}
 
@@ -2625,13 +2625,19 @@ window.openNewMemberModal = function() {
 
 window.handleCreateMember = async function(e) {
   e.preventDefault();
-  const fullName = document.getElementById('m-name').value;
-  const phone = document.getElementById('m-phone').value;
+  const fullName = document.getElementById('m-name')?.value?.trim();
+  const phone = document.getElementById('m-phone')?.value?.trim() || null;
+  const email = document.getElementById('m-email')?.value?.trim() || null;
   const medicalConditions = document.getElementById('m-medical')?.value?.trim() || null;
-  const notes = document.getElementById('m-notes').value;
+  const notes = document.getElementById('m-notes')?.value?.trim() || null;
+
+  if (!fullName) {
+    showToast('Ad Soyad zorunludur.', 'error');
+    return;
+  }
 
   try {
-    const created = await Api.createMember({ fullName, phone, notes, medicalConditions });
+    const created = await Api.createMember({ fullName, phone, email, notes, medicalConditions });
     showToast(`⚡ ${created.fullName} kaydedildi!`);
     closeModal('modal-new-member');
     loadMembersView();
@@ -2726,9 +2732,12 @@ window.openEditMemberNotesModal = function(memberId, memberName, notes) {
   const nameEl = document.getElementById('edit-member-notes-name');
   const textarea = document.getElementById('edit-member-notes-textarea');
 
+  let m = (typeof allMembers !== 'undefined' ? allMembers : []).find(x => x.id === memberId);
+  const currentVal = (m ? (m.medicalConditions || m.notes) : null) || notes || '';
+
   if (idInput) idInput.value = memberId;
   if (nameEl) nameEl.innerText = memberName;
-  if (textarea) textarea.value = notes || '';
+  if (textarea) textarea.value = currentVal;
 
   openModal('modal-edit-member-notes');
   if (textarea) setTimeout(() => textarea.focus(), 150);
@@ -2740,7 +2749,7 @@ window.handleSaveMemberNotes = async function(e) {
   const notes = document.getElementById('edit-member-notes-textarea').value.trim();
 
   try {
-    await Api.updateMemberNotes(memberId, notes);
+    await Api.updateMemberNotes(memberId, notes, notes);
     showToast('⚡ Sporcu sağlık kısıtı / sakatlık notu güncellendi!');
     closeModal('modal-edit-member-notes');
     if (currentTab === 'yoklama') {
