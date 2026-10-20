@@ -1001,6 +1001,22 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - `takvim.html` üzerindeki "+ Seans Planla" ve gün detayındaki "+ Bu Güne Seans Ekle" butonları doğrudan bu yeni akıllı modalı tetikler.
   - **Derleme & Test Doğrulaması:**
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.16`.
+- **2026-10-20 (v3.8.17 - Faz 71: Sadeleştirme Reformu 3. Adım - Öğrenciler Kartı & Tek Merkezli Student Hub Yönetimi):**
+  - **Kullanıcı İhtiyacı & Sadelik Hedefi:** Öğrenci feed'inde (`uyeler.html`) her bir sporcu kartı üzerindeki 4-5 farklı küçük bağlantı ve buton (`Gelişim`, `Program Yaz`, `WhatsApp`, `Düzenle`) kartları kalabalıklaştırıyor ve mobilde parmakla basmayı zorlaştırıyordu.
+  - **Minimalist Sporcu Kartı Tasarımı (`staff.js`):**
+    - Kart üzerindeki aksiyonlar 2 adet belirgin, yüksek kontrastlı dokunmatik öğeye sadeleştirildi:
+      - **`[📈 Gelişim & Hub]`** (birincil başparmak dostu buton)
+      - **`[💬 WhatsApp]`** (telefon numarası varsa doğrudan WhatsApp sohbeti açar, yoksa `[⚡ Paket Sat]` butonuna evrilir).
+    - Kart başlığı ve kimlik alanına dokunulduğunda doğrudan sporcunun Student Hub çekmecesi açılır.
+  - **Tek Merkezli Student Hub Çekmecesi (`member-modals.html`):**
+    - `#modal-student-progress` alt çekmecesi tüm sporcu işlemlerinin tek kontrol merkezine dönüştürüldü:
+      - `[⚖️ Yeni Tartı / Ölçüm]` (boy/kilo/tartı kaydı)
+      - `[⚡ Paket Tanımla]` (eski modal aramaya gerek kalmadan sporcuya doğrudan paket atama ve peşinat alma)
+      - `[🏋️ Program Yaz]` (sporcuya özel antrenman programı/WOD oluşturucu)
+      - `[💬 WhatsApp]` (antrenörün sporcuya doğrudan gelişim mesajı iletmesi)
+      - `[✏️ Sporcu Profilini Düzenle]` (iletişim, sağlık kısıtı, aktiflik ayarları)
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.17`.
 
 ---
 

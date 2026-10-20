@@ -1572,7 +1572,7 @@ function renderStudentCards(members, container) {
 
     return `
       <div class="student-card" id="student-card-${m.id}">
-        <div class="student-card-header">
+        <div class="student-card-header" onclick="openStudentProgressDrawer(${m.id}, '${escapeJsString(m.fullName)}')" style="cursor:pointer;" title="Sporcu gelişim hubını aç">
           <div class="student-card-identity">
             <div class="student-avatar">${escapeHtml(initials)}</div>
             <div class="student-meta">
@@ -1600,27 +1600,19 @@ function renderStudentCards(members, container) {
           </div>
         ` : ''}
 
-        <div class="student-card-actions">
-          <button type="button" class="btn-primary btn-sm" onclick="openStudentProgressDrawer(${m.id}, '${escapeJsString(m.fullName)}')">
-            <span>📈</span> Gelişim & Tartı
+        <div class="student-card-actions" style="display:flex; gap:8px;">
+          <button type="button" class="btn-primary btn-sm" style="flex:1; justify-content:center;" onclick="openStudentProgressDrawer(${m.id}, '${escapeJsString(m.fullName)}')">
+            <span>📈</span> Gelişim & Hub
           </button>
-          <button type="button" class="btn-secondary btn-sm" style="color:var(--volt-lime); border-color:rgba(204,255,0,0.3);" onclick="openTemplateBuilderForMember(${m.id}, '${escapeJsString(m.fullName)}')">
-            <span>🏋️</span> Program Yaz
-          </button>
-        </div>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:6px; border-top:1px solid var(--border-subtle); font-size:11.5px;">
-          <span style="color:var(--text-muted);">${m.totalSubscriptionsCount || 1}. Sezon / Dönem</span>
-          <div style="display:flex; gap:8px;">
-            ${m.phone ? `
-              <button type="button" class="btn-link" style="color:#25D366; background:none; border:none; padding:0; cursor:pointer; font-size:11.5px; font-weight:700;" onclick="window.open('https://wa.me/${encodeURIComponent(m.phone.replace(/[^0-9]/g, ''))}', '_blank')">
-                💬 WhatsApp
-              </button>
-            ` : ''}
-            <button type="button" class="btn-link" style="color:var(--text-secondary); background:none; border:none; padding:0; cursor:pointer; font-size:11.5px;" onclick="openEditMemberModal(${m.id})">
-              ✏️ Düzenle
+          ${m.phone ? `
+            <button type="button" class="btn-secondary btn-sm" style="color:#25D366; border-color:rgba(37,211,102,0.3); padding:0 12px;" onclick="window.open('https://wa.me/${encodeURIComponent(m.phone.replace(/[^0-9]/g, ''))}', '_blank')" title="WhatsApp Mesajı">
+              <span>💬</span> WhatsApp
             </button>
-          </div>
+          ` : `
+            <button type="button" class="btn-secondary btn-sm" style="color:var(--volt-lime); border-color:rgba(204,255,0,0.3); padding:0 12px;" onclick="openNewSubModal(${m.id}, '${escapeJsString(m.fullName)}')" title="Paket Tanımla">
+              <span>⚡</span> Paket Sat
+            </button>
+          `}
         </div>
       </div>
     `;
@@ -1667,8 +1659,30 @@ async function openStudentProgressDrawer(memberId, memberName) {
   if (chartContainer) chartContainer.innerHTML = '<div style="color:var(--text-muted); padding:30px; text-align:center;">Ölçüm geçmişi yükleniyor...</div>';
   if (historySection) historySection.innerHTML = '<div style="color:var(--text-muted); padding:16px; text-align:center; font-size:12px;">Ölçüm geçmişi yükleniyor...</div>';
 
+  const btnSellSub = document.getElementById('btn-student-sell-sub');
+  const btnWriteWod = document.getElementById('btn-student-write-wod');
+  const btnEditProfile = document.getElementById('btn-student-edit-profile');
+
   if (btnWeighIn) {
     btnWeighIn.onclick = () => openAddStudentMetricModal(memberId, memberName);
+  }
+  if (btnSellSub) {
+    btnSellSub.onclick = () => {
+      closeModal('modal-student-progress');
+      if (typeof openNewSubModal === 'function') openNewSubModal(memberId, memberName);
+    };
+  }
+  if (btnWriteWod) {
+    btnWriteWod.onclick = () => {
+      closeModal('modal-student-progress');
+      if (typeof openTemplateBuilderForMember === 'function') openTemplateBuilderForMember(memberId, memberName);
+    };
+  }
+  if (btnEditProfile) {
+    btnEditProfile.onclick = () => {
+      closeModal('modal-student-progress');
+      if (typeof openEditMemberModal === 'function') openEditMemberModal(memberId);
+    };
   }
 
   // Open modal early for snappy UX

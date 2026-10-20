@@ -302,18 +302,29 @@
             <div id="student-progress-sub-badge" style="font-size:12px; color:var(--text-muted); margin-top:2px;">
               -
             </div>
+            <div style="margin-top:4px;">
+              <button type="button" id="btn-student-edit-profile" style="background:none; border:none; padding:0; font-size:11.5px; color:var(--text-muted); cursor:pointer; text-decoration:underline;">
+                ✏️ Sporcu Profilini Düzenle
+              </button>
+            </div>
           </div>
         </div>
         <button type="button" class="modal-close" onclick="closeModal('modal-student-progress')">✕</button>
       </div>
 
-      <!-- Quick Action Bar -->
+      <!-- Student Hub Quick Action Bar -->
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:18px;">
         <button type="button" class="btn-primary" id="btn-open-student-weighin" style="height:42px; font-size:12.5px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
           <span>⚖️</span> Yeni Tartı / Ölçüm
         </button>
+        <button type="button" class="btn-secondary" id="btn-student-sell-sub" style="height:42px; font-size:12.5px; border-radius:10px; color:var(--volt-lime); border-color:rgba(204,255,0,0.3); display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+          <span>⚡</span> Paket Tanımla
+        </button>
+        <button type="button" class="btn-secondary" id="btn-student-write-wod" style="height:42px; font-size:12.5px; border-radius:10px; color:var(--cyber-cyan); border-color:rgba(56,189,248,0.3); display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+          <span>🏋️</span> Program Yaz
+        </button>
         <button type="button" class="btn-secondary" id="btn-student-wa-share" style="height:42px; font-size:12.5px; border-radius:10px; color:#25D366; border-color:rgba(37,211,102,0.3); display:inline-flex; align-items:center; justify-content:center; gap:6px;">
-          <span>💬</span> WhatsApp Paylaş
+          <span>💬</span> WhatsApp
         </button>
       </div>
 
