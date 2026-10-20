@@ -20,7 +20,7 @@ import {
   loadTrainers, renderTrainersTable, updateTrainerSelects,
   loadPackagesAdmin, renderPackagesTable,
   loadCalendarView, renderCalendarGrid
-} from './modules/staff.js?v=3.8.7';
+} from './modules/staff.js?v=3.8.10';
 import { 
   loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,

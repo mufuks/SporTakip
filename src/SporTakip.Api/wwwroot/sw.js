@@ -1,12 +1,12 @@
-const CACHE_NAME = 'sportakip-shell-v3.8.8';
+const CACHE_NAME = 'sportakip-shell-v3.8.11';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon.ico',
-  '/css/app.css?v=3.8.8',
-  '/js/app.js?v=3.8.8',
+  '/css/app.css?v=3.8.11',
+  '/js/app.js?v=3.8.11',
   '/js/api.js?v=3.8.0',
   '/js/modules/state.js',
   '/js/modules/utils.js',
@@ -120,8 +120,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Static Assets: Scripts (.js), Styles (.css), Icons/Images
-  // Cache-First with Stale-While-Revalidate: Immediate 0ms local response + silent background refresh
+  // 4. Scripts (.js) & Styles (.css): Network-First (instant code updates when online, offline cache fallback)
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    event.respondWith(
+      fetch(request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
+        return networkResponse;
+      }).catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // 5. Static Assets: Icons, Images, Fonts (Cache-First with Background Revalidation)
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request).then((networkResponse) => {

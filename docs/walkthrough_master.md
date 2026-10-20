@@ -924,10 +924,13 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Plansız Sporcu Ekleme (Walk-in / Fast Add Member):** Salona çat kapı gelen veya rezervasyonsuz katılan üyeler için `#modal-session-add-attendee` modalı ile aktif abonelik seçilerek tek tıkla seansa dahil edilir ve istenirse doğrudan yoklaması alınır.
   - **Sporcuya Özel İdman / Form Notu (#modal-attendee-micro-note):** Antrenör ders esnasında sporcunun performansını ("Sol omuzda ağrı vardı 10kg ile çalıştı, 85kg squat PR") tek tıkla kaydedebilir.
   - **Teknik Bütünlük & Hata İzolasyonu:** ES modül export uyumu, `lessonDate` saat korunumu, önbellek versiyonlaması (`v3.8.7`) ve servis çalışanı (service worker) yenileme mekanizması tamamlandı. 114/114 birim testi (%100) başarıyla geçti.
-- **2026-10-16 (v3.8.8 - Faz 64: Yoklama Ekranı Dikey Alan Sadeleştirmesi - Başlık, Seans Planla ve Arama Alanının Kaldırılması):**
-  - **Kullanıcı Talebi & Amacı:** Kullanıcının işaretlediği dikey kalabalık oluşturan öğeler kaldırıldı: `HIZLI YOKLAMA` başlığı ve alt metni, `+ Seans Planla` butonu (zaten `[📅 Takvim]` sekmesinde detaylı planlama mevcut olduğu için) ve `🔍 Seanstaki sporcuyu veya hareketi ara...` arama kutusu (yalnızca dün ve bugüne ait seanslar listelendiğinden gereksiz hale gelen).
-  - **Sıfır Sürtünmeli Üst Yerleşim:** `[ ◀ Dün ]` ve `[ ● Bugün (Canlı) ]` 2 sekmeli başparmak denetleyicisi doğrudan tepeye çekildi; canlı seans kartları ekranda hiç dikey kaydırmaya gerek kalmadan ilk bakışta en üstte görünür hale geldi.
-  - **Sürüm:** `v3.8.8` olarak güncellendi.
+- **2026-10-20 (v3.8.11 - Faz 65: Kişisel Hakedişim Ekranı Mobil Dönüşümü, Hero KPI Kartı & Reels-Tarzı Seans Feed'i):**
+  - **Kullanıcı Talebi & Hoca_1 Audit Kapanışı:** `docs/reviews/hoca1_mobile_experience_audit.md` raporundaki yarım kalan Adım 5 (KPI asimetrisi) ve Adım 6 (7 sütunlu tablonun mobilde yatay taşması) tamamlandı.
+  - **Hero KPI Kartı & Simetrik 2-Kolon Yerleşimi:** 393px Redmi Note 8 Pro ekranında tek başına alta sarkan asimetrik 3 kart yerine; en üstte tam genişlikte (`.hakedis-hero-card`), yüksek kontrastlı Volt Lime degrade ve `● CANLI KAZANÇ` rozetiyle "Bu Ayki Tahmini Hakedişim" Hero kartı konumlandırıldı. Altına ise `Toplam Verilen Seans` ve `İkame Ders Payım (%40)` 2 eşit sütun (`.hakedis-sub-grid`) olarak yerleştirildi.
+  - **Mobilde Reels/Feed Tarzı Seans Prim Kartları (`.hakedis-cards-feed`):** 7 kolonlu `custom-table` mobilde (`<= 768px`) gizlendi; yerine tek elle rahat okunan `.hakedis-session-card` feed'i entegre edildi. Her kart: Tarih/saat (`📅 16 Eki Cum · 19:00`), sağ üstte yeşil Volt Lime prim rozeti (`+₺150`), sporcu adı (`Atlet_3`), paket bilgisi, ders rozeti (`8. Ders`) ve katılım rozetleri (`Asıl Hoca`, `Geldi ✓`) sunar. Masaüstü görünümde klasik tablo (`.desktop-only-table`) korunur.
+  - **Dinamik Ay Seçici (Last 6 Months):** Sabit hardcoded aylar yerine, içinde bulunulan aydan geriye doğru 6 ayı dinamik oluşturan ve mevcut ayı `(Bu Ay)` olarak belirten dinamik ay seçici devreye alındı.
+  - **Service Worker Network-First:** `.js` ve `.css` dosyaları Service Worker'da (`sw.js`) Network-First stratejisine geçirilerek mobil istemcilerde kod güncellemelerinin anında yansıması sağlandı; mobil görünümde `padding-bottom: 110px !important;` ile alt navigasyon barı çakışması önlendi.
+  - **Sürüm:** `v3.8.11` olarak güncellendi. 114/114 birim testi %100 başarılı.
 
 ---
 

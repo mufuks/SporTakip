@@ -4312,7 +4312,7 @@ table.custom-table tr:hover td {
   #view-uyeler, 
   #view-kasa, 
   #view-hakedisim {
-    padding: 0 16px !important;
+    padding: 0 16px 110px 16px !important;
     margin-top: 14px !important;
   }
 
@@ -5950,8 +5950,9 @@ body:has(.is-guest-mode) {
 }
 
 @media (min-width: 769px) {
-  .student-cards-grid {
-    display: none;
+  .student-cards-grid,
+  .hakedis-cards-feed {
+    display: none !important;
   }
   .desktop-only-table {
     display: block;
@@ -6271,6 +6272,214 @@ body:has(.is-guest-mode) {
   border-color: var(--border-strong);
   color: var(--text-primary);
 }
+
+/* ==================== HAKEDİŞİM (PAYROLL) MOBILE-FIRST STYLES ==================== */
+.hakedis-metrics-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.hakedis-hero-card {
+  background: linear-gradient(135deg, rgba(204, 255, 0, 0.08) 0%, rgba(15, 23, 42, 0.7) 100%), var(--bg-surface);
+  border: 1px solid rgba(204, 255, 0, 0.3) !important;
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25);
+}
+
+.hakedis-hero-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--volt-lime), #10b981) !important;
+}
+
+.hakedis-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.hakedis-hero-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(204, 255, 0, 0.15);
+  color: var(--volt-lime);
+  border: 1px solid rgba(204, 255, 0, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hakedis-hero-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--volt-lime);
+  box-shadow: 0 0 8px var(--volt-lime);
+  display: inline-block;
+}
+
+.hakedis-hero-amount {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 6px 0 4px 0;
+  color: var(--volt-lime);
+}
+
+.hakedis-sub-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .hakedis-sub-grid .stat-card {
+    padding: 14px 12px;
+  }
+  .hakedis-sub-grid .stat-value {
+    font-size: 20px;
+  }
+  .hakedis-sub-grid .stat-label {
+    font-size: 10.5px;
+    letter-spacing: 0.02em;
+  }
+  .hakedis-sub-grid .stat-meta {
+    font-size: 10.5px;
+  }
+}
+
+@media (min-width: 900px) {
+  .hakedis-metrics-wrap {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr 1fr;
+    gap: 16px;
+  }
+  .hakedis-sub-grid {
+    display: contents;
+  }
+}
+
+/* Hakediş Mobil Seans Prim Kartları Feed'i */
+.hakedis-cards-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hakedis-session-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.hakedis-session-card:active {
+  transform: scale(0.99);
+}
+
+.hakedis-session-card:hover {
+  border-color: rgba(204, 255, 0, 0.25);
+}
+
+.hakedis-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.hakedis-card-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.hakedis-card-cal-icon {
+  font-size: 13px;
+}
+
+.hakedis-card-date {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.hakedis-card-hour {
+  color: var(--text-secondary);
+}
+
+.hakedis-card-amount {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--volt-lime);
+  background: rgba(204, 255, 0, 0.12);
+  border: 1px solid rgba(204, 255, 0, 0.28);
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: -0.01em;
+}
+
+.hakedis-card-body {
+  margin-bottom: 10px;
+}
+
+.hakedis-card-member-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.hakedis-card-member-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.hakedis-card-package {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.hakedis-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hakedis-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 
 
 

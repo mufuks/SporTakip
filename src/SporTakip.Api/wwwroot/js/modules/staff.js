@@ -2020,19 +2020,25 @@ async function loadMyEarningsView(year = null, month = null) {
   const y = year || currentHakedisYear;
   const m = month || currentHakedisMonth;
 
-  // Populate month select dropdown if empty
+  // Populate month select dropdown if empty (dynamically 6 months starting from current month)
   const select = document.getElementById('hakedis-month-select');
   if (select && select.options.length === 0) {
-    const months = [
-      { y: 2026, m: 10, label: 'Ekim 2026' },
-      { y: 2026, m: 9, label: 'Eylül 2026 (Bu Ay)' },
-      { y: 2026, m: 8, label: 'Ağustos 2026' },
-      { y: 2026, m: 7, label: 'Temmuz 2026' }
-    ];
+    const now = new Date();
+    const months = [];
+    const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const optY = d.getFullYear();
+      const optM = d.getMonth() + 1;
+      const isCurrentMonth = (i === 0);
+      const label = `${monthNames[d.getMonth()]} ${optY}${isCurrentMonth ? ' (Bu Ay)' : ''}`;
+      months.push({ y: optY, m: optM, label });
+    }
     select.innerHTML = months.map(opt => `<option value="${opt.y}-${opt.m}" ${opt.y === y && opt.m === m ? 'selected' : ''}>${opt.label}</option>`).join('');
   }
 
   const tbody = document.getElementById('hakedis-table-body');
+  const cardsFeed = document.getElementById('hakedis-cards-feed');
   const countEl = document.getElementById('hakedis-table-count');
   const totalLessonsEl = document.getElementById('hakedis-total-lessons');
   const lessonsMetaEl = document.getElementById('hakedis-lessons-meta');
@@ -2041,6 +2047,7 @@ async function loadMyEarningsView(year = null, month = null) {
   const amountMetaEl = document.getElementById('hakedis-amount-meta');
 
   if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">Hakediş bilgileri yükleniyor...</td></tr>';
+  if (cardsFeed) cardsFeed.innerHTML = '<div style="color:var(--text-muted); padding:32px; text-align:center;">Hakediş bilgileri yükleniyor...</div>';
 
   try {
     const data = await Api.getMyEarnings(y, m);
@@ -2053,10 +2060,13 @@ async function loadMyEarningsView(year = null, month = null) {
     if (countEl) countEl.innerText = `${data.lessonHistory ? data.lessonHistory.length : 0} seans listelendi`;
 
     if (!data.lessonHistory || data.lessonHistory.length === 0) {
-      if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">Bu ay için henüz verilmiş seans kaydı bulunmuyor.</td></tr>';
+      const emptyMsg = 'Bu ay için henüz verilmiş seans kaydı bulunmuyor.';
+      if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">${emptyMsg}</td></tr>`;
+      if (cardsFeed) cardsFeed.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:36px 16px; border:1px dashed var(--border-subtle); border-radius:14px;"><span style="font-size:32px; display:block; margin-bottom:8px;">📭</span>${emptyMsg}</div>`;
       return;
     }
 
+    // 1. Masaüstü Tablosu Render
     if (tbody) {
       tbody.innerHTML = data.lessonHistory.map(item => {
         const d = new Date(item.lessonDate);
@@ -2089,8 +2099,55 @@ async function loadMyEarningsView(year = null, month = null) {
         `;
       }).join('');
     }
+
+    // 2. Mobilde Reels / Feed Tarzı Seans Prim Kartları Render
+    if (cardsFeed) {
+      cardsFeed.innerHTML = data.lessonHistory.map(item => {
+        const d = new Date(item.lessonDate);
+        const dateStr = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', weekday: 'short' });
+        const timeStr = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+        const typeBadge = item.isSubstitute 
+          ? `<span class="hakedis-badge-substitute" title="İkame hoca olarak girildi (%40 prim)">⚡ %40 İkame</span>`
+          : `<span class="hakedis-badge-primary">Asıl Hoca</span>`;
+
+        const statusBadge = item.status === 'Attended'
+          ? `<span class="lesson-badge badge-green" style="font-size:11px;">Geldi ✓</span>`
+          : `<span class="lesson-badge badge-red" style="font-size:11px;">Yandı / Gelmedi</span>`;
+
+        return `
+          <div class="hakedis-session-card">
+            <div class="hakedis-card-header">
+              <div class="hakedis-card-time">
+                <span class="hakedis-card-cal-icon">📅</span>
+                <span class="hakedis-card-date">${dateStr}</span>
+                <span class="hakedis-card-hour">· ${timeStr}</span>
+              </div>
+              <div class="hakedis-card-amount">
+                +${formatMoney(item.earnedAmount)}
+              </div>
+            </div>
+            <div class="hakedis-card-body">
+              <div class="hakedis-card-member-row">
+                <span class="hakedis-card-member-name">${escapeHtml(item.memberName)}</span>
+                <span class="lesson-badge badge-cyan" style="font-size:11px;">${item.lessonNumber}. Ders</span>
+              </div>
+              <div class="hakedis-card-package">${escapeHtml(item.packageName)}</div>
+            </div>
+            <div class="hakedis-card-footer">
+              <div class="hakedis-card-badges">
+                ${typeBadge}
+                ${statusBadge}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
   } catch (err) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="color:var(--pulse-rose); padding:24px; text-align:center;">Hata: ${err.message}</td></tr>`;
+    const errText = `Hata: ${err.message}`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="color:var(--pulse-rose); padding:24px; text-align:center;">${errText}</td></tr>`;
+    if (cardsFeed) cardsFeed.innerHTML = `<div style="color:var(--pulse-rose); padding:24px; text-align:center;">${errText}</div>`;
   }
 }
 window.loadMyEarningsView = loadMyEarningsView;

@@ -3,7 +3,7 @@
 **Tarih:** 15 Ekim 2026  
 **Hedef Cihaz Ölçütü (Rule 20 Benchmark):** Xiaomi Redmi Note 8 Pro (CSS Viewport: 393px × 851px)  
 **İncelenen Kullanıcı:** `Hoca_1` (`+905324445566` - Rolleri: `Coach` + `Athlete`)  
-**Durum:** `[Open]` - Analiz tamamlandı, kullanıcı onayı bekleniyor.
+**Durum:** `[All Resolved]` - Tüm 6 mobil optimizasyon adımı Xiaomi Redmi Note 8 Pro (393px × 851px) üzerinde test edilip onaylandı.
 
 ---
 
@@ -76,6 +76,18 @@ Mobil görünüm (393px genişlik) genel hatlarıyla modern Volt-Dark atletik ki
    - Tıklandığında `#CCFF00` Volt Lime ışıltılı kenarlıkla aktifleşir ve `#slot-details-box` üzerinden hem ilgili saatteki sporcuları anında filtreler hem de `[✓ Tümünü Katıldı Say]` ile tek tıkla toplu yoklama imkanı sunar.
    - Dikey yükseklik ~400px'den ~130px'e indirilerek, sporcu kartlarının Xiaomi Redmi Note 8 Pro ekranında kaydırma yapmadan doğrudan görünmesi sağlandı.
 
+### G. "Kişisel Hakedişim" Ekranı Mobil Dönüşümü & Dinamik Ay Seçici [Resolved - Phase 65]
+1. **Hero KPI Kartı & Simetrik 2-Kolon Alt Kartlar (Adım 5):**
+   - 393px mobilde asimetrik dizilen 3 kart yerine, antrenörün en çok odaklandığı "Bu Ayki Tahmini Hakedişim" en üstte tam genişlikte (`.hakedis-hero-card`) yüksek kontrastlı Volt Lime degrade ve `● CANLI KAZANÇ` rozetiyle birincil Hero kart yapıldı.
+   - Altında `Toplam Verilen Seans` ve `İkame Ders Payım (%40)` metrikleri mobilde yan yana 2 eşit kompakt sütun (`.hakedis-sub-grid`) olarak hizalandı.
+2. **Mobilde Reels/Feed Tarzı Seans Prim Kartları (Adım 6):**
+   - 7 kolonlu `custom-table` mobilde (`<= 768px`) gizlenerek yerine tek elle kaydırılabilir dokunmatik dostu `.hakedis-session-card` feed'i (`#hakedis-cards-feed`) entegre edildi.
+   - Her kart: Tarih & seans saati (`📅 16 Eki Cum · 19:00`), sağ üstte parlak Volt Lime prim rozeti (`+₺150`), sporcu adı (`Atlet_3`), paket bilgisi, ders rozeti (`8. Ders`) ve katılım/rol haplarını (`Asıl Hoca`, `Geldi ✓`) içerir. Masaüstü ekranlarda ise klasik tablo görünümü korunur.
+3. **Dinamik Ay Seçici (Bonus):**
+   - Sabit hardcoded aylar yerine, içinde bulunulan aydan geriye doğru son 6 ayı dinamik listeleyen ve mevcut ayı `(Bu Ay)` rozetiyle işaretleyen akıllı ay seçici oluşturuldu.
+4. **Service Worker Network-First Güncellemesi:**
+   - Yeni JS ve CSS varlıklarının mobil cihazlarda ve PWA'da anında görünmesi için `.js` ve `.css` dosyaları Service Worker'da (`sw.js`) Network-First stratejisine geçirildi; alt boşluk (`padding-bottom: 110px`) ile kartların mobil alt menü arkasında kalması engellendi.
+
 ---
 
 ## 3. Tamamlanan ve Sıradaki Eylem Planı
@@ -83,6 +95,7 @@ Mobil görünüm (393px genişlik) genel hatlarıyla modern Volt-Dark atletik ki
 - [x] **Adım 2:** Yoklama ekranındaki sporcu kartlarını varsayılan olarak kapalı (collapsible) getirmek ve tek elle taranabilirliği artırmak.
 - [x] **Adım 3:** Hoca için "Öğrencilerim & Gelişim Hub'ı" ve interaktif SVG grafikli "Gelişim & Tartı Çekmecesi" oluşturmak.
 - [x] **Adım 4:** Yoklama ekranındaki hantal 7 günlük takvim ve 12 butonlu saat matrisini tek satırlık yatay Story-Strip haplara dönüştürmek, dikeyde 250px yer kazanmak.
-- [ ] **Adım 5:** Hakediş ekranındaki 3 KPI kartını mobil dostu simetrik yapıya kavuşturmak (`Tahmini Hakediş` üstte Hero kart, diğer 2 kart altta 2 kolon).
-- [ ] **Adım 6:** Hakediş tablosunu mobilde yatay taşmayan modern liste kartlarına (feed) dönüştürmek.
+- [x] **Adım 5:** Hakediş ekranındaki 3 KPI kartını mobil dostu simetrik yapıya kavuşturmak (`Tahmini Hakediş` üstte Hero kart, diğer 2 kart altta 2 kolon).
+- [x] **Adım 6:** Hakediş tablosunu mobilde yatay taşmayan modern liste kartlarına (feed) dönüştürmek.
+
 
