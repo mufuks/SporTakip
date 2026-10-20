@@ -24,7 +24,7 @@ import {
   loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,
   updatePushUi, renderNotificationItems
-} from './modules/athlete.js?v=3.7.8';
+} from './modules/athlete.js?v=3.8.21';
 import { 
   loadWorkoutHub, loadWorkoutTemplates,
   startWorkoutTimer, renderLiveWorkoutView,
@@ -34,7 +34,7 @@ import {
   loadSuperAdminView, filterAndRenderSuperAdminUsers,
   updateSortIcons, updateRoleCounts
 } from './modules/admin.js';
-import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.8.20';
+import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.8.21';
 
 // Workspace / App Mode State
 let currentAppMode = localStorage.getItem('sportakip_app_mode') || 'athlete';

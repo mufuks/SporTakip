@@ -1046,6 +1046,20 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - **ES Modül Derleme Hatasının Düzeltilmesi (`staff.js`):** `openCreateSessionModal` ve `openEditSessionModal` fonksiyonlarının yalnızca `window` nesnesine bağlanıp alt `export { ... }` bloğunda yerel kapsam tanımı olmadan dışa aktarılmaya çalışılması nedeniyle tarayıcıların fırlattığı derleme zamanı `SyntaxError: Export 'openCreateSessionModal' is not defined in module` hatası giderildi. Fonksiyonlar doğrudan `export async function` olarak tanımlandı. Tüm modül zincirinin (`app.js`, `auth.js`) başarıyla ayağa kalkması ve `submitSendOtp`'nin sorunsuz çalışması sağlandı.
   - **Derleme & Test Doğrulaması:**
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.20`.
+- **2026-10-20 (v3.8.21 - Faz 74: Atlet Ana Sayfası "Aktif Paket" ve Seans Boşluklarının Minimalize Edilmesi):**
+  - **Kullanıcı Geri Bildirimi:** Atlet ana sayfasında ("home.html") "Aktif Paket" kartının alt ve üst boşluklarının çok fazla olması, gereksiz dikey yer kaplaması ve arayüzün daha kompakt, sade ve minimal hale getirilmesi talebi.
+  - **Geliştirilen Çözümler:**
+    - **Boş Seans Kutusu Kompaktlaştırması (`athlete.js`):** Planlanmış seans bulunmadığında gösterilen `.v0-empty-slots-state` kutusunun devasa dikey dolgusu (`padding: 44px 16px; margin: 14px 0;`) dengeli ve derli toplu bir formata (`padding: 18px 14px; margin: 4px 0 6px 0;`, ikon boyutu 24px) indirildi.
+    - **"Aktif Paket" Kart Dış Boşlukları (`app.css`):**
+      - `#athlete-package-card` üzerindeki inline `style="margin-top:14px;"` kaldırıldı.
+      - CSS medya sorgularında mobil dış boşlukları `margin-top: 14px; margin-bottom: 24px;` yerine `margin-top: 4px; margin-bottom: 10px;` olarak optimize edildi.
+      - Kart iç dolgusu (`padding: 20px;`) mobil ekranlarda `12px 14px` değerine sadeleştirildi.
+    - **İç Öğe Boşlukları & Tipografi Dengesi (`app.css`):**
+      - `.v0-package-label` üst/alt kenar boşluğu sıfırlandı (`margin: 0; line-height: 1.2;`).
+      - `.v0-package-title` başlığı `18px`, `margin: 2px 0 0 0` ile kompaktlaştırıldı.
+      - İlerleme çubuğu (`.v0-segmented-bar`) ve ders sayaç satırı (`.v0-pkg-headline-row`) üst marjinleri 20px/14px yerine 6px/8px seviyesine çekildi.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.21`.
 
 ---
 

@@ -446,7 +446,7 @@ function renderAthleteActivePackage(activeSub) {
       pkgStatusEl.style.color = '';
       pkgStatusEl.style.border = '';
     }
-    if (pkgBar) pkgBar.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:4px 0;">Tanımlı aktif paketiniz bulunmuyor.</div>';
+    if (pkgBar) pkgBar.innerHTML = '<div style="font-size:11.5px; color:var(--text-muted); padding:1px 0;">Tanımlı aktif paketiniz bulunmuyor.</div>';
     if (completedEl) completedEl.innerText = '0 / 0 Ders';
     if (remainingEl) remainingEl.innerText = '0 DERS KALDI';
     if (daysEl) daysEl.innerText = '📅 -- gün';
@@ -693,10 +693,10 @@ async function renderSessionsList(containerId, dateStr) {
 
     if (!slots || slots.length === 0) {
       container.innerHTML = `
-        <div class="v0-empty-slots-state" style="text-align:center; padding:44px 16px; background:rgba(255,255,255,0.02); border:1px dashed rgba(255,255,255,0.08); border-radius:16px; margin:14px 0;">
-          <div style="font-size:32px; margin-bottom:8px;">📅</div>
-          <div style="font-weight:700; font-size:14.5px; color:var(--text-primary); margin-bottom:4px;">Planlanmış Seans Bulunmuyor</div>
-          <div style="font-size:12.5px; color:var(--text-muted); max-width:320px; margin:0 auto;">Bu tarih için henüz bir antrenman veya seans planlanmamış.</div>
+        <div class="v0-empty-slots-state" style="text-align:center; padding:18px 14px; background:rgba(255,255,255,0.02); border:1px dashed rgba(255,255,255,0.08); border-radius:14px; margin:4px 0 6px 0;">
+          <div style="font-size:22px; margin-bottom:4px;">📅</div>
+          <div style="font-weight:700; font-size:13.5px; color:var(--text-primary); margin-bottom:2px;">Planlanmış Seans Bulunmuyor</div>
+          <div style="font-size:11.5px; color:var(--text-muted); max-width:300px; margin:0 auto;">Bu tarih için henüz bir antrenman veya seans planlanmamış.</div>
         </div>
       `;
       return;
