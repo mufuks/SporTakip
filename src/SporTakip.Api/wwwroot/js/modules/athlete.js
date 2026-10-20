@@ -693,10 +693,10 @@ async function renderSessionsList(containerId, dateStr) {
 
     if (!slots || slots.length === 0) {
       container.innerHTML = `
-        <div class="v0-empty-slots-state" style="text-align:center; padding:18px 14px; background:rgba(255,255,255,0.02); border:1px dashed rgba(255,255,255,0.08); border-radius:14px; margin:4px 0 6px 0;">
-          <div style="font-size:22px; margin-bottom:4px;">📅</div>
-          <div style="font-weight:700; font-size:13.5px; color:var(--text-primary); margin-bottom:2px;">Planlanmış Seans Bulunmuyor</div>
-          <div style="font-size:11.5px; color:var(--text-muted); max-width:300px; margin:0 auto;">Bu tarih için henüz bir antrenman veya seans planlanmamış.</div>
+        <div class="v0-empty-slots-state" style="text-align:center; padding:10px 12px; background:rgba(255,255,255,0.02); border:1px dashed rgba(255,255,255,0.08); border-radius:12px; margin:2px 0 4px 0;">
+          <div style="font-size:18px; margin-bottom:2px;">📅</div>
+          <div style="font-weight:700; font-size:13px; color:var(--text-primary); margin-bottom:2px;">Planlanmış Seans Bulunmuyor</div>
+          <div style="font-size:11px; color:var(--text-muted); max-width:280px; margin:0 auto; line-height:1.3;">Bu tarih için henüz bir antrenman veya seans planlanmamış.</div>
         </div>
       `;
       return;

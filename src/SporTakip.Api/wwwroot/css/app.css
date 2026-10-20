@@ -2280,16 +2280,22 @@ table.custom-table tr:hover td {
 .v0-home-grid {
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
 }
 
 @media (max-width: 899px) {
   #athlete-occupancy-card {
     margin-top: 0 !important;
-    margin-bottom: 8px !important;
+    margin-bottom: 6px !important;
+  }
+  #athlete-member-sessions-wrap {
+    padding: 0 14px 0 14px !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
   }
   #athlete-package-card {
     margin-top: 4px !important;
-    margin-bottom: 10px !important;
+    margin-bottom: 8px !important;
   }
 }
 
@@ -4305,10 +4311,10 @@ table.custom-table tr:hover td {
 @media (max-width: 640px) {
   /* 1. Global Shell & View Padding */
   .v0-athlete-shell {
-    padding-bottom: 110px !important;
+    padding-bottom: 74px !important;
   }
 
-  .v0-section, 
+  .v0-section:not(#athlete-member-sessions-wrap), 
   #view-yoklama, 
   #view-takvim, 
   #view-dashboard, 
@@ -4317,6 +4323,17 @@ table.custom-table tr:hover td {
   #view-hakedisim {
     padding: 0 16px 110px 16px !important;
     margin-top: 14px !important;
+  }
+
+  .v0-home-main .v0-section,
+  #athlete-member-sessions-wrap {
+    padding: 0 12px 0 12px !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  #v0-view-home {
+    padding-bottom: 8px !important;
   }
 
   /* 2. Top Header */
@@ -4364,9 +4381,14 @@ table.custom-table tr:hover td {
 
   /* 3. Cards & Modules */
   .v0-package-card {
-    margin: 4px 12px 10px 12px !important;
-    padding: 12px 14px !important;
+    margin: 4px 12px 8px 12px !important;
+    padding: 10px 14px !important;
     border-radius: 16px !important;
+  }
+
+  .v0-empty-slots-state {
+    padding: 10px 12px !important;
+    margin: 2px 0 4px 0 !important;
   }
 
   .v0-session-card {

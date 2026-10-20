@@ -1060,6 +1060,16 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
       - İlerleme çubuğu (`.v0-segmented-bar`) ve ders sayaç satırı (`.v0-pkg-headline-row`) üst marjinleri 20px/14px yerine 6px/8px seviyesine çekildi.
   - **Derleme & Test Doğrulaması:**
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.21`.
+- **2026-10-20 (v3.8.22 - Faz 75: Mobil .v0-section Alt Dolgusunun (110px) İzole Edilmesi ve Paket Kartı Boşluklarının Tamamen Sıfırlanması):**
+  - **Kök Neden Tespiti:** Mobil medya sorgusunda (`@media (max-width: 640px)`) yer alan `.v0-section, #view-yoklama, ... { padding: 0 16px 110px 16px !important; }` kuralı nedeniyle, ana sayfadaki Seanslar sarmalayıcısı (`#athlete-member-sessions-wrap.v0-section`) altına zorunlu olarak 110px devasa bir dikey boşluk enjekte ediliyordu.
+  - **Uygulanan Çözümler:**
+    - `app.css` içerisindeki mobil kural `.v0-section:not(#athlete-member-sessions-wrap)` olarak güncellendi ve Seanslar bölümü için `padding: 0 12px 0 12px !important; margin: 0 !important;` tanımlandı. Böylece "Planlanmış Seans Bulunmuyor" kutusu ile "Aktif Paket" kartı arasındaki 114px'lik yapay boşluk 8px'e düşürüldü.
+    - Mobil kabuk (`.v0-athlete-shell`) alt dolgusu 110px yerine 64px sabit alt navigasyonu temizleyecek olan `74px !important` değerine ayarlandı; ana sayfa (`#v0-view-home`) alt dolgusu `8px` olarak sınırlandı.
+    - Boş seans kutusu (`.v0-empty-slots-state`) dikey boşlukları `padding: 10px 12px; margin: 2px 0 4px 0;` olarak daha da kompaktlaştırıldı.
+    - [home.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/views/athlete/home.html) sonundaki fazlalık `</div>` etiketi kaldırıldı.
+    - Service Worker (`sw.js`), script ve stil varlıkları `v3.8.22` sürümüne yükseltilerek tam cache busting sağlandı.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.22`.
 
 ---
 
