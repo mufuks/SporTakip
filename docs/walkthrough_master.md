@@ -959,6 +959,20 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Birim Test Kapsamı (`SessionsControllerTests.cs`):**
     - 4 yeni birim testi eklendi (`CreateSlot_WhenTrainerHasConflictingSession_ReturnsBadRequest`, `CreateSlot_WhenDurationTooShort_ReturnsBadRequest`, `UpdateSlot_WhenCapacityLowerThanActiveAttendees_ReturnsBadRequest`, `UpdateSlot_WhenTrainerHasConflictingSession_ReturnsBadRequest`).
     - Toplam **118/118 test %100 başarıyla ve sıfır derleme uyarısıyla** doğrulandı. Sürüm: `v3.8.13`.
+- **2026-10-20 (v3.8.14 - Faz 68: GymService Servis Katmanı Modülerleştirmesi - Domain Partial Classes Mimarisi):**
+  - **Mimari Hedef & Kapsam:** 1.777 satırlık dev monolitik `GymService.cs` servis sınıfı, yüksek uyumluluk (high cohesion), okunabilirlik ve bakım kolaylığı sağlamak amacıyla 5 odaklı domain parçasına (partial class) bölündü.
+  - **Modüler Parça Dağılımı (`src/SporTakip.Api/Services/`):**
+    - `GymService.cs`: Sınıf tanımı, C# 12 primary constructor (`ApplicationDbContext db, IMemoryCache? cache, INotificationService? notificationService`), ortak DTO mapping (`MapToSubscriptionSummary`), BMI hesaplayıcı (`CalculateBmi`) ve stüdyo iletişim servisi (`GetGymInfoAsync`).
+    - `GymService.Dashboard.cs`: Salon paneli metrikleri (`GetDashboardStatsAsync`), antrenör aylık bordrosu (`GetTrainerPayrollAsync`) ve 35 hücreli aylık seans takvimi (`GetMonthlyCalendarAsync`).
+    - `GymService.Members.cs`: Sporcu listeleme & arama (`GetMembersAsync`), tekil sporcu detayları (`GetMemberByIdAsync`, `GetMemberByUserIdAsync`), sporcu oluşturma & güncelleme (`CreateMemberAsync`, `UpdateMemberAsync`), sağlık ikazı & notları (`UpdateMemberNotesAsync`), boy/kilo ve tartı gelişim geçmişi (`UpdateAthleteMetricsAsync`, `GetMemberBodyMetricsProgressAsync`, `AddBodyMetricLogAsync`, `DeleteBodyMetricLogAsync`).
+    - `GymService.Subscriptions.cs`: Aktif üyelikler listesi (`GetActiveSubscriptionsAsync`), yeni paket satışı & peşinat tahsilatı (`CreateSubscriptionAsync`), paket dondurma & çözme motoru (`FreezeSubscriptionAsync`, `UnfreezeSubscriptionAsync`) ve dondurma geçmişi (`GetSubscriptionFreezeRecordsAsync`).
+    - `GymService.Attendance.cs`: Seans yoklama alma & ders düşme motoru (`MarkAttendanceAsync`), toplu seans yoklaması (`MarkAllAttendedForSlotAsync`), seans planlama (`ScheduleSessionAsync`) ve 09:00-21:00 saatlik stüdyo kapasitesi (`GetHourlyStudioCapacityAsync`).
+    - `GymService.Finance.cs`: Paket katalog yönetimi (`GetPackagesAsync`, `CreatePackageAsync`, `UpdatePackageAsync`, `DeletePackageAsync`), tahsilat kaydetme (`AddPaymentAsync`), eğitmen kadro yönetimi (`GetTrainersAsync`, `GetTrainerByIdAsync`, `CreateTrainerAsync`, `UpdateTrainerAsync`) ve koç kişisel hakediş dökümü (`GetTrainerPersonalEarningsAsync`).
+  - **Sıfır Regresyon & Tam Geriye Dönük Uyumluluk:**
+    - Bağımlılık enjeksiyonu (`AddScoped<GymService>`), 7 controller (`DashboardController`, `MembersController`, `SubscriptionsController`, `AttendanceController`, `PaymentsController`, `PackagesController`, `TrainersController`) ve testler üzerindeki çağrı imzaları %100 korundu.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet build`: 0 uyarı, 0 hata.
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.14`.
 
 ---
 
