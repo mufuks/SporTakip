@@ -973,6 +973,20 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Derleme & Test Doğrulaması:**
     - `dotnet build`: 0 uyarı, 0 hata.
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.14`.
+- **2026-10-20 (v3.8.15 - Faz 69: Sadeleştirme Reformu 1. Adım - Canlı Seans Yoklama Feed'i Ergonomisi):**
+  - **Kullanıcı İhtiyacı & Sadelik Hedefi:** Saha antrenörlerinin seans anında dar mobil ekranlarda (393px × 851px - Xiaomi Redmi Note 8 Pro) tek elle yoklama alırken buton kalabalığından ve yanlışlıkla "Ders Yanar (❌)" butonuna basma riskinden arındırılması.
+  - **Katılımcı Kartı Sadeleştirmesi (`staff.js`, `app.css`):**
+    - Yan yana dizilen 5 butonluk karmaşık düzen (`[✓ Geldi] [❌] [🕒] [💬 Not] [💬 WhatsApp]`) kaldırılarak minimalist 2 öğeli hiyerarşiye geçildi:
+      - Bekleyen sporcuda yalnızca belirgin, başparmak dostu **`[✓ Geldi]`** butonu (`.btn-quick-attend`) ve sağında **`[⋮]`** (`.btn-quick-options`) işlem butonu yer alır.
+      - Yoklaması alınan sporcularda ise durum rozeti (`✓ GELDİ`, `❌ GELMEDİ`, `🕒 TELAFİ`) + **`[⋮]`** butonu gösterilir.
+  - **Akordeon Diğer İşlemler Çekmecesi (`.attendee-more-tray`):**
+    - `[⋮]` butonuna dokunulduğunda kartın altında zarifçe açılan çekmece ile ikincil/yıkıcı eylemler (`💬 İdman Notu Yaz`, `🕒 Mazeretli (Telafi)`, `❌ Gelmedi (Ders Yanar)`, `💬 WhatsApp Mesajı`) güvenli ve erişilebilir bir şekilde sunuldu.
+    - Akordeon davranışı (`toggleAttendeeMoreMenu`) ile bir kartın menüsü açıldığında diğer açık menüler otomatik kapanarak ekran kalabalığı önlendi.
+  - **Seans Başlık Ergonomisi (`.btn-icon-only`):**
+    - Seans başlığındaki metinli `[✏️ Düzenle]` butonu, mobil satır kaymasını önlemek için 34×34px kompakt `[✏️]` ikon butonuna dönüştürüldü.
+  - **Cache İzolasyonu & Sürüm Güncellemesi:**
+    - `sw.js`, `loader.js`, `index.html` ve `app.js` varlık sorguları `v3.8.15` sürümüne yükseltilerek istemci önbellek çakışmaları bertaraf edildi.
+    - `dotnet test`: 118/118 test (%100) başarılı.
 
 ---
 

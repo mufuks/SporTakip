@@ -293,63 +293,115 @@ function renderSessionsAttendanceFeed(sessions) {
       const isAttended = a.status === 'Attended' || a.status === 'CheckedIn';
       const isMissed = a.status === 'Missed';
       const isExcused = a.status === 'Excused';
+      const itemKey = `${session.id}-${a.reservationId || a.attendanceId || a.memberId}`;
 
       const cardStateClass = isAttended ? 'attended' : (isMissed ? 'missed' : (isExcused ? 'excused' : ''));
 
+      // Build options tray actions based on state
+      let trayActions = '';
+      if (!isAttended && !isMissed && !isExcused) {
+        // Pending state: Can mark Missed, Excused, Note, WhatsApp
+        trayActions = `
+          <button type="button" class="tray-btn danger" onclick="toggleAttendeeMoreMenu('${itemKey}'); handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Missed', '${session.id}')">
+            <span>❌</span> Habersiz Gelmedi (Ders Yanar)
+          </button>
+          <button type="button" class="tray-btn warning" onclick="toggleAttendeeMoreMenu('${itemKey}'); handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Excused', '${session.id}')">
+            <span>🕒</span> Mazeretli (Hak Saklı)
+          </button>
+          <button type="button" class="tray-btn" onclick="toggleAttendeeMoreMenu('${itemKey}'); openAttendeeMicroNoteModal(${a.subscriptionId || 0}, ${a.reservationId || 0}, '${escapeJsString(a.memberName)}', ${a.memberId}, '${escapeJsString(a.memberNotes || '')}')">
+            <span>💬</span> İdman Notu Yaz
+          </button>
+          ${a.subscriptionId ? `
+            <button type="button" class="tray-btn whatsapp" onclick="toggleAttendeeMoreMenu('${itemKey}'); openWhatsAppModal(${a.subscriptionId})">
+              <span>💬</span> WhatsApp
+            </button>
+          ` : ''}
+        `;
+      } else if (isAttended) {
+        // Attended state: Can add note, send WhatsApp, or change to Excused
+        trayActions = `
+          <button type="button" class="tray-btn" onclick="toggleAttendeeMoreMenu('${itemKey}'); openAttendeeMicroNoteModal(${a.subscriptionId || 0}, ${a.reservationId || 0}, '${escapeJsString(a.memberName)}', ${a.memberId}, '${escapeJsString(a.memberNotes || '')}')">
+            <span>💬</span> İdman Notu Ekle/Düzenle
+          </button>
+          ${a.subscriptionId ? `
+            <button type="button" class="tray-btn whatsapp" onclick="toggleAttendeeMoreMenu('${itemKey}'); openWhatsAppModal(${a.subscriptionId})">
+              <span>💬</span> WhatsApp Mesajı
+            </button>
+          ` : ''}
+          <button type="button" class="tray-btn warning" onclick="toggleAttendeeMoreMenu('${itemKey}'); handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Excused', '${session.id}')">
+            <span>🕒</span> Mazeretli Telafiye Çevir (Dersi İade Et)
+          </button>
+        `;
+      } else if (isMissed) {
+        trayActions = `
+          <button type="button" class="tray-btn warning" onclick="toggleAttendeeMoreMenu('${itemKey}'); handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Excused', '${session.id}')">
+            <span>🕒</span> Mazeretli Telafiye Çevir (Dersi İade Et)
+          </button>
+          ${a.subscriptionId ? `
+            <button type="button" class="tray-btn whatsapp" onclick="toggleAttendeeMoreMenu('${itemKey}'); openWhatsAppModal(${a.subscriptionId})">
+              <span>💬</span> WhatsApp Mesajı
+            </button>
+          ` : ''}
+        `;
+      } else if (isExcused) {
+        trayActions = `
+          <button type="button" class="tray-btn" style="color:var(--volt-lime); border-color:rgba(204,255,0,0.3);" onclick="toggleAttendeeMoreMenu('${itemKey}'); handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Attended', '${session.id}')">
+            <span>✓</span> Geldi Olarak Yoklama Al
+          </button>
+          ${a.subscriptionId ? `
+            <button type="button" class="tray-btn whatsapp" onclick="toggleAttendeeMoreMenu('${itemKey}'); openWhatsAppModal(${a.subscriptionId})">
+              <span>💬</span> WhatsApp Mesajı
+            </button>
+          ` : ''}
+        `;
+      }
+
       return `
-        <div class="session-attendee-card ${cardStateClass}">
-          <div class="attendee-info-col">
-            <div class="attendee-name" onclick="openStudentProgressDrawer(${a.memberId}, '${escapeJsString(a.memberName)}')" title="Gelişim profilini gör">
-              <span>👤 ${escapeHtml(a.memberName)}</span>
-              <span class="student-profile-link-icon" style="font-size:11px;">📈</span>
+        <div class="session-attendee-card ${cardStateClass}" id="attendee-card-${itemKey}">
+          <div class="session-attendee-main-row">
+            <div class="attendee-info-col">
+              <div class="attendee-name" onclick="openStudentProgressDrawer(${a.memberId}, '${escapeJsString(a.memberName)}')" title="Gelişim profilini gör">
+                <span>👤 ${escapeHtml(a.memberName)}</span>
+                <span class="student-profile-link-icon" style="font-size:11px;">📈</span>
+              </div>
+              <div class="attendee-sub-meta">
+                <span>${escapeHtml(a.packageName)}</span>
+                ${a.remainingLessons !== '-' ? `<span>· <strong>${a.remainingLessons} Ders</strong></span>` : ''}
+                ${a.memberNotes ? `<span style="color:var(--flame-orange); font-weight:700;" title="${escapeHtml(a.memberNotes)}">⚠️ ${escapeHtml(a.memberNotes)}</span>` : ''}
+              </div>
             </div>
-            <div class="attendee-sub-meta">
-              <span>${escapeHtml(a.packageName)}</span>
-              ${a.remainingLessons !== '-' ? `<span>· <strong>${a.remainingLessons} Ders</strong></span>` : ''}
-              ${a.memberNotes ? `<span style="color:var(--flame-orange); font-weight:700;" title="${escapeHtml(a.memberNotes)}">⚠️ ${escapeHtml(a.memberNotes)}</span>` : ''}
+
+            <div class="attendee-actions-col">
+              ${isAttended ? `
+                <span class="lesson-badge badge-green" style="font-size:11px; padding:6px 10px;">✓ GELDİ</span>
+                <button type="button" class="btn-quick-options" id="attendee-more-btn-${itemKey}" onclick="toggleAttendeeMoreMenu('${itemKey}')" title="İşlemler (Not, WhatsApp)">
+                  ⋮
+                </button>
+              ` : isMissed ? `
+                <span class="lesson-badge badge-red" style="font-size:11px; padding:6px 10px;">❌ GELMEDİ</span>
+                <button type="button" class="btn-quick-options" id="attendee-more-btn-${itemKey}" onclick="toggleAttendeeMoreMenu('${itemKey}')" title="İşlemler (WhatsApp, Telafi)">
+                  ⋮
+                </button>
+              ` : isExcused ? `
+                <span class="lesson-badge badge-amber" style="font-size:11px; padding:6px 10px;">🕒 TELAFİ</span>
+                <button type="button" class="btn-quick-options" id="attendee-more-btn-${itemKey}" onclick="toggleAttendeeMoreMenu('${itemKey}')" title="İşlemler (Geldi, WhatsApp)">
+                  ⋮
+                </button>
+              ` : `
+                <!-- Tek Dokunuşla Hızlı Yoklama (Zero-Friction 1-Tap) -->
+                <button type="button" class="btn-quick-attend" onclick="handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Attended', '${session.id}')" title="Bu sporcunun yoklamasını al (Ders düş)">
+                  <span>✓</span> Geldi
+                </button>
+                <button type="button" class="btn-quick-options" id="attendee-more-btn-${itemKey}" onclick="toggleAttendeeMoreMenu('${itemKey}')" title="Diğer İşlemler (Mazeretli, Gelmedi, Not)">
+                  ⋮
+                </button>
+              `}
             </div>
           </div>
 
-          <div class="attendee-actions-col">
-            ${isAttended ? `
-              <span class="lesson-badge badge-green" style="font-size:11px; padding:4px 8px;">✓ GELDİ</span>
-              <button type="button" class="btn-quick-secondary" onclick="openAttendeeMicroNoteModal(${a.subscriptionId || 0}, ${a.reservationId || 0}, '${escapeJsString(a.memberName)}', ${a.memberId}, '${escapeJsString(a.memberNotes || '')}')" title="İdman notu yaz">
-                <span>💬</span> Not
-              </button>
-              ${a.subscriptionId ? `
-                <button type="button" class="btn-quick-secondary whatsapp" onclick="openWhatsAppModal(${a.subscriptionId})" title="WhatsApp">
-                  <span>💬</span>
-                </button>
-              ` : ''}
-            ` : isMissed ? `
-              <span class="lesson-badge badge-red" style="font-size:11px; padding:4px 8px;">❌ GELMEDİ (YANDI)</span>
-              ${a.subscriptionId ? `
-                <button type="button" class="btn-quick-secondary whatsapp" onclick="openWhatsAppModal(${a.subscriptionId})" title="WhatsApp">
-                  <span>💬</span>
-                </button>
-              ` : ''}
-            ` : isExcused ? `
-              <span class="lesson-badge badge-amber" style="font-size:11px; padding:4px 8px;">🕒 TELAFİ</span>
-              ${a.subscriptionId ? `
-                <button type="button" class="btn-quick-secondary whatsapp" onclick="openWhatsAppModal(${a.subscriptionId})" title="WhatsApp">
-                  <span>💬</span>
-                </button>
-              ` : ''}
-            ` : `
-              <!-- 1-Tap Quick Attendance Button (Thumb-Zone Friendly) -->
-              <button type="button" class="btn-quick-attend" onclick="handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Attended', '${session.id}')" title="Bu sporcunun yoklamasını al (Ders düş)">
-                <span>✓</span> Geldi
-              </button>
-              <button type="button" class="btn-quick-secondary" style="color:var(--pulse-rose);" onclick="handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Missed', '${session.id}')" title="Habersiz gelmedi (Ders Yanar)">
-                <span>❌</span>
-              </button>
-              <button type="button" class="btn-quick-secondary" style="color:var(--flame-orange);" onclick="handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Excused', '${session.id}')" title="Mazeretli (Hak Saklı)">
-                <span>🕒</span>
-              </button>
-              <button type="button" class="btn-quick-secondary" onclick="openAttendeeMicroNoteModal(${a.subscriptionId || 0}, ${a.reservationId || 0}, '${escapeJsString(a.memberName)}', ${a.memberId}, '${escapeJsString(a.memberNotes || '')}')" title="İdman notu yaz">
-                <span>💬</span>
-              </button>
-            `}
+          <!-- Diğer İşlemler Çekmecesi (Tray) -->
+          <div class="attendee-more-tray" id="attendee-more-${itemKey}" style="display:none;">
+            ${trayActions}
           </div>
         </div>
       `;
@@ -384,8 +436,8 @@ function renderSessionsAttendanceFeed(sessions) {
           <!-- Top-Right Actions -->
           <div class="session-feed-actions">
             ${!session.isVirtual ? `
-              <button type="button" class="btn-sm btn-secondary" onclick="openEditSessionModal(${session.id})" title="Seans Saat & Detaylarını Düzenle">
-                <span>✏️</span> Düzenle
+              <button type="button" class="btn-sm btn-secondary btn-icon-only" onclick="openEditSessionModal(${session.id})" title="Seans Saat & Detaylarını Düzenle" aria-label="Düzenle">
+                <span>✏️</span>
               </button>
             ` : ''}
             <button type="button" class="btn-sm btn-secondary" onclick="openAddMemberToSessionModal('${session.id}')" title="Plansız gelen sporcuyu bu seansa dahil et">
@@ -424,6 +476,29 @@ function filterSessionAttendees(query) {
   renderSessionsAttendanceFeed(attendanceSessions);
 }
 window.filterSessionAttendees = filterSessionAttendees;
+
+window.toggleAttendeeMoreMenu = function(itemKey) {
+  const tray = document.getElementById(`attendee-more-${itemKey}`);
+  const btn = document.getElementById(`attendee-more-btn-${itemKey}`);
+  if (!tray) return;
+
+  const isHidden = tray.style.display === 'none' || !tray.style.display;
+  // Accordion effect: Close any other open trays
+  document.querySelectorAll('.attendee-more-tray').forEach(t => {
+    if (t !== tray) t.style.display = 'none';
+  });
+  document.querySelectorAll('.btn-quick-options').forEach(b => {
+    if (b !== btn) b.classList.remove('active');
+  });
+
+  if (isHidden) {
+    tray.style.display = 'flex';
+    if (btn) btn.classList.add('active');
+  } else {
+    tray.style.display = 'none';
+    if (btn) btn.classList.remove('active');
+  }
+};
 
 async function handleQuickSessionAttendance(resId, subId, memberName, status, sessionId) {
   try {
