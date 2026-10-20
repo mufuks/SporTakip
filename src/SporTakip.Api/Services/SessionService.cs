@@ -16,6 +16,17 @@ public class SessionService(
             throw new ArgumentException("Bitiş saati başlangıç saatinden sonra olmalıdır.");
         }
 
+        var duration = request.EndTime - request.StartTime;
+        if (duration.TotalMinutes < 15 || duration.TotalHours > 6)
+        {
+            throw new ArgumentException("Seans süresi en az 15 dakika, en fazla 6 saat olabilir.");
+        }
+
+        if (request.Capacity < 1 || request.Capacity > 30)
+        {
+            throw new ArgumentException("Kapasite kontenjanı 1 ile 30 kişi arasında olmalıdır.");
+        }
+
         Trainer? trainer = null;
         if (request.TrainerId.HasValue)
         {
@@ -31,6 +42,20 @@ public class SessionService(
             // Eğer hoca profili yoksa sistemdeki ilk antrenörü veya salon sahibini seç
             trainer = await db.Trainers.FirstOrDefaultAsync(ct)
                 ?? throw new InvalidOperationException("Slot oluşturmak için geçerli bir antrenör bulunamadı.");
+        }
+
+        // Antrenör Çakışma Kontrolü (Trainer Double-Booking Prevention)
+        var conflict = await db.SessionSlots
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.TrainerId == trainer.Id 
+                && s.Status != "Cancelled" 
+                && s.StartTime < request.EndTime 
+                && s.EndTime > request.StartTime, ct);
+
+        if (conflict != null)
+        {
+            throw new InvalidOperationException(
+                $"Seçilen antrenörün ({trainer.FullName}) bu zaman diliminde ({conflict.StartTime:HH:mm} - {conflict.EndTime:HH:mm}) '{conflict.Title ?? "Seans"}' başlıklı başka bir aktif seansı bulunmaktadır.");
         }
 
         WorkoutTemplate? workoutTemplate = null;
@@ -112,31 +137,63 @@ public class SessionService(
             .FirstOrDefaultAsync(s => s.Id == slotId, ct)
             ?? throw new KeyNotFoundException("Seans bulunamadı.");
 
-        if (request.StartTime.HasValue && request.EndTime.HasValue)
+        var targetStartTime = request.StartTime ?? slot.StartTime;
+        var targetEndTime = request.EndTime ?? (request.StartTime.HasValue && slot.EndTime <= request.StartTime.Value 
+            ? request.StartTime.Value.AddHours(1) 
+            : slot.EndTime);
+
+        if (targetEndTime <= targetStartTime)
         {
-            if (request.EndTime.Value <= request.StartTime.Value)
-            {
-                throw new ArgumentException("Bitiş saati başlangıç saatinden sonra olmalıdır.");
-            }
-            slot.StartTime = request.StartTime.Value;
-            slot.EndTime = request.EndTime.Value;
+            throw new ArgumentException("Bitiş saati başlangıç saatinden sonra olmalıdır.");
         }
-        else if (request.StartTime.HasValue)
+
+        var duration = targetEndTime - targetStartTime;
+        if (duration.TotalMinutes < 15 || duration.TotalHours > 6)
         {
-            if (slot.EndTime <= request.StartTime.Value)
-            {
-                slot.EndTime = request.StartTime.Value.AddHours(1);
-            }
-            slot.StartTime = request.StartTime.Value;
+            throw new ArgumentException("Seans süresi en az 15 dakika, en fazla 6 saat olabilir.");
         }
-        else if (request.EndTime.HasValue)
+
+        var targetTrainerId = request.TrainerId ?? slot.TrainerId;
+        var targetStatus = request.Status ?? slot.Status;
+
+        // 1. Kapasite ve Mevcut Kayıt Kontrolü (Capacity Sanity Check)
+        if (request.Capacity.HasValue)
         {
-            if (request.EndTime.Value <= slot.StartTime)
+            if (request.Capacity.Value < 1 || request.Capacity.Value > 30)
             {
-                throw new ArgumentException("Bitiş saati başlangıç saatinden sonra olmalıdır.");
+                throw new ArgumentException("Kapasite kontenjanı 1 ile 30 kişi arasında olmalıdır.");
             }
-            slot.EndTime = request.EndTime.Value;
+
+            var activeReservationsCount = slot.Reservations.Count(r => r.Status == "Confirmed" || r.Status == "CheckedIn");
+            if (request.Capacity.Value < activeReservationsCount)
+            {
+                throw new InvalidOperationException(
+                    $"Kapasite ({request.Capacity.Value}), şu anda seansa kayıtlı aktif sporcu sayısından ({activeReservationsCount}) daha az olamaz.");
+            }
+            slot.Capacity = request.Capacity.Value;
         }
+
+        // 2. Antrenör Çakışma Kontrolü (Trainer Double-Booking Prevention)
+        if (targetStatus != "Cancelled")
+        {
+            var conflict = await db.SessionSlots
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id != slotId 
+                    && s.TrainerId == targetTrainerId 
+                    && s.Status != "Cancelled" 
+                    && s.StartTime < targetEndTime 
+                    && s.EndTime > targetStartTime, ct);
+
+            if (conflict != null)
+            {
+                var trainer = await db.Trainers.FindAsync([targetTrainerId], ct);
+                throw new InvalidOperationException(
+                    $"Seçilen antrenörün ({trainer?.FullName ?? "Hoca"}) bu zaman diliminde ({conflict.StartTime:HH:mm} - {conflict.EndTime:HH:mm}) '{conflict.Title ?? "Seans"}' başlıklı başka bir aktif seansı bulunmaktadır.");
+            }
+        }
+
+        slot.StartTime = targetStartTime;
+        slot.EndTime = targetEndTime;
 
         if (request.TrainerId.HasValue && request.TrainerId.Value != slot.TrainerId)
         {
@@ -144,11 +201,6 @@ public class SessionService(
                 ?? throw new ArgumentException("Seçilen antrenör bulunamadı.");
             slot.TrainerId = trainer.Id;
             slot.Trainer = trainer;
-        }
-
-        if (request.Capacity.HasValue && request.Capacity.Value > 0)
-        {
-            slot.Capacity = request.Capacity.Value;
         }
 
         if (!string.IsNullOrWhiteSpace(request.SessionType))

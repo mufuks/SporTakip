@@ -3051,7 +3051,24 @@ window.openEditSessionModal = async function(slotId) {
 
     document.getElementById('edit-session-id').value = slot.id;
     document.getElementById('edit-session-title').value = slot.title || '';
-    document.getElementById('edit-session-capacity').value = slot.capacity || 6;
+
+    // Active attendees count & capacity constraint
+    const activeAttendees = (slot.reservations || []).filter(r => r.status === 'Confirmed' || r.status === 'CheckedIn').length;
+    const attendeesCountEl = document.getElementById('edit-session-attendees-count');
+    if (attendeesCountEl) {
+      attendeesCountEl.textContent = activeAttendees;
+    }
+    const capacityInput = document.getElementById('edit-session-capacity');
+    if (capacityInput) {
+      capacityInput.value = slot.capacity || 6;
+      capacityInput.min = Math.max(1, activeAttendees);
+    }
+    const conflictBanner = document.getElementById('edit-session-conflict-banner');
+    if (conflictBanner) {
+      conflictBanner.style.display = 'none';
+      conflictBanner.textContent = '';
+    }
+
     document.getElementById('edit-session-type').value = slot.sessionType || 'GRUP';
     document.getElementById('edit-session-status').value = slot.status || 'Scheduled';
     document.getElementById('edit-session-notes').value = slot.notes || '';
@@ -3117,8 +3134,27 @@ window.handleSaveEditSession = async function(e) {
   const startIso = `${dateStr}T${startTimeStr}:00`;
   const endIso = `${dateStr}T${endTimeStr}:00`;
 
+  const conflictBanner = document.getElementById('edit-session-conflict-banner');
+  if (conflictBanner) conflictBanner.style.display = 'none';
+
   if (endIso <= startIso) {
-    showToast('Bitiş saati başlangıç saatinden sonra olmalıdır.', 'error');
+    const msg = 'Bitiş saati başlangıç saatinden sonra olmalıdır.';
+    if (conflictBanner) {
+      conflictBanner.textContent = `⚠️ ${msg}`;
+      conflictBanner.style.display = 'block';
+    }
+    showToast(msg, 'error');
+    return;
+  }
+
+  const activeAttendeesCount = parseInt(document.getElementById('edit-session-attendees-count')?.textContent || '0');
+  if (capacity < activeAttendeesCount) {
+    const msg = `Kapasite (${capacity}), seansa kayıtlı aktif sporcu sayısından (${activeAttendeesCount}) az olamaz.`;
+    if (conflictBanner) {
+      conflictBanner.textContent = `⚠️ ${msg}`;
+      conflictBanner.style.display = 'block';
+    }
+    showToast(msg, 'error');
     return;
   }
 
@@ -3143,6 +3179,10 @@ window.handleSaveEditSession = async function(e) {
     if (typeof loadCapacitySlots === 'function') await loadCapacitySlots();
     if (typeof loadAttendanceView === 'function') await loadAttendanceView();
   } catch (err) {
+    if (conflictBanner) {
+      conflictBanner.textContent = `⚠️ ${err.message}`;
+      conflictBanner.style.display = 'block';
+    }
     showToast(`Güncelleme Hatası: ${err.message}`, 'error');
   }
 };

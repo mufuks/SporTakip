@@ -949,6 +949,16 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - `dotnet build`: 0 warning, 0 error.
     - `dotnet test`: 114/114 test (%100) başarılı.
     - Tarayıcı alt ajanı ile Xiaomi Redmi Note 8 Pro çözünürlüğünde her iki modalın açılışı, 2'li telefon/e-posta yerleşimi, kırmızı sağlık ikazı ve genel not alanları görsel olarak doğrulanıp onaylandı (`v3.8.12`).
+- **2026-10-20 (v3.8.13 - Faz 67: Seans Düzenleme / Oluşturma Saat & Kapasite Çakışma Önleme Mimarisi, Süre Kontrolü & Dinamik Katılımcı Göstergesi):**
+  - **Antrenör Çakışma Önleme (Double-Booking Prevention):** `SessionService.CreateSlotAsync` ve `SessionService.UpdateSlotAsync` servis katmanlarında antrenörün aynı gün ve saat aralığında çakışan başka bir aktif seansı (`StartTime < targetEndTime && EndTime > targetStartTime`, `Status != "Cancelled"`, `slotId != id`) olup olmadığı denetlenir; çakışma durumunda detaylı hata mesajı (`"Seçilen antrenörün (...) bu zaman diliminde (HH:mm - HH:mm) '...' başlıklı başka bir aktif seansı bulunmaktadır."`) fırlatılarak mükerrer planlama engellendi.
+  - **Kayıtlı Sporcu Kapasite Tabanı Güvencesi (Capacity Floor Sanity Check):** Bir seansın kontenjanı düzenlenirken, o seansta onaylı/katılmış (`Confirmed` veya `CheckedIn`) aktif kayıtlı sporcu sayısının altına düşürülmesi engellendi (`InvalidOperationException: "Kapasite, mevcut kayıtlı aktif sporcu sayısından (...) daha az olamaz."`).
+  - **Süre ve Kapasite Aralık Denetimi:** Seans süresinin en az 15 dakika, en fazla 6 saat olması ve kontenjanın 1 ile 30 arasında olması doğrulandı.
+  - **Dinamik Katılımcı Göstergesi & UI İkaz Bandı (`#modal-edit-session`):**
+    - Düzenleme modalında `Kapasite Kontenjanı` alanının hemen altına dinamik `Mevcut Kayıtlı: X sporcu` bilgi rozeti (`#edit-session-attendees-info`) eklendi ve `input.min` değeri aktif sporcu sayısına sabitlendi.
+    - Modal içerisine kırmızı uyarı bandı (`#edit-session-conflict-banner`) entegre edildi; istemci tarafında veya sunucu tarafında oluşan saat/kapasite/antrenör çakışmaları doğrudan modal içinde kullanıcı dostu mesajla görünür kılındı.
+  - **Birim Test Kapsamı (`SessionsControllerTests.cs`):**
+    - 4 yeni birim testi eklendi (`CreateSlot_WhenTrainerHasConflictingSession_ReturnsBadRequest`, `CreateSlot_WhenDurationTooShort_ReturnsBadRequest`, `UpdateSlot_WhenCapacityLowerThanActiveAttendees_ReturnsBadRequest`, `UpdateSlot_WhenTrainerHasConflictingSession_ReturnsBadRequest`).
+    - Toplam **118/118 test %100 başarıyla ve sıfır derleme uyarısıyla** doğrulandı. Sürüm: `v3.8.13`.
 
 ---
 

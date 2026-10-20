@@ -263,6 +263,189 @@ public class SessionsControllerTests : IDisposable
         Assert.Equal("Üst Vücut Hipertrofi", updatedDto.WorkoutTemplateName);
     }
 
+    [Fact]
+    public async Task CreateSlot_WhenTrainerHasConflictingSession_ReturnsBadRequest()
+    {
+        // Arrange
+        var trainerUser = new AppUser { PhoneNumber = "+905328889900", FullName = "Hakan Hoca", Roles = UserRole.Coach };
+        _db.Users.Add(trainerUser);
+        await _db.SaveChangesAsync();
+
+        var trainer = new Trainer { FullName = trainerUser.FullName, UserId = trainerUser.Id, Role = "Eğitmen", IsActive = true };
+        _db.Trainers.Add(trainer);
+        await _db.SaveChangesAsync();
+
+        var tomorrow = DateTime.UtcNow.Date.AddDays(1).AddHours(10);
+        var existingSlot = new SessionSlot
+        {
+            TrainerId = trainer.Id,
+            StartTime = tomorrow,
+            EndTime = tomorrow.AddHours(1),
+            Title = "Sabah Kondisyon",
+            Capacity = 6,
+            SessionType = "GRUP",
+            Status = "Open"
+        };
+        _db.SessionSlots.Add(existingSlot);
+        await _db.SaveChangesAsync();
+
+        SetUserContext(trainerUser.Id, "Coach");
+
+        // Act - Try creating another slot overlapping 10:30 - 11:30
+        var request = new CreateSessionSlotRequest(
+            StartTime: tomorrow.AddMinutes(30),
+            EndTime: tomorrow.AddMinutes(90),
+            Capacity: 6,
+            SessionType: "GRUP",
+            Title: "Çakışan Seans",
+            TrainerId: trainer.Id
+        );
+        var result = await _controller.CreateSlot(request, default);
+
+        // Assert
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("başka bir aktif seansı bulunmaktadır", badRequest.Value?.ToString() ?? "");
+    }
+
+    [Fact]
+    public async Task CreateSlot_WhenDurationTooShort_ReturnsBadRequest()
+    {
+        // Arrange
+        var trainerUser = new AppUser { PhoneNumber = "+905328889901", FullName = "Mert Hoca", Roles = UserRole.Coach };
+        _db.Users.Add(trainerUser);
+        await _db.SaveChangesAsync();
+
+        var trainer = new Trainer { FullName = trainerUser.FullName, UserId = trainerUser.Id, Role = "Eğitmen", IsActive = true };
+        _db.Trainers.Add(trainer);
+        await _db.SaveChangesAsync();
+
+        SetUserContext(trainerUser.Id, "Coach");
+
+        var tomorrow = DateTime.UtcNow.Date.AddDays(1).AddHours(14);
+        var request = new CreateSessionSlotRequest(
+            StartTime: tomorrow,
+            EndTime: tomorrow.AddMinutes(5), // Only 5 min (< 15 min limit)
+            Capacity: 6,
+            SessionType: "GRUP",
+            Title: "Çok Kısa Seans",
+            TrainerId: trainer.Id
+        );
+        var result = await _controller.CreateSlot(request, default);
+
+        // Assert
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("en az 15 dakika", badRequest.Value?.ToString() ?? "");
+    }
+
+    [Fact]
+    public async Task UpdateSlot_WhenCapacityLowerThanActiveAttendees_ReturnsBadRequest()
+    {
+        // Arrange
+        var trainerUser = new AppUser { PhoneNumber = "+905328889902", FullName = "Barış Hoca", Roles = UserRole.Coach };
+        _db.Users.Add(trainerUser);
+        await _db.SaveChangesAsync();
+
+        var trainer = new Trainer { FullName = trainerUser.FullName, UserId = trainerUser.Id, Role = "Eğitmen", IsActive = true };
+        _db.Trainers.Add(trainer);
+        await _db.SaveChangesAsync();
+
+        var tomorrow = DateTime.UtcNow.Date.AddDays(1).AddHours(16);
+        var slot = new SessionSlot
+        {
+            TrainerId = trainer.Id,
+            StartTime = tomorrow,
+            EndTime = tomorrow.AddHours(1),
+            Title = "Kuvvet Seansı",
+            Capacity = 6,
+            SessionType = "GRUP",
+            Status = "Open"
+        };
+        _db.SessionSlots.Add(slot);
+
+        var member1 = new Member { FullName = "Sporcu 1", IsActive = true, CreatedAt = DateTime.UtcNow };
+        var member2 = new Member { FullName = "Sporcu 2", IsActive = true, CreatedAt = DateTime.UtcNow };
+        var member3 = new Member { FullName = "Sporcu 3", IsActive = true, CreatedAt = DateTime.UtcNow };
+        _db.Members.AddRange(member1, member2, member3);
+
+        var package = new Package { Name = "Standart", LessonCount = 10, DefaultPrice = 1000, IsActive = true };
+        _db.Packages.Add(package);
+        await _db.SaveChangesAsync();
+
+        var sub1 = new Subscription { MemberId = member1.Id, PackageId = package.Id, Price = 1000, TotalLessons = 10, CompletedLessons = 0, StartDate = DateTime.UtcNow, Status = "Active" };
+        var sub2 = new Subscription { MemberId = member2.Id, PackageId = package.Id, Price = 1000, TotalLessons = 10, CompletedLessons = 0, StartDate = DateTime.UtcNow, Status = "Active" };
+        var sub3 = new Subscription { MemberId = member3.Id, PackageId = package.Id, Price = 1000, TotalLessons = 10, CompletedLessons = 0, StartDate = DateTime.UtcNow, Status = "Active" };
+        _db.Subscriptions.AddRange(sub1, sub2, sub3);
+        await _db.SaveChangesAsync();
+
+        // 3 active reservations
+        _db.Reservations.AddRange(
+            new Reservation { SessionSlotId = slot.Id, MemberId = member1.Id, SubscriptionId = sub1.Id, Status = "Confirmed", CreatedAt = DateTime.UtcNow },
+            new Reservation { SessionSlotId = slot.Id, MemberId = member2.Id, SubscriptionId = sub2.Id, Status = "Confirmed", CreatedAt = DateTime.UtcNow },
+            new Reservation { SessionSlotId = slot.Id, MemberId = member3.Id, SubscriptionId = sub3.Id, Status = "Confirmed", CreatedAt = DateTime.UtcNow }
+        );
+        await _db.SaveChangesAsync();
+
+        SetUserContext(trainerUser.Id, "Coach");
+
+        // Act - Try lowering capacity to 2 when 3 athletes are confirmed
+        var updateReq = new UpdateSessionSlotRequest(Capacity: 2);
+        var result = await _controller.UpdateSlot(slot.Id, updateReq, default);
+
+        // Assert
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("kayıtlı aktif sporcu sayısından", badRequest.Value?.ToString() ?? "");
+    }
+
+    [Fact]
+    public async Task UpdateSlot_WhenTrainerHasConflictingSession_ReturnsBadRequest()
+    {
+        // Arrange
+        var trainerUser = new AppUser { PhoneNumber = "+905328889903", FullName = "Gizem Hoca", Roles = UserRole.Coach };
+        _db.Users.Add(trainerUser);
+        await _db.SaveChangesAsync();
+
+        var trainer = new Trainer { FullName = trainerUser.FullName, UserId = trainerUser.Id, Role = "Eğitmen", IsActive = true };
+        _db.Trainers.Add(trainer);
+        await _db.SaveChangesAsync();
+
+        var tomorrow = DateTime.UtcNow.Date.AddDays(2).AddHours(18);
+        var slot1 = new SessionSlot
+        {
+            TrainerId = trainer.Id,
+            StartTime = tomorrow,
+            EndTime = tomorrow.AddHours(1),
+            Title = "Pilates Seansı",
+            Capacity = 6,
+            SessionType = "GRUP",
+            Status = "Open"
+        };
+        var slot2 = new SessionSlot
+        {
+            TrainerId = trainer.Id,
+            StartTime = tomorrow.AddHours(2),
+            EndTime = tomorrow.AddHours(3),
+            Title = "Reformer Seansı",
+            Capacity = 6,
+            SessionType = "GRUP",
+            Status = "Open"
+        };
+        _db.SessionSlots.AddRange(slot1, slot2);
+        await _db.SaveChangesAsync();
+
+        SetUserContext(trainerUser.Id, "Coach");
+
+        // Act - Try updating slot2's start time to 18:30 (overlapping slot1 18:00 - 19:00)
+        var updateReq = new UpdateSessionSlotRequest(
+            StartTime: tomorrow.AddMinutes(30),
+            EndTime: tomorrow.AddMinutes(90)
+        );
+        var result = await _controller.UpdateSlot(slot2.Id, updateReq, default);
+
+        // Assert
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("başka bir aktif seansı bulunmaktadır", badRequest.Value?.ToString() ?? "");
+    }
+
     public void Dispose()
     {
         _db.Dispose();

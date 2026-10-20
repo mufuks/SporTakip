@@ -90,7 +90,10 @@
           </div>
           <div class="form-group">
             <label>Kapasite Kontenjanı *</label>
-            <input type="number" id="edit-session-capacity" class="form-control" min="1" max="20" value="6" required>
+            <input type="number" id="edit-session-capacity" class="form-control" min="1" max="25" value="6" required>
+            <small id="edit-session-attendees-info" style="color:var(--text-muted); font-size:11px; margin-top:4px; display:block;">
+              Mevcut Kayıtlı: <strong style="color:var(--volt-lime);" id="edit-session-attendees-count">0</strong> sporcu
+            </small>
           </div>
         </div>
 
@@ -141,7 +144,11 @@
           </small>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px; flex-wrap:wrap; gap:10px;">
+        <div id="edit-session-conflict-banner" style="display:none; margin-top:14px; margin-bottom:8px; padding:10px 14px; border-radius:10px; font-size:12px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); color:#f87171; font-weight:700;">
+          ⚠️ Dikkat: Seçilen saat ve antrenör için çakışma tespit edildi!
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:10px;">
           <button type="button" class="btn-danger-outline" onclick="handleDeleteSessionClick()" style="font-size:12px; padding:8px 14px; border:1px solid rgba(239,68,68,0.4); color:#ef4444; background:transparent; border-radius:var(--radius-xs); cursor:pointer;">
             🗑️ Seansı Sil / İptal Et
           </button>
