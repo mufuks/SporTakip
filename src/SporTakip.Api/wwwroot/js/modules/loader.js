@@ -6,7 +6,7 @@ export async function fetchPartial(url) {
     return partialCache.get(url);
   }
   const sep = url.includes('?') ? '&' : '?';
-  const cacheBustUrl = `${url}${sep}v=3.8.18&_t=${Date.now()}`;
+  const cacheBustUrl = `${url}${sep}v=3.8.19&_t=${Date.now()}`;
   const res = await fetch(cacheBustUrl);
   if (!res.ok) {
     throw new Error(`Kısmi HTML yüklenemedi: ${url} (${res.status})`);
@@ -82,7 +82,13 @@ export async function preloadModals() {
         const child = temp.firstElementChild;
         if (child.id) {
           const old = document.getElementById(child.id);
-          if (old) old.remove();
+          if (old) {
+            if (old.id === 'v0-otp-drawer') {
+              temp.removeChild(child);
+              continue;
+            }
+            old.remove();
+          }
         }
         container.appendChild(child);
       }

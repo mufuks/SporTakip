@@ -18,7 +18,7 @@
         </label>
         <div class="v0-phone-wrapper">
           <span class="v0-phone-prefix">+90</span>
-          <input type="tel" id="v0-input-phone" class="v0-phone-input" placeholder="5XX XXX XX XX" maxlength="14" oninput="handlePhoneInput(this)">
+          <input type="tel" id="v0-input-phone" class="v0-phone-input" placeholder="5XX XXX XX XX" maxlength="20" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event)" autocomplete="tel-national">
         </div>
         <button type="button" id="v0-btn-send-otp" class="v0-btn-submit" disabled onclick="submitSendOtp()">
           <span>Kod Gönder</span>

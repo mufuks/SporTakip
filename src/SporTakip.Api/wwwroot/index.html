@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>SporTakip | Compound Athletic</title>
   
-  <!-- Immediate Theme Initializer (Prevents FOUC / Light Flash on Refresh) -->
+  <!-- Immediate Theme Initializer & Frame-0 Auth Handlers (Prevents FOUC & Delays) -->
   <script>
     (function() {
       try {
@@ -18,10 +18,54 @@
       window.openOtpDrawer = window.openOtpDrawer || function() {
         var d = document.getElementById('v0-otp-drawer');
         if (d) d.classList.add('open');
+        var input = document.getElementById('v0-input-phone');
+        if (input) setTimeout(function() { input.focus(); }, 200);
       };
       window.closeOtpDrawer = window.closeOtpDrawer || function() {
         var d = document.getElementById('v0-otp-drawer');
         if (d) d.classList.remove('open');
+      };
+      window.normalizeTurkishPhone = window.normalizeTurkishPhone || function(raw) {
+        if (!raw) return '';
+        var digits = String(raw).replace(/\D/g, '');
+        if (digits.indexOf('90') === 0 && digits.length > 10) {
+          digits = digits.slice(2);
+        }
+        while (digits.indexOf('0') === 0) {
+          digits = digits.slice(1);
+        }
+        return digits.slice(0, 10);
+      };
+      window.formatPhoneDigits = window.formatPhoneDigits || function(digits) {
+        if (!digits) return '';
+        var parts = [
+          digits.slice(0, 3),
+          digits.slice(3, 6),
+          digits.slice(6, 8),
+          digits.slice(8, 10)
+        ].filter(Boolean);
+        return parts.join(' ');
+      };
+      window.handlePhoneInput = window.handlePhoneInput || function(input) {
+        if (!input) input = document.getElementById('v0-input-phone');
+        if (!input) return;
+        var digits = window.normalizeTurkishPhone(input.value);
+        input.value = window.formatPhoneDigits(digits);
+        var btn = document.getElementById('v0-btn-send-otp');
+        if (btn) btn.disabled = digits.length !== 10;
+      };
+      window.handlePhoneKeyDown = window.handlePhoneKeyDown || function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var btn = document.getElementById('v0-btn-send-otp');
+          if (btn && !btn.disabled) {
+            if (typeof window.submitSendOtp === 'function') {
+              window.submitSendOtp();
+            } else {
+              btn.click();
+            }
+          }
+        }
       };
     })();
   </script>
@@ -37,7 +81,7 @@
   <meta name="apple-mobile-web-app-title" content="SporTakip">
   
   <!-- CSS -->
-  <link rel="stylesheet" href="/css/app.css?v=3.8.18">
+  <link rel="stylesheet" href="/css/app.css?v=3.8.19">
 
   <!-- Immediate Critical Guest Mode Styles (Ensures header and bottom nav are 100% hidden on frame 0) -->
   <style>
@@ -540,7 +584,7 @@
           </label>
           <div class="v0-phone-wrapper">
             <span class="v0-phone-prefix">+90</span>
-            <input type="tel" id="v0-input-phone" class="v0-phone-input" placeholder="5XX XXX XX XX" maxlength="14" oninput="handlePhoneInput(this)">
+            <input type="tel" id="v0-input-phone" class="v0-phone-input" placeholder="5XX XXX XX XX" maxlength="20" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event)" autocomplete="tel-national">
           </div>
           <button type="button" id="v0-btn-send-otp" class="v0-btn-submit" disabled onclick="submitSendOtp()">
             <span>Kod Gönder</span>
@@ -580,7 +624,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Javascript -->
-  <script type="module" src="/js/app.js?v=3.8.18"></script>
+  <script type="module" src="/js/app.js?v=3.8.19"></script>
 </body>
 </html>
 

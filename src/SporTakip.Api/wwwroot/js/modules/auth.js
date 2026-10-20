@@ -203,22 +203,64 @@ export function startOtpTimer(seconds) {
   state.otpCountdownTimer = setInterval(update, 1000);
 }
 
+export function normalizeTurkishPhone(raw) {
+  if (!raw) return '';
+  let digits = String(raw).replace(/\D/g, '');
+  // +90 veya 90 ile başlıyorsa ve 10'dan fazla hane varsa ülke kodunu ayıkla
+  if (digits.startsWith('90') && digits.length > 10) {
+    digits = digits.slice(2);
+  }
+  // Başta 0 varsa (örn: 0555...) ayıkla
+  while (digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+  return digits.slice(0, 10);
+}
+window.normalizeTurkishPhone = normalizeTurkishPhone;
+
+export function formatPhoneDigits(digits) {
+  if (!digits) return '';
+  const parts = [
+    digits.slice(0, 3),
+    digits.slice(3, 6),
+    digits.slice(6, 8),
+    digits.slice(8, 10)
+  ].filter(Boolean);
+  return parts.join(' ');
+}
+window.formatPhoneDigits = formatPhoneDigits;
+
 export function handlePhoneInput(input) {
-  let val = input.value.replace(/\D/g, '').slice(0, 10);
-  let parts = [val.slice(0, 3), val.slice(3, 6), val.slice(6, 8), val.slice(8, 10)].filter(Boolean);
-  input.value = parts.join(' ');
+  if (!input) input = document.getElementById('v0-input-phone');
+  if (!input) return;
+  const digits = normalizeTurkishPhone(input.value);
+  input.value = formatPhoneDigits(digits);
   const btn = document.getElementById('v0-btn-send-otp');
-  if (btn) btn.disabled = val.length !== 10;
+  if (btn) btn.disabled = digits.length !== 10;
 }
 window.handlePhoneInput = handlePhoneInput;
+
+export function handlePhoneKeyDown(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const btn = document.getElementById('v0-btn-send-otp');
+    if (btn && !btn.disabled) {
+      submitSendOtp();
+    }
+  }
+}
+window.handlePhoneKeyDown = handlePhoneKeyDown;
 
 export async function submitSendOtp() {
   const input = document.getElementById('v0-input-phone');
   if (!input) return;
-  const raw = input.value.replace(/\D/g, '');
-  if (raw.length !== 10) return;
-  const fullPhone = `+90${raw}`;
+  const digits = normalizeTurkishPhone(input.value);
+  if (digits.length !== 10) return;
+  const fullPhone = `+90${digits}`;
   state.currentOtpPhone = fullPhone;
+
+  const btn = document.getElementById('v0-btn-send-otp');
+  if (btn) btn.disabled = true;
 
   try {
     const res = await Api.sendOtp(fullPhone);
@@ -240,8 +282,11 @@ export async function submitSendOtp() {
       }
     });
     checkCodeComplete();
+    const verifyBtn = document.getElementById('v0-btn-verify-otp');
+    if (verifyBtn) verifyBtn.focus();
   } catch (err) {
     showToast(`Hata: ${err.message}`, 'error');
+    if (btn) btn.disabled = false;
   }
 }
 window.submitSendOtp = submitSendOtp;
@@ -299,6 +344,10 @@ window.submitVerifyOtp = submitVerifyOtp;
 export function setupOtpBoxListeners() {
   const boxes = document.querySelectorAll('.v0-otp-box');
   boxes.forEach((box, idx) => {
+    // Avoid double-attaching listeners
+    if (box.dataset.listenersAttached === 'true') return;
+    box.dataset.listenersAttached = 'true';
+
     box.addEventListener('input', () => {
       const digit = box.value.replace(/\D/g, '').slice(-1);
       box.value = digit;
@@ -312,6 +361,13 @@ export function setupOtpBoxListeners() {
     box.addEventListener('keydown', (e) => {
       if (e.key === 'Backspace' && !box.value && idx > 0) {
         boxes[idx - 1].focus();
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const btn = document.getElementById('v0-btn-verify-otp');
+        if (btn && !btn.disabled) {
+          submitVerifyOtp();
+        }
       }
     });
 

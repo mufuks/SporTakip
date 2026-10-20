@@ -1029,6 +1029,22 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - `yoklama.html` altında yer alan 4 adet eski gizli div (`#attendance-list`, `#capacity-slots-list`, `#slot-details-box`, `#capacity-week-strip`) DOM ağacından çıkarıldı.
   - **Derleme & Test Doğrulaması:**
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.18`.
+- **2026-10-20 (v3.8.19 - Faz 73: SMS Giriş & Telefon Formatı Düzeltmesi, Frame-0 Hızlı Bağlama ve PC Enter Tuşu Desteği):**
+  - **Kullanıcı Geri Bildirimi:** SMS ile girişte telefon numarası yazıldığında "Kod Gönder" butonunun aktifleşmemesi, numara formatlama hataları ve PC ortamında form onaylama/kod doğrulama için klavyedeki `Enter` tuşuna basıldığında işlem yapılmaması.
+  - **Kök Neden Tespiti:**
+    - `handlePhoneInput` fonksiyonu yalnızca defer edilmiş ES modülü (`auth.js`) içerisinde tanımlanmıştı. Kullanıcı modalı açıp numara girdiğinde modülün henüz yüklenmediği anlarda `ReferenceError: handlePhoneInput is not defined` fırlatılıyor, bu nedenle boşluklu formatlama ve buton aktivasyonu tetiklenmiyordu.
+    - Telefon normalizasyonunda `replace(/\D/g, '').slice(0, 10)` yapılması; kullanıcının başında `0` (örn: `0555...`) veya ülke kodu `+90` (örn: `+90555...`) ile girmesi durumunda asıl numaranın son basamaklarının kırpılmasına yol açıyordu.
+    - Telefon giriş alanında (`#v0-input-phone`) ve 6 haneli OTP kutularında (`.v0-otp-box`) `Enter` tuşuna basıldığında formu tetikleyecek `keydown` dinleyicileri bulunmuyordu.
+    - `loader.js` içerisindeki `preloadModals()` fonksiyonu, `index.html` içinde Frame-0 açılış hızı için önceden basılmış olan `#v0-otp-drawer` öğesini kullanıcı yazarken hafızadan silip yeniden ekleyerek durum kaybına yol açabiliyordu.
+  - **Geliştirilen Çözümler:**
+    - **Sağlam Telefon Normalizasyonu (`normalizeTurkishPhone`):** Başta yer alan `+90`, `90` ve `0` girdilerini temizleyerek her koşulda 10 haneli standart Türk cep telefonu formatına (`5XX XXX XX XX`) dönüştüren ve 10 hane sağlandığı anda butonu anında yeşile çeviren mimari kuruldu.
+    - **Frame-0 Inline Head Entegrasyonu (`index.html`):** `normalizeTurkishPhone`, `formatPhoneDigits`, `handlePhoneInput` ve `handlePhoneKeyDown` fonksiyonları doğrudan `<head>` bloğuna yerleştirilerek ES modül yüklenmesi beklenmeksizin Frame-0 anında sıfır gecikmeyle çalışması garanti edildi.
+    - **Masaüstü & PC Enter Tuşu Desteği:**
+      - Telefon inputunda geçerli numara girildikten sonra `Enter` tuşuna basıldığında doğrudan `submitSendOtp()` tetiklenir.
+      - 6 haneli OTP kutucuklarının (`.v0-otp-box`) herhangi birinde `Enter` tuşuna basıldığında doğrudan `submitVerifyOtp()` tetiklenir.
+    - **DOM Önleme & Koruma (`loader.js`):** `preloadModals()` çalışırken sayfada halihazırda var olan `#v0-otp-drawer` DOM öğesi korunarak kullanıcının yazma esnasında modalın sıfırlanması engellendi.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.19`.
 
 ---
 
