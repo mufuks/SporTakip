@@ -256,8 +256,8 @@
     </div>
   </div>
 
-<div class="modal-backdrop" id="modal-edit-member-notes">
-    <div class="modal-content" style="max-width:480px;">
+<div class="modal-backdrop" id="modal-edit-member-notes" style="z-index: 2300 !important;">
+    <div class="modal-content" style="max-width:480px; z-index: 2301 !important;">
       <div class="modal-header">
         <div>
           <h3 style="display:flex; align-items:center; gap:8px;"><span>⚠️</span> Sporcu Sağlık & Sakatlık Notu</h3>
@@ -268,15 +268,25 @@
       <form id="edit-member-notes-form" onsubmit="handleSaveMemberNotes(event)">
         <input type="hidden" id="edit-member-notes-id">
         <div class="form-group">
-          <label>Sakatlık, Fıtık veya Sağlık Kısıt Notu</label>
-          <textarea id="edit-member-notes-textarea" class="form-control" rows="3" placeholder="Örn: Bel fıtığı L4-L5 - Ağır deadlift kısıtı, Trap Bar ve Core stabilitesi önerilir."></textarea>
-          <small style="color:var(--text-muted); font-size:11.5px; margin-top:6px; display:block;">
-            💡 Bu not antrenman yoklama listesinde tüm koçlara uyarı rozeti olarak görünecektir. Boş bırakıp kaydederseniz uyarı kaldırılır.
+          <label style="color:#FF453A; font-weight:700; display:flex; align-items:center; gap:6px;">
+            <span>⚠️</span> Kritik Sağlık / Sakatlık Uyarısı
+            <small style="color:var(--text-muted); font-weight:400;">(Yoklama & seanslarda kırmızı ikaz)</small>
+          </label>
+          <textarea id="edit-member-notes-medical" class="form-control" rows="3" placeholder="Örn: Bel fıtığı L4-L5, menisküs hassasiyeti, ağır squat ve deadlift kısıtı"></textarea>
+          <small style="color:var(--text-muted); font-size:11.5px; margin-top:5px; display:block;">
+            💡 Bu kısıt yoklama listesinde tüm eğitmenlere belirgin kırmızı rozet olarak görünür. Temizleyip kaydederseniz uyarı kalkar.
           </small>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+          <label style="font-weight:700; display:flex; align-items:center; gap:6px;">
+            <span>📝</span> Genel Sporcu Notu & Tercihler
+            <small style="color:var(--text-muted); font-weight:400;">(İsteğe bağlı)</small>
+          </label>
+          <input type="text" id="edit-member-notes-general" class="form-control" placeholder="Örn: Hedef yağ yakımı ve kondisyon, akşam saatleri uygun">
         </div>
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
           <button type="button" class="btn-secondary" onclick="closeModal('modal-edit-member-notes')">Vazgeç</button>
-          <button type="submit" class="btn-primary">💾 Notu Kaydet</button>
+          <button type="submit" class="btn-primary">💾 Kaydet</button>
         </div>
       </form>
     </div>
@@ -329,12 +339,12 @@
       </div>
 
       <!-- Injury / Health Restriction Alert Box -->
-      <div id="student-progress-injury-box" style="display:none; margin-bottom:16px; background:rgba(255,69,58,0.1); border:1px solid rgba(255,69,58,0.25); border-radius:12px; padding:10px 14px;">
+      <div id="student-progress-injury-box" style="margin-bottom:16px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); border-radius:12px; padding:10px 14px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:12px; font-weight:800; color:#FF453A; display:flex; align-items:center; gap:6px;">
+          <span id="student-progress-injury-title" style="font-size:12px; font-weight:800; color:#FF453A; display:flex; align-items:center; gap:6px;">
             <span>⚠️</span> SAĞLIK & SAKATLIK UYARISI
           </span>
-          <button type="button" id="btn-edit-student-injury" class="v0-injury-edit-btn" style="font-size:11px; padding:2px 8px;">
+          <button type="button" id="btn-edit-student-injury" class="v0-injury-edit-btn" style="font-size:11px; padding:3px 10px;">
             <span>✏️</span> Düzenle
           </button>
         </div>

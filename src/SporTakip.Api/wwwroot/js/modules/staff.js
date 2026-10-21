@@ -1205,7 +1205,7 @@ function renderAttendanceList(subs) {
               <span>${sub.memberMedicalConditions ? '⚠️' : (sub.memberNotes ? '📝' : '🩺')}</span>
               <span class="v0-injury-badge-text">${escapeHtml(sub.memberMedicalConditions ? ('⚠️ ' + sub.memberMedicalConditions) : (sub.memberNotes || 'Sağlık / Sakatlık notu yok'))}</span>
             </div>
-            <button type="button" class="v0-injury-edit-btn" onclick="openEditMemberNotesModal(${sub.memberId}, '${escapeHtml(sub.memberName)}', '${escapeJsString(sub.memberMedicalConditions || sub.memberNotes || '')}')" title="Sporcunun sakatlık/sağlık kısıtını düzenle">
+            <button type="button" class="v0-injury-edit-btn" onclick="openEditMemberNotesModal(${sub.memberId}, '${escapeJsString(sub.memberName)}', '${escapeJsString(sub.memberMedicalConditions || '')}', '${escapeJsString(sub.memberNotes || '')}')" title="Sporcunun sakatlık/sağlık kısıtını düzenle">
               <span>✏️</span> ${(sub.memberMedicalConditions || sub.memberNotes) ? 'Düzenle' : 'Not Ekle'}
             </button>
           </div>
@@ -1594,8 +1594,13 @@ function renderStudentCards(members, container) {
         </div>
 
         ${hasMedical ? `
-          <div style="font-size:11.5px; font-weight:700; color:#FF453A; background:rgba(255,69,58,0.12); padding:5px 10px; border-radius:8px; border:1px solid rgba(255,69,58,0.25); display:flex; align-items:flex-start; gap:6px;">
-            <span style="flex-shrink:0;">⚠️</span> <span style="line-height:1.35;">${escapeHtml(m.medicalConditions)}</span>
+          <div style="font-size:11.5px; font-weight:700; color:#FF453A; background:rgba(255,69,58,0.12); padding:6px 10px; border-radius:8px; border:1px solid rgba(255,69,58,0.25); display:flex; justify-content:space-between; align-items:center; gap:6px;">
+            <div style="display:flex; align-items:flex-start; gap:6px;">
+              <span style="flex-shrink:0;">⚠️</span> <span style="line-height:1.35;">${escapeHtml(m.medicalConditions.replace(/^⚠️\s*/, ''))}</span>
+            </div>
+            <button type="button" class="v0-injury-edit-btn" onclick="openEditMemberNotesModal(${m.id}, '${escapeJsString(m.fullName)}', '${escapeJsString(m.medicalConditions)}', '${escapeJsString(m.notes || '')}')" style="font-size:10.5px; padding:2px 7px;">
+              <span>✏️</span>
+            </button>
           </div>
         ` : ''}
 
@@ -1692,9 +1697,23 @@ async function openStudentProgressDrawer(memberId, memberName) {
   const btnWaShare = document.getElementById('btn-student-wa-share');
   const btnEditInjury = document.getElementById('btn-edit-student-injury');
 
+  const injuryTitle = document.getElementById('student-progress-injury-title');
   if (nameEl) nameEl.textContent = memberName;
   if (avatarEl) avatarEl.textContent = getAthleteInitials(memberName);
   if (subBadgeEl) subBadgeEl.textContent = 'Veriler yükleniyor...';
+  if (injuryBox) {
+    injuryBox.style.display = 'block';
+    injuryBox.style.background = 'var(--bg-surface-elevated)';
+    injuryBox.style.border = '1px solid var(--border-subtle)';
+  }
+  if (injuryTitle) {
+    injuryTitle.style.color = 'var(--text-muted)';
+    injuryTitle.innerHTML = '<span>🩺</span> SAĞLIK & SAKATLIK KISITI';
+  }
+  if (injuryText) {
+    injuryText.style.color = 'var(--text-muted)';
+    injuryText.textContent = 'Veriler yükleniyor...';
+  }
   if (chartContainer) chartContainer.innerHTML = '<div style="color:var(--text-muted); padding:30px; text-align:center;">Ölçüm geçmişi yükleniyor...</div>';
   if (historySection) historySection.innerHTML = '<div style="color:var(--text-muted); padding:16px; text-align:center; font-size:12px;">Ölçüm geçmişi yükleniyor...</div>';
 
@@ -1742,15 +1761,47 @@ async function openStudentProgressDrawer(memberId, memberName) {
       }
 
       // Injury / Medical condition alert box
-      const medNotes = member.medicalConditions || member.notes;
-      if (medNotes) {
-        if (injuryBox) injuryBox.style.display = 'block';
-        if (injuryText) injuryText.textContent = medNotes;
-        if (btnEditInjury) {
-          btnEditInjury.onclick = () => openEditMemberNotesModal(memberId, memberName, medNotes);
+      const medConditions = (member.medicalConditions || '').trim();
+      const hasMedical = medConditions.length > 0;
+      const cleanMedText = medConditions.replace(/^⚠️\s*/, '');
+
+      if (injuryBox) {
+        injuryBox.style.display = 'block';
+        if (hasMedical) {
+          injuryBox.style.background = 'rgba(255,69,58,0.12)';
+          injuryBox.style.border = '1px solid rgba(255,69,58,0.3)';
+          if (injuryTitle) {
+            injuryTitle.style.color = '#FF453A';
+            injuryTitle.innerHTML = '<span>⚠️</span> SAĞLIK & SAKATLIK UYARISI';
+          }
+          if (injuryText) {
+            injuryText.style.color = 'var(--text-primary)';
+            injuryText.textContent = cleanMedText;
+          }
+          if (btnEditInjury) {
+            btnEditInjury.innerHTML = '<span>✏️</span> Düzenle';
+            btnEditInjury.style.color = 'var(--text-secondary)';
+            btnEditInjury.style.borderColor = 'var(--border-medium)';
+            btnEditInjury.onclick = () => openEditMemberNotesModal(memberId, memberName, cleanMedText, member.notes);
+          }
+        } else {
+          injuryBox.style.background = 'var(--bg-surface-elevated)';
+          injuryBox.style.border = '1px solid var(--border-subtle)';
+          if (injuryTitle) {
+            injuryTitle.style.color = 'var(--text-muted)';
+            injuryTitle.innerHTML = '<span>🩺</span> SAĞLIK & SAKATLIK KISITI';
+          }
+          if (injuryText) {
+            injuryText.style.color = 'var(--text-muted)';
+            injuryText.textContent = 'Kayıtlı sakatlık veya sağlık kısıtı bulunmuyor.';
+          }
+          if (btnEditInjury) {
+            btnEditInjury.innerHTML = '<span>+</span> Kısıt Ekle';
+            btnEditInjury.style.color = 'var(--volt-lime)';
+            btnEditInjury.style.borderColor = 'rgba(204,255,0,0.35)';
+            btnEditInjury.onclick = () => openEditMemberNotesModal(memberId, memberName, '', member.notes);
+          }
         }
-      } else {
-        if (injuryBox) injuryBox.style.display = 'none';
       }
 
       // WhatsApp Share button
@@ -2855,39 +2906,80 @@ window.handleUpdateMember = async function(e) {
   }
 };
 
-window.openEditMemberNotesModal = function(memberId, memberName, notes) {
+window.openEditMemberNotesModal = async function(memberId, memberName, medicalConditions, generalNotes) {
   const idInput = document.getElementById('edit-member-notes-id');
   const nameEl = document.getElementById('edit-member-notes-name');
-  const textarea = document.getElementById('edit-member-notes-textarea');
+  const medicalInput = document.getElementById('edit-member-notes-medical') || document.getElementById('edit-member-notes-textarea');
+  const generalInput = document.getElementById('edit-member-notes-general');
 
-  let m = (typeof allMembers !== 'undefined' ? allMembers : []).find(x => x.id === memberId);
-  const currentVal = (m ? (m.medicalConditions || m.notes) : null) || notes || '';
+  let medVal = medicalConditions;
+  let genVal = generalNotes;
+
+  if (medVal === undefined || genVal === undefined) {
+    let m = (typeof allMembers !== 'undefined' ? allMembers : []).find(x => x.id === memberId);
+    if (!m) {
+      m = await Api.getMember(memberId).catch(() => null);
+    }
+    if (m) {
+      medVal = m.medicalConditions ?? '';
+      genVal = m.notes ?? '';
+    }
+  }
+
+  // Strip redundant leading ⚠️ from edit view if present
+  if (medVal && typeof medVal === 'string') {
+    medVal = medVal.replace(/^⚠️\s*/, '');
+  }
 
   if (idInput) idInput.value = memberId;
-  if (nameEl) nameEl.innerText = memberName;
-  if (textarea) textarea.value = currentVal;
+  if (nameEl) nameEl.innerText = memberName || 'Sporcu';
+  if (medicalInput) medicalInput.value = medVal || '';
+  if (generalInput) generalInput.value = genVal || '';
 
   openModal('modal-edit-member-notes');
-  if (textarea) setTimeout(() => textarea.focus(), 150);
+  if (medicalInput) setTimeout(() => medicalInput.focus(), 150);
 };
 
 window.handleSaveMemberNotes = async function(e) {
   e.preventDefault();
-  const memberId = parseInt(document.getElementById('edit-member-notes-id').value);
-  const notes = document.getElementById('edit-member-notes-textarea').value.trim();
+  const idInput = document.getElementById('edit-member-notes-id');
+  const memberId = parseInt(idInput?.value || 0);
+  if (!memberId) return;
+
+  const medicalInput = document.getElementById('edit-member-notes-medical') || document.getElementById('edit-member-notes-textarea');
+  const generalInput = document.getElementById('edit-member-notes-general');
+
+  const medicalVal = medicalInput ? medicalInput.value.trim() : '';
+  const generalVal = generalInput ? generalInput.value.trim() : null;
 
   try {
-    await Api.updateMemberNotes(memberId, notes, notes);
-    showToast('⚡ Sporcu sağlık kısıtı / sakatlık notu güncellendi!');
+    showToast('⚡ Sağlık notu kaydediliyor...');
+    // Send empty string "" if cleared, so backend sets NULL in database
+    await Api.updateMemberNotes(memberId, generalVal !== null ? generalVal : null, medicalVal);
+
+    showToast('✓ Sporcu sağlık & sakatlık uyarısı güncellendi!');
     closeModal('modal-edit-member-notes');
+
+    // Update in-memory allMembers
+    if (typeof allMembers !== 'undefined' && allMembers) {
+      const target = allMembers.find(x => x.id === memberId);
+      if (target) {
+        target.medicalConditions = medicalVal || null;
+        if (generalVal !== null) target.notes = generalVal || null;
+      }
+    }
+
     if (currentTab === 'yoklama') {
       await loadAttendanceView();
     } else if (currentTab === 'uyeler') {
       await loadMembersView();
     }
-    if (document.getElementById('modal-student-progress')?.classList.contains('open')) {
+
+    // Live refresh progress drawer if open
+    const progressModal = document.getElementById('modal-student-progress');
+    if (progressModal && progressModal.classList.contains('open')) {
       const name = document.getElementById('student-progress-name')?.textContent || '';
-      openStudentProgressDrawer(memberId, name);
+      await openStudentProgressDrawer(memberId, name);
     }
   } catch (err) {
     showToast(`Not kaydedilemedi: ${err.message}`, 'error');

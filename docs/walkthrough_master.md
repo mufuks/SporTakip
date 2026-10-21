@@ -1123,6 +1123,23 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Derleme & Test Doğrulaması:**
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.28`.
 
+- **2026-10-21 (Phase 82 - Sağlık & Sakatlık Uyarısı Düzenleme, Z-Index ve Çekmece Senkronizasyonu Düzeltmesi):**
+  - **Kullanıcı Bildirimi:** Antrenör/Koç modunda `SAĞLIK & SAKATLIK UYARISI` düzenlenemiyor, modal açılmıyor veya hatalı duruyordu.
+  - **Kök Neden Tespiti:**
+    1. **Z-Index & DOM Çakışması:** `#modal-edit-member-notes` modalı progress drawer (`#modal-student-progress`) ile aynı `z-index: 2000` değerine sahipti ve DOM'da drawer'dan önce yer aldığı için drawer'ın tamamen arkasında kalıyor, tıklamalar engelleniyordu.
+    2. **Hatalı Fallback:** `member.medicalConditions` boş olduğunda genel profil notları (`member.notes`, örn: *"Eğitmen / Personel Sporcu Profili"*) kırmızı sakatlık uyarısı gibi gösteriliyordu.
+    3. **Notları Ezme:** Kaydetme fonksiyonu girilen kısıtı hem `Notes` hem de `MedicalConditions` alanlarına yazarak genel sporcu notlarını eziyordu.
+    4. **Boş Kısıt Ekleme Engeli:** Sakatlık notu olmayan sporcularda kutu `display:none` olduğu için antrenör sonradan kısıt ekleyemiyordu.
+  - **Geliştirilen Çözümler:**
+    - `#modal-edit-member-notes` modalına `z-index: 2300 !important;` verilerek çekmecelerin üzerinde açılması garanti altına alındı.
+    - Modal içine hem `Kritik Sağlık / Sakatlık Uyarısı` (textarea) hem de `Genel Sporcu Notu & Tercihler` (input) alanları ayrılarak netleştirildi.
+    - Progress çekmecesindeki sakatlık kutusu dinamik hale getirildi: Kısıt varsa kırmızı uyarı ve `[ ✏️ Düzenle ]`, kısıt yoksa şık nötr kutu ve `[ + Kısıt Ekle ]` butonu sunuldu.
+    - Öğrenci kartlarındaki kırmızı uyarı rozetine doğrudan hızlı `[ ✏️ ]` düzenleme butonu eklendi.
+    - Veritabanındaki eski sakatlık notları `MedicalConditions` alanına normalize edildi.
+    - Varlık sürümleri `v=3.8.29` sürümüne yükseltildi.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.29`.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)

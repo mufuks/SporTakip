@@ -19,7 +19,7 @@ import {
   loadTrainers, renderTrainersTable, updateTrainerSelects,
   loadPackagesAdmin, renderPackagesTable,
   loadCalendarView, renderCalendarGrid
-} from './modules/staff.js?v=3.8.28';
+} from './modules/staff.js?v=3.8.29';
 import { 
   loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,
@@ -34,7 +34,7 @@ import {
   loadSuperAdminView, filterAndRenderSuperAdminUsers,
   updateSortIcons, updateRoleCounts
 } from './modules/admin.js';
-import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.8.28';
+import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.8.29';
 
 // Workspace / App Mode State
 let currentAppMode = localStorage.getItem('sportakip_app_mode') || 'athlete';
