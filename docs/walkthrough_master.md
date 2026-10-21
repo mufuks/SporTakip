@@ -1230,6 +1230,25 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Edge CDP ile 393x851 mobil ekran görüntüsü ve DOM rect değerleri teyit edildi (`sameRow: true`, `hasOldTitle: false`, `hasOldSubtitle: false`).
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.35`.
 
+- **2026-10-21 (Phase 89 - Öğrenci Filtre Rozetlerinin Kısaltılması & Mobil Sığdırma İyileştirmesi):**
+  - **Kullanıcı Bildirimi:** "şu rozet metinlerini kısaltalım da sığsın" talebiyle öğrenci filtre çiplerindeki uzun metinlerin kısaltılması.
+  - **Kök Neden:** "🔄 Yenileme Bekleyenler (0-1 Ders)" (~240px) ve "⚡ Aktif Paketi Olanlar" gibi uzun ifadeler sebebiyle 393px mobil ekranda yalnızca 1.5 çip sığıyor, sonraki filtreler ekran dışına taşıp gizleniyordu.
+  - **Geliştirilen Çözümler:**
+    - **Kompakt ve Net Çip Metinleri ([uyeler.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/views/staff/uyeler.html)):**
+      - `Tüm Sporcular` -> `Tümü`
+      - `🔄 Yenileme Bekleyenler (0-1 Ders)` -> `🔄 Yenileme`
+      - `⚡ Aktif Paketi Olanlar` -> `⚡ Aktif`
+      - `⚠️ Son 1-2 Ders` -> `⚠️ Bitiyor`
+      - `❄️ Dondurulanlar` -> `❄️ Dondurulan`
+      - `🩺 Sakatlık / Kısıt` -> `🩺 Sakatlık`
+    - **Erişilebilirlik & Tooltip Desteği:** Masaüstü hover deneyimi ve ekran okuyucular için çiplerin orijinal açıklamaları `title` niteliklerine eklendi.
+    - **Filtreleme Mantığının Korunması:** `filterStudentsList(filterType)` fonksiyonunun `data-student-filter` (`all`, `renewal`, `active`, `expiring`, `frozen`, `medical`) eşleşmesi eksiksiz korundu.
+    - **Mobil Uyumluluk:** 393px ekranda artık tek bakışta 4 tam çip (`Tümü`, `🔄 Yenileme`, `⚡ Aktif`, `⚠️ Bitiyor`) yan yana rahatça sığmakta, yatay kaydırma ihtiyacı ve görsel kalabalık ortadan kalkmaktadır.
+    - Sürüm `v=3.8.36` seviyesine yükseltildi (`index.html`, `loader.js`, `sw.js`).
+  - **Derleme & Doğrulama:**
+    - Edge CDP ile 393x851 mobil ekran görüntüsü ve çip rect değerleri teyit edildi (`chips[0..3].visibleInViewport: true`, `activeChipFilter: renewal`, kart filtreleme başarılı).
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.36`.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)

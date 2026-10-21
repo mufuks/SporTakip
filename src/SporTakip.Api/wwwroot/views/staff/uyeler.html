@@ -12,12 +12,12 @@
 
   <!-- Quick Filter Chips -->
   <div class="filter-chips" style="margin-bottom:16px;">
-    <button class="filter-chip active" data-student-filter="all" onclick="filterStudentsList('all')">Tüm Sporcular</button>
-    <button class="filter-chip" data-student-filter="renewal" onclick="filterStudentsList('renewal')">🔄 Yenileme Bekleyenler (0-1 Ders)</button>
-    <button class="filter-chip" data-student-filter="active" onclick="filterStudentsList('active')">⚡ Aktif Paketi Olanlar</button>
-    <button class="filter-chip" data-student-filter="expiring" onclick="filterStudentsList('expiring')">⚠️ Son 1-2 Ders</button>
-    <button class="filter-chip" data-student-filter="frozen" onclick="filterStudentsList('frozen')">❄️ Dondurulanlar</button>
-    <button class="filter-chip" data-student-filter="medical" onclick="filterStudentsList('medical')">🩺 Sakatlık / Kısıt</button>
+    <button class="filter-chip active" data-student-filter="all" onclick="filterStudentsList('all')">Tümü</button>
+    <button class="filter-chip" data-student-filter="renewal" onclick="filterStudentsList('renewal')" title="Yenileme Bekleyenler (0-1 Ders)">🔄 Yenileme</button>
+    <button class="filter-chip" data-student-filter="active" onclick="filterStudentsList('active')" title="Aktif Paketi Olanlar">⚡ Aktif</button>
+    <button class="filter-chip" data-student-filter="expiring" onclick="filterStudentsList('expiring')" title="Son 1-2 Dersi Kalanlar">⚠️ Bitiyor</button>
+    <button class="filter-chip" data-student-filter="frozen" onclick="filterStudentsList('frozen')" title="Paketi Dondurulanlar">❄️ Dondurulan</button>
+    <button class="filter-chip" data-student-filter="medical" onclick="filterStudentsList('medical')" title="Sakatlık veya Sağlık Kısıtı Olanlar">🩺 Sakatlık</button>
   </div>
 
   <!-- Mobile-First Student Cards Feed (Reels-inspired) -->
