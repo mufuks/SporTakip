@@ -1,16 +1,13 @@
 <section id="view-uyeler" class="v0-section animate-fade-in" style="display:none;">
-  <div class="page-header" style="margin-bottom:14px;">
-    <div>
-      <h2 class="page-title">ÖĞRENCİLERİM & <span class="text-volt">GELİŞİM</span></h2>
-      <p class="page-subtitle">Kayıtlı sporcular, paket hakları, vücut ölçümleri ve gelişim takibi.</p>
+  <!-- Streamlined Members Search & Action Toolbar -->
+  <div class="members-toolbar" style="display:flex; align-items:center; gap:8px; margin-top:2px; margin-bottom:12px; width:100%;">
+    <div class="search-wrapper" style="flex:1; max-width:none; position:relative; min-width:0;">
+      <span class="search-icon" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:13px; pointer-events:none;">🔍</span>
+      <input type="text" class="search-input" placeholder="İsim veya telefon ara..." oninput="handleMemberSearch(this.value)" style="height:38px; padding:0 12px 0 32px; font-size:13px; border-radius:10px; width:100%; box-sizing:border-box;">
     </div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-      <div class="search-wrapper">
-        <span class="search-icon">🔍</span>
-        <input type="text" class="search-input" placeholder="İsim veya telefon ara..." oninput="handleMemberSearch(this.value)">
-      </div>
-      <button class="btn-primary" onclick="openNewMemberModal()" style="height:36px; padding:0 14px; font-size:12.5px; border-radius:10px;">+ Yeni Sporcu</button>
-    </div>
+    <button type="button" class="btn-primary" onclick="openNewMemberModal()" style="height:38px; padding:0 12px; font-size:12px; font-weight:700; border-radius:10px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; box-shadow:0 2px 8px rgba(204,255,0,0.25); flex-shrink:0;">
+      <span>✨</span> Yeni Sporcu
+    </button>
   </div>
 
   <!-- Quick Filter Chips -->

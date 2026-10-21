@@ -11,7 +11,7 @@ import {
   startOtpTimer, handlePhoneInput, submitSendOtp, resendOtp, checkCodeComplete,
   submitVerifyOtp, setupOtpBoxListeners, updateAppAvatars, handleLogout,
   handleAvatarClick, handleAvatarFileUpload, resetAvatarToDefault 
-} from './modules/auth.js?v=3.8.34';
+} from './modules/auth.js?v=3.8.35';
 import { 
   loadAttendanceView,
   loadDashboardView, loadMembersView, getRoleBadgeHtml,
@@ -20,7 +20,7 @@ import {
   loadPackagesAdmin, renderPackagesTable,
   loadCalendarView, renderCalendarGrid,
   openEditMemberNotesModal, handleSaveMemberNotes
-} from './modules/staff.js?v=3.8.34';
+} from './modules/staff.js?v=3.8.35';
 import { 
   loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,

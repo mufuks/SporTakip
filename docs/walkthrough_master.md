@@ -1218,6 +1218,18 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Edge CDP ile 393x851 mobil ekran görüntüsü ve DOM rect değerleri teyit edildi (`hasOldTitle: false`, `hasOldSubtitle: false`, `monthText: Ekim 2026`).
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.34`.
 
+- **2026-10-21 (Phase 88 - Öğrencilerim & Üyeler Başlık Alanı Sadeleştirmesi & Arama/Ekleme Toolbar Birleştirmesi):**
+  - **Kullanıcı Bildirimi:** Üyeler sekmesindeki "ÖĞRENCİLERİM & GELİŞİM" başlığı ile "Kayıtlı sporcular, paket hakları, vücut ölçümleri ve gelişim takibi." açıklamasının kaldırılması ve alanın rahatlatılması.
+  - **Kök Neden:** 5 satıra yayılan başlık, açıklama metni, alt satıra düşen arama kutusu ve tek başına kalan `+ Yeni Sporcu` butonu sebebiyle sporcu kartları aşağı itiliyor, mobil ekranda ilk bakışta sporcu bilgileri görünemiyordu.
+  - **Geliştirilen Çözümler:**
+    - **Gereksiz Başlık ve Açıklamaların Kaldırılması ([uyeler.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/views/staff/uyeler.html)):** H2 başlığı ve didaktik açıklama metni tamamen kaldırıldı.
+    - **Tek Satırda Birleşik Toolbar (`.members-toolbar`):** Arama kutusu (`🔍 İsim veya telefon ara...`) ile `✨ Yeni Sporcu` butonu yan yana, 38px yükseklikte konumlandırıldı (`sameRow: true`). Yoklama ve Takvim üst çubuklarıyla tam tasarım birliği sağlandı.
+    - **Hızlı Filtre Çipleri ve Kartların Öne Çıkması:** Arama çubuğunun hemen altına yatay filtre çipleri (`Tüm Sporcular`, `🔄 Yenileme Bekleyenler` vb.) ve doğrudan sporcu kartları yerleşti. Dikeyde ~150px alan kazanıldı.
+    - Sürüm `v=3.8.35` seviyesine yükseltildi (`index.html`, `app.js`, `loader.js`, `sw.js`).
+  - **Derleme & Doğrulama:**
+    - Edge CDP ile 393x851 mobil ekran görüntüsü ve DOM rect değerleri teyit edildi (`sameRow: true`, `hasOldTitle: false`, `hasOldSubtitle: false`).
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.35`.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)
