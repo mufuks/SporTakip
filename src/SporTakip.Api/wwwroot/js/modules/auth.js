@@ -147,8 +147,8 @@ export function handleOtpBackdropClick(e) {
 window.handleOtpBackdropClick = handleOtpBackdropClick;
 
 export function goToPhoneStep() {
-  const stepPhone = document.getElementById('v0-otp-step-phone');
-  const stepCode = document.getElementById('v0-otp-step-code');
+  const stepPhone = document.getElementById('v0-otp-step-phone') || document.getElementById('v0-otp-form-phone');
+  const stepCode = document.getElementById('v0-otp-step-code') || document.getElementById('v0-otp-form-code');
   const subTitle = document.getElementById('v0-otp-step-subtitle');
   if (stepPhone) stepPhone.style.display = 'block';
   if (stepCode) stepCode.style.display = 'none';
@@ -165,8 +165,8 @@ export function goToPhoneStep() {
 window.goToPhoneStep = goToPhoneStep;
 
 export function goToCodeStep() {
-  const stepPhone = document.getElementById('v0-otp-step-phone');
-  const stepCode = document.getElementById('v0-otp-step-code');
+  const stepPhone = document.getElementById('v0-otp-step-phone') || document.getElementById('v0-otp-form-phone');
+  const stepCode = document.getElementById('v0-otp-step-code') || document.getElementById('v0-otp-form-code');
   const subTitle = document.getElementById('v0-otp-step-subtitle');
   if (stepPhone) stepPhone.style.display = 'none';
   if (stepCode) stepCode.style.display = 'block';

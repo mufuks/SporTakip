@@ -2906,7 +2906,7 @@ window.handleUpdateMember = async function(e) {
   }
 };
 
-window.openEditMemberNotesModal = async function(memberId, memberName, medicalConditions, generalNotes) {
+async function openEditMemberNotesModal(memberId, memberName, medicalConditions, generalNotes) {
   const mId = parseInt(memberId || 0);
   window.currentStudentProgressMemberId = mId;
 
@@ -2952,9 +2952,10 @@ window.openEditMemberNotesModal = async function(memberId, memberName, medicalCo
 
   openModal('modal-edit-member-notes');
   if (medicalInput) setTimeout(() => medicalInput.focus(), 150);
-};
+}
+window.openEditMemberNotesModal = openEditMemberNotesModal;
 
-window.handleSaveMemberNotes = async function(e) {
+async function handleSaveMemberNotes(e) {
   if (e) {
     if (typeof e.preventDefault === 'function') e.preventDefault();
     if (typeof e.stopPropagation === 'function') e.stopPropagation();
@@ -3057,6 +3058,7 @@ window.handleSaveMemberNotes = async function(e) {
     }
   }
 };
+window.handleSaveMemberNotes = handleSaveMemberNotes;
 
 
 window.openNewSubModalForMember = async function(memberId, memberName) {

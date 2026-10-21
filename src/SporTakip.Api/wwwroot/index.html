@@ -146,6 +146,50 @@
           }
         }
       };
+      window.submitVerifyOtp = window.submitVerifyOtp || async function(e) {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        var boxes = Array.from(document.querySelectorAll('.v0-otp-box'));
+        var code = boxes.map(function(b) { return b.value; }).join('');
+        var phone = window.__currentOtpPhone;
+        if (code.length !== 6 || !phone) return;
+        var btn = document.getElementById('v0-btn-verify-otp');
+        var origText = btn ? btn.innerHTML : 'Kodu Onayla';
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<span>Doğrulanıyor...</span>';
+        }
+        try {
+          var res = await fetch('/api/auth/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: phone, code: code })
+          });
+          var data = await res.json().catch(function() { return {}; });
+          if (!res.ok) {
+            throw new Error(data.message || data.error || 'Kod doğrulanamadı.');
+          }
+          if (data.accessToken) localStorage.setItem('sportakip_token', data.accessToken);
+          if (data.refreshToken) localStorage.setItem('sportakip_refresh_token', data.refreshToken);
+          if (data.user) localStorage.setItem('sportakip_user', JSON.stringify(data.user));
+          if (typeof window.showToast === 'function') {
+            window.showToast('🎉 Hoş geldin! Giriş yapıldı.', 'success');
+          }
+          window.closeOtpDrawer();
+          if (typeof window.updateNavForUserRole === 'function') window.updateNavForUserRole();
+          if (typeof window.navigateTo === 'function') window.navigateTo('home');
+          else window.location.reload();
+        } catch (err) {
+          if (typeof window.showToast === 'function') {
+            window.showToast('Doğrulama Hatası: ' + err.message, 'error');
+          } else {
+            alert(err.message);
+          }
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origText;
+          }
+        }
+      };
     })();
   </script>
 
@@ -658,7 +702,7 @@
         </div>
 
         <!-- Step 1: Phone Entry -->
-        <form id="v0-otp-form-phone" onsubmit="event.preventDefault(); window.submitSendOtp(event);" class="animate-rise-in">
+        <form id="v0-otp-step-phone" onsubmit="event.preventDefault(); window.submitSendOtp(event);" class="animate-rise-in">
           <label for="v0-input-phone" style="display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:8px;">
             Telefon Numarası
           </label>
@@ -666,14 +710,14 @@
             <span class="v0-phone-prefix">+90</span>
             <input type="tel" id="v0-input-phone" class="v0-phone-input" placeholder="5XX XXX XX XX" maxlength="20" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event)" autocomplete="tel-national">
           </div>
-          <button type="submit" id="v0-btn-send-otp" class="v0-btn-submit" disabled onclick="submitSendOtp(event)">
+          <button type="submit" id="v0-btn-send-otp" class="v0-btn-submit" disabled>
             <span>Kod Gönder</span>
             <span style="font-size:16px;">→</span>
           </button>
         </form>
 
         <!-- Step 2: 6-Digit Code Entry -->
-        <form id="v0-otp-form-code" onsubmit="event.preventDefault(); window.submitVerifyOtp(event);" class="animate-rise-in" style="display:none;">
+        <form id="v0-otp-step-code" onsubmit="event.preventDefault(); window.submitVerifyOtp(event);" class="animate-rise-in" style="display:none;">
           <div class="v0-otp-boxes">
             <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="0">
             <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="1">
@@ -688,7 +732,7 @@
             <button type="button" class="v0-otp-resend-btn" onclick="resendOtp()">Tekrar Gönder</button>
           </div>
 
-          <button type="submit" id="v0-btn-verify-otp" class="v0-btn-submit" disabled onclick="submitVerifyOtp(event)">
+          <button type="submit" id="v0-btn-verify-otp" class="v0-btn-submit" disabled>
             Kodu Onayla
           </button>
 
@@ -704,7 +748,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Javascript -->
-  <script type="module" src="/js/app.js?v=3.8.31"></script>
+  <script type="module" src="/js/app.js?v=3.8.32"></script>
 </body>
 </html>
 

@@ -1176,6 +1176,24 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.31`.
     - Mobil (393x851) tarayıcı ortamında numara girişi, "Kod Gönder" tıklaması, Enter tuşu ve 6 haneli kod doğrulama adımları test edildi.
 
+- **2026-10-21 (Phase 85 - DOM Giriş Akışı Hata Analizi, Module SyntaxError Düzeltmesi & Çift Taraflı Form İzolasyonu):**
+  - **Kullanıcı Bildirimi:** "dom ile girişi test et hatalı bir durum var. neden bozduk"
+  - **Kök Neden Tespiti ("Neden Bozduk"):**
+    1. **Module SyntaxError (Kritik Blokaj):** Phase 83'te sporcu notlarını kaydetmek için eklenen `openEditMemberNotesModal` ve `handleSaveMemberNotes` fonksiyonları `staff.js` içinde `window.openEditMemberNotesModal = async function` olarak tanımlanmıştı; ancak dosya sonunda `export { ..., openEditMemberNotesModal, handleSaveMemberNotes }` ile dışa aktarılmaya çalışılmıştı. ES Modules kurallarına göre `window` nesnesine atanan özellikler modül kapsam değişkeni sayılmaz. Bu sebeple modern tarayıcılar `SyntaxError: Export 'handleSaveMemberNotes' is not defined in module` hatası vererek `staff.js`'i derleyemedi; ve `app.js` bu dosyayı `import` ettiği için **tüm ana uygulama modülü (`app.js`) çöktü ve hiçbir script/auth modülü çalışamadı**.
+    2. **DOM ID Uyuşmazlığı (`v0-otp-step-phone` vs `v0-otp-form-phone`):** Phase 84'te form yapısına geçilirken form ID'si `v0-otp-form-phone` ve `v0-otp-form-code` yapılmıştı. Ancak `auth.js` içindeki `goToCodeStep()` ve `goToPhoneStep()` fonksiyonları doğrudan `document.getElementById('v0-otp-step-phone')` ve `document.getElementById('v0-otp-step-code')` elementlerini arıyordu. Elementler `null` döndüğü için SMS kodu API'den başarıyla gelse dahi 1. adım gizlenemiyor ve 2. adım ekranda açılamıyordu.
+    3. **Frame-0 `submitVerifyOtp` Eksikliği:** `<head>` içinde `submitSendOtp` tanımlıyken `submitVerifyOtp` tanımlı değildi; `app.js` modül hatası nedeniyle yüklenemediğinde 2. adımdaki onay butonu `TypeError: window.submitVerifyOtp is not a function` fırlatıyordu.
+  - **Geliştirilen Çözümler:**
+    - **`staff.js` SyntaxError Giderimi ([staff.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/staff.js)):** `openEditMemberNotesModal` ve `handleSaveMemberNotes` fonksiyonları modül kapsamlı `async function` olarak tanımlandı, hem `window` nesnesine atandı hem de temiz bir şekilde `export` edildi. Node ve tarayıcı ortamında modül ayrıştırma doğrulaması yapıldı.
+    - **DOM ID Eşitlemesi ve Çift Yönlü Güvenlik ([index.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/index.html) & [auth.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/auth.js)):** `index.html`'deki form ID'leri `v0-otp-step-phone` ve `v0-otp-step-code` olarak standardize edildi. `auth.js` içine `document.getElementById('v0-otp-step-phone') || document.getElementById('v0-otp-form-phone')` şeklinde çift yönlü yedekli arama eklendi.
+    - **Frame-0 `submitVerifyOtp` ([index.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/index.html)):** `<head>` betiğine tam donanımlı `window.submitVerifyOtp` fallback fonksiyonu eklendi.
+    - **Sürüm Güncellemesi:** Tüm varlıklar `v=3.8.32` sürümüne yükseltildi (`app.js`, `index.html`, `loader.js`, `sw.js`).
+  - **Derleme & Gerçek DOM Doğrulaması:**
+    - Edge CDP (Headless DevTools Protocol) ile 393x851 mobil çözünürlükte gerçek DOM senaryosu çalıştırıldı (`comprehensive_otp_test.mjs`).
+    - **Senaryo 1 (Buton Tıklama):** 5551234567 girildi -> Kod Gönder tıklandı -> 1. adım kapandı, 2. adım açıldı -> 6 haneli kod otomatik doldu -> Kodu Onayla tıklandı -> Çekmece kapandı, JWT token kaydedildi, `Atlet_1` oturumu açıldı.
+    - **Senaryo 2 (Enter Tuşu):** Çıkış yapıldı -> 5551234567 girildi -> Klavyeden Enter basıldı -> Kod Gönder tetiklendi -> 2. adım açıldı -> Kodu Onayla çalıştı ve oturum açıldı.
+    - **Konsol Hata Raporu:** 0 hata (Zero console errors/warnings).
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.32`.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)
