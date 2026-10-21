@@ -1,26 +1,25 @@
 <section id="view-dashboard" class="v0-section animate-fade-in" style="display:none;">
 
-  <div class="page-header" style="margin-bottom:16px;">
-    <div>
-      <h2 class="page-title">SALON <span class="text-volt">MASASI</span></h2>
-      <p class="page-subtitle">Salon finansı, eğitmen bordroları ve sporcu yönetimi.</p>
-    </div>
-    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-      <button type="button" class="btn-primary" onclick="openNewMemberModal()">+ Yeni Üye Kaydı</button>
-      <button type="button" class="btn-secondary" style="font-size:12px; padding:7px 12px;" onclick="openCreatePackageModal()">+ Yeni Paket</button>
-    </div>
+  <!-- Streamlined Dashboard Action Toolbar -->
+  <div class="dashboard-toolbar" style="display:flex; align-items:center; gap:8px; margin-top:2px; margin-bottom:12px; width:100%;">
+    <button type="button" class="btn-primary" onclick="openNewMemberModal()" style="height:38px; flex:1; padding:0 10px; font-size:12px; font-weight:700; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:5px; white-space:nowrap; box-shadow:0 2px 8px rgba(204,255,0,0.25);">
+      <span>✨</span> Yeni Sporcu
+    </button>
+    <button type="button" class="btn-secondary" onclick="openCreatePackageModal()" style="height:38px; flex:1; padding:0 10px; font-size:12px; font-weight:700; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:5px; white-space:nowrap;">
+      <span>📦</span> Yeni Paket
+    </button>
   </div>
 
   <!-- Salon Masası 3'lü Odak Sekmeleri (Sub-tabs) -->
-  <div class="filter-chips" style="margin-bottom:20px; overflow-x:auto; padding-bottom:4px;">
-    <button type="button" class="filter-chip active" id="dash-tab-btn-finance" onclick="switchDashboardSubTab('finance')">
-      <span>📊</span> Kasa & Finans
+  <div class="filter-chips" style="margin-bottom:16px; overflow-x:auto; padding-bottom:4px;">
+    <button type="button" class="filter-chip active" id="dash-tab-btn-finance" onclick="switchDashboardSubTab('finance')" title="Kasa ve Salon Finansı">
+      <span>📊</span> Finans
     </button>
-    <button type="button" class="filter-chip" id="dash-tab-btn-payroll" onclick="switchDashboardSubTab('payroll')">
-      <span>📋</span> Hoca Bordroları
+    <button type="button" class="filter-chip" id="dash-tab-btn-payroll" onclick="switchDashboardSubTab('payroll')" title="Eğitmen Hakedişleri ve Bordrolar">
+      <span>📋</span> Bordrolar
     </button>
-    <button type="button" class="filter-chip" id="dash-tab-btn-members" onclick="switchDashboardSubTab('members')">
-      <span>👥</span> Üyeler & Paketler
+    <button type="button" class="filter-chip" id="dash-tab-btn-members" onclick="switchDashboardSubTab('members')" title="Üye Paketleri ve Tanımları">
+      <span>👥</span> Paketler
     </button>
   </div>
 

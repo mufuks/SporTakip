@@ -1261,6 +1261,23 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Edge CDP ile 393x851 mobil ekran görüntüsü ve DOM rect değerleri teyit edildi (`sameRow: true`, `hasOldTitle: false`, `hasOldSubtitle: false`, `heroTop: 156px`).
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.37`.
 
+- **2026-10-21 (Phase 91 - Salon Masası Başlık Alanı Sadeleştirmesi & Alt Sekme Çiplerinin Kısaltılması):**
+  - **Kullanıcı Bildirimi:** "burası da aynı şekilde" talebiyle Salon Masası (Dashboard) sekmesindeki devasa başlık ve didaktik açıklama metninin kaldırılması, butonların 38px toolbar satırında dengelenmesi ve alt sekme çiplerinin ekrana sığacak şekilde kısaltılması.
+  - **Kök Neden:** `SALON MASASI` başlığı, "Salon finansı, eğitmen bordroları ve sporcu yönetimi." açıklaması, geniş butonlar ve uzun çip metinleri (`📊 Kasa & Finans`, `📋 Hoca Bordroları`, `👥 Üyeler & Paketler` = ~430px) sebebiyle 3. çip sağdan ekran dışına taşıyor ve asıl odak olan 4'lü finansal istatistik kartları aşağı öteleniyordu.
+  - **Geliştirilen Çözümler:**
+    - **Gereksiz Başlık ve Açıklamaların Kaldırılması ([dashboard.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/views/staff/dashboard.html)):** H2 başlığı ve didaktik açıklama metni kaldırıldı.
+    - **Kompakt İkili Eylem Toolbarı (`.dashboard-toolbar`):** `✨ Yeni Sporcu` ve `📦 Yeni Paket` butonları yan yana %50/%50 dengeli, 38px yükseklikte tek bir çubuk haline getirildi (`buttonsSameRow: true`).
+    - **Kompakt Odak Çipleri:**
+      - `📊 Kasa & Finans` -> `📊 Finans` (94px)
+      - `📋 Hoca Bordroları` -> `📋 Bordrolar` (113px)
+      - `👥 Üyeler & Paketler` -> `👥 Paketler` (105px)
+      - Toplam genişlik 344px'e düşürülerek, 393px mobil ekranda **3 çipin tamamı 100% görünür** hale getirildi (hiçbir kesilme veya taşma kalmadı).
+    - **Anında İstatistik Odaklı Görünüm:** Sayfa açıldığı an `AKTİF SPORCULAR`, `BU AYKİ CİRO`, `TAHSİL EDİLEN KASA` ve `AÇIK HESAP` kartları doğrudan ilk ekranda görüntülenir oldu (`statsTop: 209px`).
+    - Sürüm `v=3.8.38` seviyesine yükseltildi (`index.html`, `loader.js`, `sw.js`).
+  - **Derleme & Doğrulama:**
+    - Edge CDP ile 393x851 mobil ekran görüntüsü ve DOM rect değerleri teyit edildi (`chips.every(c => c.visibleInViewport) === true`, alt sekme geçişi sorunsuz çalışıyor).
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.38`.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)
