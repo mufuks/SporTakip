@@ -11,7 +11,7 @@ import {
   startOtpTimer, handlePhoneInput, submitSendOtp, resendOtp, checkCodeComplete,
   submitVerifyOtp, setupOtpBoxListeners, updateAppAvatars, handleLogout,
   handleAvatarClick, handleAvatarFileUpload, resetAvatarToDefault 
-} from './modules/auth.js?v=3.8.20';
+} from './modules/auth.js?v=3.8.31';
 import { 
   loadAttendanceView,
   loadDashboardView, loadMembersView, getRoleBadgeHtml,
@@ -45,6 +45,21 @@ window.currentTab = currentTab;
 window.currentAthleteTab = currentAthleteTab;
 window.openEditMemberNotesModal = openEditMemberNotesModal;
 window.handleSaveMemberNotes = handleSaveMemberNotes;
+
+// Bind all Auth functions directly on window for fail-safe global availability
+window.openOtpDrawer = openOtpDrawer;
+window.closeOtpDrawer = closeOtpDrawer;
+window.handleOtpBackdropClick = handleOtpBackdropClick;
+window.goToPhoneStep = goToPhoneStep;
+window.goToCodeStep = goToCodeStep;
+window.startOtpTimer = startOtpTimer;
+window.handlePhoneInput = handlePhoneInput;
+window.handlePhoneKeyDown = handlePhoneKeyDown;
+window.submitSendOtp = submitSendOtp;
+window.resendOtp = resendOtp;
+window.checkCodeComplete = checkCodeComplete;
+window.submitVerifyOtp = submitVerifyOtp;
+window.handleLogout = handleLogout;
 
 // Universal Navigation & Role-Based Access Control (RBAC)
 window.navigateTo = async function(tabName) {
@@ -381,7 +396,7 @@ function initPwaInstallFlow() {
 }
 
 // ==================== BOOTSTRAP ====================
-document.addEventListener('DOMContentLoaded', async () => {
+async function bootstrapApp() {
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.has('reload') || urlParams.has('nocache')) {
     if ('caches' in window) {
@@ -436,7 +451,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const hashTab = window.location.hash ? window.location.hash.replace('#', '') : null;
   const requestedTab = urlParams.get('tab') || hashTab || savedTab || defaultTab;
   window.navigateTo(requestedTab);
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootstrapApp);
+} else {
+  bootstrapApp();
+}
 
 window.addEventListener('hashchange', () => {
   const hashTab = window.location.hash ? window.location.hash.replace('#', '') : null;

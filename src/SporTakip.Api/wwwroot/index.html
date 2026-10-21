@@ -25,6 +25,11 @@
         var d = document.getElementById('v0-otp-drawer');
         if (d) d.classList.remove('open');
       };
+      window.handleOtpBackdropClick = window.handleOtpBackdropClick || function(e) {
+        if (e && e.target && e.target.id === 'v0-otp-drawer') {
+          window.closeOtpDrawer();
+        }
+      };
       window.normalizeTurkishPhone = window.normalizeTurkishPhone || function(raw) {
         if (!raw) return '';
         var digits = String(raw).replace(/\D/g, '');
@@ -54,16 +59,90 @@
         var btn = document.getElementById('v0-btn-send-otp');
         if (btn) btn.disabled = digits.length !== 10;
       };
+      window.goToPhoneStep = window.goToPhoneStep || function() {
+        var p = document.getElementById('v0-otp-step-phone');
+        var c = document.getElementById('v0-otp-step-code');
+        var s = document.getElementById('v0-otp-step-subtitle');
+        if (p) p.style.display = 'block';
+        if (c) c.style.display = 'none';
+        if (s) s.innerText = 'Telefon numaranızı girerek hemen giriş yapın';
+        var input = document.getElementById('v0-input-phone');
+        if (input) setTimeout(function() { input.focus(); }, 150);
+      };
+      window.goToCodeStep = window.goToCodeStep || function() {
+        var p = document.getElementById('v0-otp-step-phone');
+        var c = document.getElementById('v0-otp-step-code');
+        var s = document.getElementById('v0-otp-step-subtitle');
+        if (p) p.style.display = 'none';
+        if (c) c.style.display = 'block';
+        if (s) s.innerText = 'SMS ile gelen 6 haneli kodu girin';
+        var boxes = document.querySelectorAll('.v0-otp-box');
+        boxes.forEach(function(b) { b.value = ''; b.classList.remove('has-val'); });
+        if (boxes[0]) setTimeout(function() { boxes[0].focus(); }, 150);
+      };
+      window.submitSendOtp = window.submitSendOtp || async function(e) {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        var input = document.getElementById('v0-input-phone');
+        if (!input) return;
+        var digits = window.normalizeTurkishPhone(input.value);
+        if (digits.length !== 10) return;
+        var fullPhone = '+90' + digits;
+        window.__currentOtpPhone = fullPhone;
+        var btn = document.getElementById('v0-btn-send-otp');
+        var origText = btn ? btn.innerHTML : 'Kod Gönder';
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<span>Gönderiliyor...</span>';
+        }
+        try {
+          var res = await fetch('/api/auth/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: fullPhone })
+          });
+          var data = await res.json().catch(function() { return {}; });
+          if (!res.ok) {
+            throw new Error(data.message || data.error || 'Kod gönderilemedi.');
+          }
+          var codeToShow = String(data.devCode || '123456');
+          if (typeof window.showToast === 'function') {
+            window.showToast('⚡ Doğrulama kodu: ' + codeToShow, 'success');
+          }
+          window.goToCodeStep();
+          var subtitle = document.getElementById('v0-otp-step-subtitle');
+          if (subtitle) {
+            subtitle.innerHTML = 'SMS Doğrulama Kodu: <strong style="color:#CCFF00; font-size:16px; letter-spacing:3px;">' + codeToShow + '</strong>';
+          }
+          var boxes = document.querySelectorAll('.v0-otp-box');
+          codeToShow.split('').forEach(function(ch, i) {
+            if (boxes[i]) {
+              boxes[i].value = ch;
+              boxes[i].classList.add('has-val');
+            }
+          });
+          var verifyBtn = document.getElementById('v0-btn-verify-otp');
+          if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.focus();
+          }
+        } catch (err) {
+          if (typeof window.showToast === 'function') {
+            window.showToast('Hata: ' + err.message, 'error');
+          } else {
+            alert(err.message);
+          }
+          if (btn) btn.disabled = false;
+        } finally {
+          if (btn) btn.innerHTML = origText;
+        }
+      };
       window.handlePhoneKeyDown = window.handlePhoneKeyDown || function(e) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
+        var isEnter = (e.key === 'Enter' || e.keyCode === 13 || e.which === 13);
+        if (isEnter) {
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
           var btn = document.getElementById('v0-btn-send-otp');
           if (btn && !btn.disabled) {
-            if (typeof window.submitSendOtp === 'function') {
-              window.submitSendOtp();
-            } else {
-              btn.click();
-            }
+            window.submitSendOtp(e);
           }
         }
       };
@@ -579,7 +658,7 @@
         </div>
 
         <!-- Step 1: Phone Entry -->
-        <div id="v0-otp-step-phone" class="animate-rise-in">
+        <form id="v0-otp-form-phone" onsubmit="event.preventDefault(); window.submitSendOtp(event);" class="animate-rise-in">
           <label for="v0-input-phone" style="display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:8px;">
             Telefon Numarası
           </label>
@@ -587,14 +666,14 @@
             <span class="v0-phone-prefix">+90</span>
             <input type="tel" id="v0-input-phone" class="v0-phone-input" placeholder="5XX XXX XX XX" maxlength="20" oninput="handlePhoneInput(this)" onkeydown="handlePhoneKeyDown(event)" autocomplete="tel-national">
           </div>
-          <button type="button" id="v0-btn-send-otp" class="v0-btn-submit" disabled onclick="submitSendOtp()">
+          <button type="submit" id="v0-btn-send-otp" class="v0-btn-submit" disabled onclick="submitSendOtp(event)">
             <span>Kod Gönder</span>
             <span style="font-size:16px;">→</span>
           </button>
-        </div>
+        </form>
 
         <!-- Step 2: 6-Digit Code Entry -->
-        <div id="v0-otp-step-code" class="animate-rise-in" style="display:none;">
+        <form id="v0-otp-form-code" onsubmit="event.preventDefault(); window.submitVerifyOtp(event);" class="animate-rise-in" style="display:none;">
           <div class="v0-otp-boxes">
             <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="0">
             <input type="text" inputmode="numeric" maxlength="1" class="v0-otp-box" data-idx="1">
@@ -609,14 +688,14 @@
             <button type="button" class="v0-otp-resend-btn" onclick="resendOtp()">Tekrar Gönder</button>
           </div>
 
-          <button type="button" id="v0-btn-verify-otp" class="v0-btn-submit" disabled onclick="submitVerifyOtp()">
+          <button type="submit" id="v0-btn-verify-otp" class="v0-btn-submit" disabled onclick="submitVerifyOtp(event)">
             Kodu Onayla
           </button>
 
           <button type="button" class="v0-btn-back-phone" onclick="goToPhoneStep()">
             Numarayı değiştir
           </button>
-        </div>
+        </form>
       </div>
     </div>
   </div>
@@ -625,7 +704,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Javascript -->
-  <script type="module" src="/js/app.js?v=3.8.30"></script>
+  <script type="module" src="/js/app.js?v=3.8.31"></script>
 </body>
 </html>
 

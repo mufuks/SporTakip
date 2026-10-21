@@ -1159,6 +1159,23 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.30`.
     - E2E API ve mobil görünüm (393x851) testleri doğrulandı.
 
+- **2026-10-21 (Phase 84 - Giriş Ekranı "Kod Gönder" Butonu ve Enter Tuşu Kapsam & Frame-0 Güçlendirmesi):**
+  - **Kullanıcı Bildirimi:** Girişteki "Kod Gönder" butonu veya Enter çalışmıyor.
+  - **Kök Neden Tespiti:**
+    1. **Inline HTML Event Handler & Global Scope Uyuşmazlığı:** `index.html` içinde buton `<button onclick="submitSendOtp()">` ve çekmece `<div onclick="handleOtpBackdropClick(event)">` şeklinde inline handler'lar içeriyordu. Ancak `auth.js` ve `app.js` modülleri ES module olarak yüklendiği için, `submitSendOtp` ve `handleOtpBackdropClick` `window` nesnesine zamanında veya doğrudan bağlanmadığında tarayıcı konsolunda `ReferenceError: submitSendOtp is not defined` ve `ReferenceError: handleOtpBackdropClick is not defined` hatası alınıyor, buton aktif görünse dahi tıklandığında hiçbir şey yapmıyordu.
+    2. **Form Yapısı Eksikliği (Mobile Virtual Keyboard Enter):** Telefon klavyelerinde (Gboard, Samsung Keyboard) "Git/Tamam/⏎" tuşu form submit olayını tetikler. Input bir `<form>` içinde olmadığı için klavyeden basılan Enter tuşu yakalanamıyordu; `handlePhoneKeyDown` fonksiyonu da sadece `e.key === 'Enter'` kontrolü yaptığı için `keyCode: 13` veya mobile `which: 13` durumlarını kaçırabiliyordu.
+    3. **Frame-0 Sıfır Bağımlılık Eksikliği:** `index.html` başlığındaki `<head>` betiğinde telefon formatlama fonksiyonları tanımlıyken `submitSendOtp` tanımlı değildi. `app.js` yüklenirken gecikme olduğunda kullanıcı butona bassa dahi işlem başlatılamıyordu.
+  - **Geliştirilen Çözümler:**
+    - **Frame-0 Güçlendirmesi ([index.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/index.html)):** `index.html` başlığına tam teşekküllü, sıfır bağımlılıklı `window.submitSendOtp`, `window.handleOtpBackdropClick`, `window.goToPhoneStep`, `window.goToCodeStep`, `window.submitVerifyOtp` ve `window.handlePhoneKeyDown` fonksiyonları yerleştirildi. Böylece `app.js` beklenmeden ilk karede dahi tıklandığında doğrudan `/api/auth/send-otp` çağrısı başarıyla çalışır hale getirildi.
+    - **Semantik `<form>` Entegrasyonu:** Adım 1 (`#v0-otp-form-phone`) ve Adım 2 (`#v0-otp-form-code`) `onsubmit="event.preventDefault(); window.submitSendOtp(event);"` ile form içine alındı; buton `type="submit"` yapılarak mobil ve masaüstü sanal/fiziki klavyelerdeki tüm Enter basımları garantiye alındı.
+    - **Global Window Binding ([app.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/app.js)):** Tüm kimlik doğrulama fonksiyonları modül düzeyinde `window` nesnesine tek tek bağlandı ve `auth.js?v=3.8.31` olarak taze caching yapıldı.
+    - **DOMContentLoaded Koruma:** `app.js` bootstrap akışı `document.readyState === 'loading'` kontrolüyle sarılarak, defer edilmiş modülün yüklenme anına bakılmaksızın uygulamanın her zaman başlatılması sağlandı.
+    - **Modals Temizliği ([auth-modals.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/modals/auth-modals.html)):** `index.html` içinde zaten yer alan `v0-otp-drawer` kopyası kaldırılarak tekil kaynak mimarisi sağlandı.
+    - Varlık sürümleri `v=3.8.31` sürümüne yükseltildi (sw.js, index.html, loader.js, app.js).
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.31`.
+    - Mobil (393x851) tarayıcı ortamında numara girişi, "Kod Gönder" tıklaması, Enter tuşu ve 6 haneli kod doğrulama adımları test edildi.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)

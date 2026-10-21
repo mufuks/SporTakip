@@ -241,30 +241,37 @@ export function handlePhoneInput(input) {
 window.handlePhoneInput = handlePhoneInput;
 
 export function handlePhoneKeyDown(e) {
-  if (e.key === 'Enter') {
-    e.preventDefault();
+  const isEnter = (e.key === 'Enter' || e.keyCode === 13 || e.which === 13);
+  if (isEnter) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const btn = document.getElementById('v0-btn-send-otp');
     if (btn && !btn.disabled) {
-      submitSendOtp();
+      submitSendOtp(e);
     }
   }
 }
 window.handlePhoneKeyDown = handlePhoneKeyDown;
 
-export async function submitSendOtp() {
+export async function submitSendOtp(e) {
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
   const input = document.getElementById('v0-input-phone');
   if (!input) return;
   const digits = normalizeTurkishPhone(input.value);
   if (digits.length !== 10) return;
   const fullPhone = `+90${digits}`;
   state.currentOtpPhone = fullPhone;
+  window.__currentOtpPhone = fullPhone;
 
   const btn = document.getElementById('v0-btn-send-otp');
-  if (btn) btn.disabled = true;
+  const origHtml = btn ? btn.innerHTML : '<span>Kod Gönder</span><span style="font-size:16px;">→</span>';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>Gönderiliyor...</span>';
+  }
 
   try {
     const res = await Api.sendOtp(fullPhone);
-    const codeToShow = res.devCode || '123456';
+    const codeToShow = String(res.devCode || '123456');
     showToast(`⚡ Doğrulama kodu: ${codeToShow}`, 'success');
     goToCodeStep();
 
@@ -283,10 +290,15 @@ export async function submitSendOtp() {
     });
     checkCodeComplete();
     const verifyBtn = document.getElementById('v0-btn-verify-otp');
-    if (verifyBtn) verifyBtn.focus();
+    if (verifyBtn) {
+      verifyBtn.disabled = false;
+      verifyBtn.focus();
+    }
   } catch (err) {
     showToast(`Hata: ${err.message}`, 'error');
     if (btn) btn.disabled = false;
+  } finally {
+    if (btn) btn.innerHTML = origHtml;
   }
 }
 window.submitSendOtp = submitSendOtp;
@@ -310,13 +322,22 @@ export function checkCodeComplete() {
   if (btn) btn.disabled = code.length !== 6;
 }
 
-export async function submitVerifyOtp() {
+export async function submitVerifyOtp(e) {
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
   const boxes = Array.from(document.querySelectorAll('.v0-otp-box'));
   const code = boxes.map(b => b.value).join('');
-  if (code.length !== 6 || !state.currentOtpPhone) return;
+  const phone = state.currentOtpPhone || window.__currentOtpPhone;
+  if (code.length !== 6 || !phone) return;
+
+  const btn = document.getElementById('v0-btn-verify-otp');
+  const origText = btn ? btn.innerHTML : 'Kodu Onayla';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>Doğrulanıyor...</span>';
+  }
 
   try {
-    const res = await Api.verifyOtp(state.currentOtpPhone, code);
+    const res = await Api.verifyOtp(phone, code);
     Api.setToken(res.accessToken);
     Api.setRefreshToken(res.refreshToken);
     Api.setUser(res.user);
@@ -337,6 +358,11 @@ export async function submitVerifyOtp() {
     }
   } catch (err) {
     showToast(`Doğrulama Hatası: ${err.message}`, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
   }
 }
 window.submitVerifyOtp = submitVerifyOtp;
