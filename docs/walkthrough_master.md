@@ -1088,6 +1088,13 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Varlık sürümleri `v=3.8.24` sürümüne yükseltilerek tam cache busting sağlandı.
   - **Derleme & Test Doğrulaması:**
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.24`.
+- **2026-10-21 (v3.8.25 - Faz 78 / Sadeleştirme Adım 2: Seans Kartı İçi Aksiyon Anında Paket & Kalan Ders İpuçları):**
+  - **Kullanıcı Talebi:** Mevcut özellikleri basitleştirme serisinin 2. adımı: Sporcunun derse yazılma kararı anında (`⚡ DERSE KATIL`) kalan ders sayısını anında görmesi ve sayfanın en altına kaydırma zorunluluğunu ortadan kaldırmak.
+  - **Geliştirilen Çözümler:**
+    - **Aksiyon Anında Kalan Ders İpucu ([athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js)):** Her seans kartındaki `⚡ DERSE KATIL` butonunun hemen altına sporcunun aktif aboneliğindeki bakiye bilgisi (`💳 Kalan: X ders hakkınız var`) mikro ipucu olarak eklendi; ders hakkı kalmamışsa kullanıcı dostu uyarı (`⚠️ Tanımlı ders hakkınız kalmadı`) gösterildi.
+    - Varlık sürümleri `v=3.8.25` sürümüne yükseltilerek tam cache busting sağlandı.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.25`.
 
 ---
 

@@ -796,10 +796,20 @@ async function renderSessionsList(containerId, dateStr) {
           </button>
         `;
       } else {
+        const remainingLessons = currentAthleteSub ? (currentAthleteSub.remainingLessons ?? 0) : null;
+        let balanceHintHtml = '';
+        if (isLoggedIn && currentAthleteSub) {
+          if (remainingLessons > 0) {
+            balanceHintHtml = `<div style="font-size:11px; color:var(--text-muted); font-weight:700; text-align:center; margin-top:4px;">💳 Kalan: <strong style="color:var(--volt-lime);">${remainingLessons} ders hakkınız</strong> var</div>`;
+          } else {
+            balanceHintHtml = `<div style="font-size:11px; color:#F59E0B; font-weight:700; text-align:center; margin-top:4px;">⚠️ Tanımlı ders hakkınız kalmadı</div>`;
+          }
+        }
         actionButtonHtml = `
-          <button type="button" class="v0-book-btn available" style="background:var(--volt-lime); color:#000000; font-weight:900; font-size:14px; padding:14px; border:none; box-shadow:0 6px 18px rgba(204,255,0,0.25);" onclick="handleBookSession(${slot.id})">
+          <button type="button" class="v0-book-btn available" style="background:var(--volt-lime); color:#000000; font-weight:900; font-size:14px; padding:13px; border:none; box-shadow:0 6px 18px rgba(204,255,0,0.25);" onclick="handleBookSession(${slot.id})">
             ⚡ DERSE KATIL (${filled}/${capacity})
           </button>
+          ${balanceHintHtml}
         `;
       }
 
