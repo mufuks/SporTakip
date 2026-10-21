@@ -224,9 +224,14 @@ async function loadWorkoutHub() {
 
     if (summaryCard) {
       summaryCard.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px;">
           <h3 style="font-size:15px; font-weight:800; color:var(--text-primary); margin:0;">Vücut Form Özeti</h3>
-          ${bmiBadgeHtml}
+          <div style="display:flex; align-items:center; gap:8px;">
+            ${bmiBadgeHtml}
+            <button type="button" onclick="toggleProgressInputCard()" style="background:var(--volt-lime); color:#000; font-weight:800; font-size:11.5px; padding:5px 12px; border-radius:999px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(204,255,0,0.25);">
+              <span>+</span> Tartı Gir
+            </button>
+          </div>
         </div>
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px;">
           <div style="padding:12px 10px; border-radius:12px; background:var(--bg-surface-elevated); border:1px solid var(--border-subtle); text-align:center;">
@@ -280,9 +285,12 @@ function renderProgressSvgChart(logs) {
         <div style="font-size:13.5px; font-weight:800; color:var(--text-primary); margin:6px 0 3px 0;">
           ${logs && logs.length === 1 ? `İlk Tartı: ${Number(logs[0].weightKg).toFixed(1)} kg` : 'Henüz Yeterli Tartı Yok'}
         </div>
-        <p style="font-size:12px; color:var(--text-secondary); margin:0 0 10px 0;">
-          ${logs && logs.length === 1 ? 'Değişim eğrinizin oluşması için yukarıdan yeni tartınızı girin.' : 'Zaman içindeki kilo değişim eğrinizi görmek için yukarıdan tartı ekleyin.'}
+        <p style="font-size:12px; color:var(--text-secondary); margin:0 0 12px 0;">
+          ${logs && logs.length === 1 ? 'Değişim eğrinizin oluşması için yeni tartınızı girin.' : 'Zaman içindeki kilo değişim eğrinizi görmek için tartı ekleyin.'}
         </p>
+        <button type="button" onclick="toggleProgressInputCard()" style="background:var(--volt-lime); color:#000; font-weight:800; font-size:12px; padding:7px 16px; border-radius:999px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 8px rgba(204,255,0,0.25);">
+          <span>⚖️</span> + Tartı Gir
+        </button>
       </div>
     `;
     return;
@@ -484,6 +492,22 @@ function renderProgressHistoryList(logs, memberId) {
   `;
 }
 
+window.toggleProgressInputCard = function() {
+  const card = document.getElementById('progress-input-card');
+  if (!card) return;
+  const isHidden = card.style.display === 'none' || card.style.display === '';
+  card.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) {
+    const weightInput = document.getElementById('progress-input-weight');
+    if (weightInput) {
+      setTimeout(() => {
+        weightInput.focus();
+        weightInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }
+};
+
 window.submitProgressMeasurement = async function() {
   const user = Api.getUser();
   if (!user || !Api.getToken()) {
@@ -523,9 +547,12 @@ window.submitProgressMeasurement = async function() {
 
     showToast('✓ Ölçümünüz kaydedildi ve gelişim grafiğinize eklendi! ⚡');
     
-    // Clear notes input
+    // Clear notes input & collapse card
     const notesInput = document.getElementById('progress-input-notes');
     if (notesInput) notesInput.value = '';
+
+    const inputCard = document.getElementById('progress-input-card');
+    if (inputCard) inputCard.style.display = 'none';
 
     // Re-render and open history on page 1
     isProgressHistoryOpen = true;

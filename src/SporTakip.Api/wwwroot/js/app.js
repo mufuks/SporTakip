@@ -29,12 +29,12 @@ import {
   loadWorkoutHub, loadWorkoutTemplates,
   startWorkoutTimer, renderLiveWorkoutView,
   loadWorkoutProgress 
-} from './modules/workouts.js?v=3.7.6';
+} from './modules/workouts.js?v=3.8.27';
 import { 
   loadSuperAdminView, filterAndRenderSuperAdminUsers,
   updateSortIcons, updateRoleCounts
 } from './modules/admin.js';
-import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.8.26';
+import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.8.27';
 
 // Workspace / App Mode State
 let currentAppMode = localStorage.getItem('sportakip_app_mode') || 'athlete';

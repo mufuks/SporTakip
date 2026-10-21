@@ -12,32 +12,34 @@
     </div>
   </div>
 
-  <!-- 2. HIZLI ÖLÇÜM GİRİŞİ (Boy & Kilo Güncelleme) -->
-  <div class="v0-card" style="margin-top:14px;">
+  <!-- 2. HIZLI ÖLÇÜM GİRİŞİ (Collapsible Quick-Input Card) -->
+  <div class="v0-card" id="progress-input-card" style="margin-top:12px; display:none;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <h3 style="font-size:14.5px; font-weight:800; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:8px;">
-        <span>⚖️</span> Yeni Tartı & Ölçüm Kaydet
+      <h3 style="font-size:14px; font-weight:800; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:6px;">
+        <span>⚖️</span> Yeni Tartı & Ölçüm Girişi
       </h3>
-      <span style="font-size:11px; color:var(--text-muted);">Güncel tartınızı girin</span>
+      <button type="button" onclick="toggleProgressInputCard()" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-weight:700;">
+        ✕ Kapat
+      </button>
     </div>
 
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
       <div>
-        <label for="progress-input-height" style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:6px;">Boy (cm)</label>
-        <input type="number" id="progress-input-height" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:14px; padding:11px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);" placeholder="180">
+        <label for="progress-input-height" style="display:block; font-size:11px; font-weight:700; color:var(--text-secondary); margin-bottom:4px;">Boy (cm)</label>
+        <input type="number" id="progress-input-height" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:14px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);" placeholder="180">
       </div>
       <div>
-        <label for="progress-input-weight" style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:6px;">Kilo (kg) *</label>
-        <input type="number" step="0.1" id="progress-input-weight" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:14px; padding:11px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);" placeholder="78.5">
+        <label for="progress-input-weight" style="display:block; font-size:11px; font-weight:700; color:var(--text-secondary); margin-bottom:4px;">Kilo (kg) *</label>
+        <input type="number" step="0.1" id="progress-input-weight" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:14px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);" placeholder="78.5">
       </div>
     </div>
 
-    <div style="margin-top:10px;">
-      <label for="progress-input-notes" style="display:block; font-size:11.5px; font-weight:700; color:var(--text-secondary); margin-bottom:6px;">Ölçüm Notu (İsteğe Bağlı)</label>
-      <input type="text" id="progress-input-notes" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);" placeholder="Örn: Sabah aç karnına tartı">
+    <div style="margin-top:8px;">
+      <label for="progress-input-notes" style="display:block; font-size:11px; font-weight:700; color:var(--text-secondary); margin-bottom:4px;">Ölçüm Notu (İsteğe Bağlı)</label>
+      <input type="text" id="progress-input-notes" class="v0-phone-input" style="width:100%; box-sizing:border-box; font-size:12.5px; padding:9px 12px; border-radius:10px; background:var(--bg-surface-elevated); color:var(--text-primary); border:1px solid var(--border-subtle);" placeholder="Örn: Sabah aç karnına tartı">
     </div>
 
-    <button type="button" class="v0-btn-submit" onclick="submitProgressMeasurement()" style="margin-top:14px; padding:12px; font-size:13px; font-weight:800; width:100%;">
+    <button type="button" class="v0-btn-submit" onclick="submitProgressMeasurement()" style="margin-top:12px; padding:11px; font-size:13px; font-weight:800; width:100%;">
       <span>💾</span> Ölçümü Kaydet ve Grafiğe Ekle
     </button>
   </div>
