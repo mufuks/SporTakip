@@ -16,8 +16,10 @@
   <!-- Quick Filter Chips -->
   <div class="filter-chips" style="margin-bottom:16px;">
     <button class="filter-chip active" data-student-filter="all" onclick="filterStudentsList('all')">Tüm Sporcular</button>
+    <button class="filter-chip" data-student-filter="renewal" onclick="filterStudentsList('renewal')">🔄 Yenileme Bekleyenler (0-1 Ders)</button>
     <button class="filter-chip" data-student-filter="active" onclick="filterStudentsList('active')">⚡ Aktif Paketi Olanlar</button>
     <button class="filter-chip" data-student-filter="expiring" onclick="filterStudentsList('expiring')">⚠️ Son 1-2 Ders</button>
+    <button class="filter-chip" data-student-filter="frozen" onclick="filterStudentsList('frozen')">❄️ Dondurulanlar</button>
     <button class="filter-chip" data-student-filter="medical" onclick="filterStudentsList('medical')">🩺 Sakatlık / Kısıt</button>
   </div>
 

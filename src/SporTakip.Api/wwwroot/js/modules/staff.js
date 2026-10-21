@@ -1483,6 +1483,11 @@ function renderMembersTable(members, container) {
             <button class="btn-secondary" style="padding:7px 12px; font-size:12px;" onclick="openEditMemberModal(${m.id})">
               ✏️ Düzenle
             </button>
+            ${m.phone ? `
+              <button class="btn-secondary" style="padding:7px 12px; font-size:12px; color:#25D366; border-color:rgba(37,211,102,0.3); display:inline-flex; align-items:center; gap:4px;" onclick="openStudentWhatsAppRenewal('${escapeJsString(m.phone)}', '${escapeJsString(m.fullName)}', ${sub ? sub.remainingLessons : 0}, ${!!sub})" title="WhatsApp ile İletişime Geç / Hatırlat">
+                💬 ${sub && sub.remainingLessons <= 1 ? 'Yenileme' : 'WhatsApp'}
+              </button>
+            ` : ''}
             ${sub && sub.status === 'Frozen' ? `
               <button class="btn-secondary" style="padding:7px 12px; font-size:12px; color:#38BDF8; border-color:rgba(56,189,248,0.4);" onclick="handleStaffUnfreezeSub(${sub.id}, '${escapeJsString(m.fullName)}')">
                 ☀️ Çöz
@@ -1605,8 +1610,8 @@ function renderStudentCards(members, container) {
             <span>📈</span> Gelişim & Hub
           </button>
           ${m.phone ? `
-            <button type="button" class="btn-secondary btn-sm" style="color:#25D366; border-color:rgba(37,211,102,0.3); padding:0 12px;" onclick="window.open('https://wa.me/${encodeURIComponent(m.phone.replace(/[^0-9]/g, ''))}', '_blank')" title="WhatsApp Mesajı">
-              <span>💬</span> WhatsApp
+            <button type="button" class="btn-secondary btn-sm" style="color:#25D366; border-color:rgba(37,211,102,0.3); padding:0 12px; display:inline-flex; align-items:center; gap:4px;" onclick="openStudentWhatsAppRenewal('${escapeJsString(m.phone)}', '${escapeJsString(m.fullName)}', ${sub ? sub.remainingLessons : 0}, ${!!sub})" title="WhatsApp ile İletişime Geç / Hatırlat">
+              <span>💬</span> ${sub && sub.remainingLessons <= 1 ? 'Yenileme Yaz' : 'WhatsApp'}
             </button>
           ` : `
             <button type="button" class="btn-secondary btn-sm" style="color:var(--volt-lime); border-color:rgba(204,255,0,0.3); padding:0 12px;" onclick="openNewSubModal(${m.id}, '${escapeJsString(m.fullName)}')" title="Paket Tanımla">
@@ -1619,6 +1624,32 @@ function renderStudentCards(members, container) {
   }).join('');
 }
 
+function openStudentWhatsAppRenewal(phone, fullName, remainingLessons, hasSub) {
+  if (!phone) {
+    showToast('Öğrenciye ait kayıtlı telefon numarası bulunamadı.', 'error');
+    return;
+  }
+  let cleanPhone = phone.replace(/[^0-9]/g, '');
+  if (cleanPhone.startsWith('0') && cleanPhone.length === 11) {
+    cleanPhone = '90' + cleanPhone.slice(1);
+  } else if (cleanPhone.length === 10) {
+    cleanPhone = '90' + cleanPhone;
+  }
+
+  let message = '';
+  if (hasSub && remainingLessons <= 1) {
+    const lessonText = remainingLessons === 0 ? 'paketinde hiç ders hakkın kalmadı' : 'paketinde son 1 ders hakkın kaldı';
+    message = `Merhaba ${fullName}, SporTakip üzerinden hatırlatmak istedik; ${lessonText}. Antrenmanlarının aksamaması için yeni paketini birlikte planlayalım mı? 🏋️💪`;
+  } else if (!hasSub) {
+    message = `Merhaba ${fullName}, SporTakip paket süren dolmuş görünüyor. Antrenmanlarına kaldığın yerden temponu düşürmeden devam etmek için yeni dönem paketini yenileyelim mi? ⚡`;
+  } else {
+    message = `Merhaba ${fullName}, SporTakip antrenman durumun hakkında bilgi vermek istedim. Harika gidiyorsun! 🥊`;
+  }
+
+  const url = `https://wa.me/${encodeURIComponent(cleanPhone)}?text=${encodeURIComponent(message)}`;
+  window.open(url, '_blank');
+}
+
 function filterStudentsList(filterType) {
   document.querySelectorAll('[data-student-filter]').forEach(chip => {
     chip.classList.toggle('active', chip.dataset.studentFilter === filterType);
@@ -1627,10 +1658,18 @@ function filterStudentsList(filterType) {
   if (!allMembers) return;
 
   let filtered = allMembers;
-  if (filterType === 'active') {
+  if (filterType === 'renewal') {
+    filtered = allMembers.filter(m => {
+      if (!m.activeSubscription || m.activeSubscription.status === 'Expired') return true;
+      if (m.activeSubscription.status === 'Active' && m.activeSubscription.remainingLessons <= 1) return true;
+      return false;
+    });
+  } else if (filterType === 'active') {
     filtered = allMembers.filter(m => m.activeSubscription && m.activeSubscription.status === 'Active' && m.activeSubscription.remainingLessons > 0);
   } else if (filterType === 'expiring') {
     filtered = allMembers.filter(m => m.activeSubscription && m.activeSubscription.remainingLessons <= 2 && m.activeSubscription.remainingLessons > 0);
+  } else if (filterType === 'frozen') {
+    filtered = allMembers.filter(m => m.activeSubscription && m.activeSubscription.status === 'Frozen');
   } else if (filterType === 'medical') {
     filtered = allMembers.filter(m => !!(m.medicalConditions || m.notes));
   }
@@ -3437,6 +3476,7 @@ window.renderPackagesTable = renderPackagesTable;
 window.loadCalendarView = loadCalendarView;
 window.renderCalendarGrid = renderCalendarGrid;
 window.openScheduleModal = openScheduleSessionModal;
+window.openStudentWhatsAppRenewal = openStudentWhatsAppRenewal;
 window.renderStudentCards = renderStudentCards;
 window.filterStudentsList = filterStudentsList;
 window.openStudentProgressDrawer = openStudentProgressDrawer;
@@ -3459,6 +3499,7 @@ export {
   loadTrainers, renderTrainersTable, updateTrainerSelects, loadPackagesAdmin,
   renderPackagesTable, loadCalendarView, renderCalendarGrid,
   renderStudentCards, filterStudentsList, openStudentProgressDrawer,
+  openStudentWhatsAppRenewal,
   openAddStudentMetricModal, handleSaveStudentMetricLog,
   renderStudentMetricsHistory, toggleStudentMetricsHistory,
   changeStudentMetricPage, handleDeleteStudentMetric

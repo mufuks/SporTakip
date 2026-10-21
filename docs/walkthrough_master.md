@@ -1104,6 +1104,25 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Derleme & Test Doğrulaması:**
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.26`.
 
+- **2026-10-21 (Phase 80 - Sporcu Gelişim Sekmesi & Katlanabilir Hızlı Tartı Girişi):**
+  - **Kullanıcı İhtiyacı (Adım 4):** Sporcunun "Gelişim" sekmesinde yer alan 4 alanlı statik formun alanı daraltması önlenerek, Apple Health tarzı form özeti ve kilo değişim grafiğinin doğrudan ilk ekranda parlaması sağlandı.
+  - **Geliştirilen Çözümler:**
+    - **Katlanabilir Tartı Kartı ([workout.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/views/athlete/workout.html)):** `#progress-input-card` varsayılan olarak gizlendi (`display:none`).
+    - **Özet Başlığından Hızlı Tetikleme ([workouts.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/workouts.js)):** `#progress-summary-card` başlık satırına şık Volt Lime `[ + Tartı Gir ]` butonu eklendi. Butona basıldığında form açılır ve kilo alanına odaklanılır; kayıt başarılı olduğunda form otomatik kapanır.
+    - Varlık sürümleri `v=3.8.27` sürümüne güncellendi.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı.
+
+- **2026-10-21 (Phase 81 - Üye Yönetimi "Yenileme Bekleyenler" Akıllı Filtresi & 1-Tıkla WhatsApp):**
+  - **Kullanıcı İhtiyacı (Adım 5):** Salon sahibi ve koçların paket yenileme takibini kolaylaştırmak; paketi bitmiş veya 0-1 dersi kalmış sporcuları anında filtreleyip tek dokunuşla kişiselleştirilmiş WhatsApp mesajı gönderebilmek.
+  - **Geliştirilen Çözümler:**
+    - **Akıllı Filtre Çipleri ([uyeler.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/views/staff/uyeler.html)):** Yatay kaydırılabilir çip çubuğuna `🔄 Yenileme Bekleyenler (0-1 Ders)` ve `❄️ Dondurulanlar` seçenekleri eklendi.
+    - **Dostane WhatsApp Mesajı ([staff.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/staff.js)):** `openStudentWhatsAppRenewal` fonksiyonu ile telefon numaraları +90 formatına normalize edilerek, kalan ders durumuna göre özel mesajla WhatsApp Web/App açılması sağlandı.
+    - **Mobil Kart ve Tablo Aksiyonları:** Dersi az kalmış veya bitmiş üye kartlarında buton otomatik olarak `[ 💬 Yenileme Yaz ]` haline getirildi.
+    - Varlık sürümleri `v=3.8.28` sürümüne yükseltildi.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.28`.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)
