@@ -1206,6 +1206,18 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Edge CDP (Headless DevTools Protocol) ile 393x851 mobil ekran görüntüsü ve DOM rect değerleri teyit edildi (`dotOffsetFromLeft: 13px`, `containsCanli: false`, `dotIsWithinBorder: true`).
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.33`.
 
+- **2026-10-21 (Phase 87 - Seans Takvimi Başlık Alanı Sadeleştirmesi & Kompakt Mobil Toolbar Mimarisi):**
+  - **Kullanıcı Bildirimi:** Takvim üst alanının rahatlatılması; "SEANS TAKVİMİ" başlığı ile "Aylık stüdyo seans çizelgesi. Günlere tıklayarak antrenman ve sporcu detaylarını inceleyin." açıklamalarının kaldırılması.
+  - **Kök Neden:** 6 satıra yayılan devasa başlık, didaktik açıklama metinleri ve bağımsız satırlardaki butonlar sebebiyle takvim ızgarası aşağıya itiliyor, mobil ekranda kullanıcı günleri görmek için gereksiz dikey kaydırma yapmak zorunda kalıyordu.
+  - **Geliştirilen Çözümler:**
+    - **Gereksiz Başlık ve Açıklamaların Kaldırılması ([takvim.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/views/staff/takvim.html)):** Dev başlık ve didaktik açıklama paragrafı tamamen kaldırıldı.
+    - **Kompakt Tek Satır Toolbar ([app.css](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/css/app.css)):** Ay seçici (`◀  Ekim 2026  ▶` + `Bugün`) ile `✨ Yeni Seans` butonu yan yana 38px yükseklikte dengelendi.
+    - **İnce Lejant ve Özet Şeridi:** Kompakt durum noktaları (`• Rahat • Doluyor • Dolu`) ve ay geneli özeti (`Bu Ay: X Seans • Y Katılım`) tek satırda hizalandı. Böylece takvim kartı ~160px yukarı taşınarak tek ekranda tam görünür kılındı.
+    - Sürüm `v=3.8.34` seviyesine yükseltildi (`index.html`, `app.js`, `loader.js`, `sw.js`).
+  - **Derleme & Doğrulama:**
+    - Edge CDP ile 393x851 mobil ekran görüntüsü ve DOM rect değerleri teyit edildi (`hasOldTitle: false`, `hasOldSubtitle: false`, `monthText: Ekim 2026`).
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.34`.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)

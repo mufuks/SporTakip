@@ -1,33 +1,28 @@
 <section id="view-takvim" class="v0-section animate-fade-in" style="display:none;">
-      <div class="page-header">
-        <div>
-          <h2 class="page-title">SEANS <span class="text-volt">TAKVİMİ</span></h2>
-          <p class="page-subtitle">Aylık stüdyo seans çizelgesi. Günlere tıklayarak antrenman ve sporcu detaylarını inceleyin.</p>
-        </div>
-        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-          <div class="cal-nav-bar">
-            <button class="cal-nav-btn" onclick="changeCalendarMonth(-1)" title="Önceki Ay">◀</button>
-            <span class="cal-month-title" id="cal-month-heading">Yükleniyor...</span>
-            <button class="cal-nav-btn" onclick="changeCalendarMonth(1)" title="Sonraki Ay">▶</button>
-            <button class="btn-secondary" style="padding:7px 14px; font-size:12px;" onclick="goToTodayCalendar()">Bugün</button>
-          </div>
-          <button class="btn-primary" onclick="openCreateSessionModal()">
-            + Yeni Seans Aç
-          </button>
-        </div>
-      </div>
+  <!-- Streamlined Calendar Header Toolbar -->
+  <div class="cal-header-bar">
+    <div class="cal-nav-bar">
+      <button type="button" class="cal-nav-btn" onclick="changeCalendarMonth(-1)" title="Önceki Ay" aria-label="Önceki Ay">◀</button>
+      <span class="cal-month-title" id="cal-month-heading">Yükleniyor...</span>
+      <button type="button" class="cal-nav-btn" onclick="changeCalendarMonth(1)" title="Sonraki Ay" aria-label="Sonraki Ay">▶</button>
+      <button type="button" class="cal-today-btn" onclick="goToTodayCalendar()">Bugün</button>
+    </div>
+    <button type="button" class="btn-primary" onclick="openCreateSessionModal()" style="height:38px; padding:0 12px; font-size:12px; font-weight:700; border-radius:10px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; box-shadow:0 2px 8px rgba(204,255,0,0.25); flex-shrink:0;">
+      <span>✨</span> Yeni Seans
+    </button>
+  </div>
 
-      <!-- Capacity Legend & Summary Bar -->
-      <div class="cal-summary-strip">
-        <div class="cal-legend-group">
-          <span class="legend-item"><span class="status-dot dot-green"></span> Rahat (0-3)</span>
-          <span class="legend-item"><span class="status-dot dot-orange"></span> Doluyor (4-5)</span>
-          <span class="legend-item"><span class="status-dot dot-red"></span> Kritik Dolu (6+)</span>
-        </div>
-        <div id="cal-month-stats" class="cal-stats-summary">
-          <!-- Ay geneli özet -->
-        </div>
-      </div>
+  <!-- Capacity Legend & Summary Bar -->
+  <div class="cal-summary-strip">
+    <div class="cal-legend-group">
+      <span class="legend-item"><span class="status-dot dot-green"></span> Rahat</span>
+      <span class="legend-item"><span class="status-dot dot-orange"></span> Doluyor</span>
+      <span class="legend-item"><span class="status-dot dot-red"></span> Dolu</span>
+    </div>
+    <div id="cal-month-stats" class="cal-stats-summary">
+      <!-- Ay geneli özet -->
+    </div>
+  </div>
 
       <!-- Month Calendar Outer Card -->
       <div class="glass-card calendar-card-wrapper">
