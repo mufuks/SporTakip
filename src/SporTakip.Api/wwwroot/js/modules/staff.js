@@ -392,6 +392,11 @@ function renderSessionsAttendanceFeed(sessions) {
                 <button type="button" class="btn-quick-attend" onclick="handleQuickSessionAttendance(${a.reservationId || 'null'}, ${a.subscriptionId || 'null'}, '${escapeJsString(a.memberName)}', 'Attended', '${session.id}')" title="Bu sporcunun yoklamasını al (Ders düş)">
                   <span>✓</span> Geldi
                 </button>
+                ${a.subscriptionId ? `
+                  <button type="button" class="btn-quick-options" onclick="openWhatsAppModal(${a.subscriptionId}, '${escapeJsString(a.memberName)}', '${escapeJsString(a.memberPhone || '')}', '${escapeJsString(a.packageName || '')}')" title="WhatsApp ile Hatırlatma Gönder" style="color:#25D366; background:rgba(37,211,102,0.12); border-color:rgba(37,211,102,0.25);">
+                    💬
+                  </button>
+                ` : ''}
                 <button type="button" class="btn-quick-options" id="attendee-more-btn-${itemKey}" onclick="toggleAttendeeMoreMenu('${itemKey}')" title="Diğer İşlemler (Mazeretli, Gelmedi, Not)">
                   ⋮
                 </button>
@@ -556,27 +561,22 @@ async function handleMarkAllSessionAttended(sessionId) {
 
   try {
     showToast('⏳ Yoklamalar kaydediliyor...');
-    let count = 0;
-    for (const a of pending) {
-      try {
-        if (a.reservationId) {
-          await Api.checkInReservation(a.reservationId);
-          count++;
-        } else if (a.subscriptionId) {
-          await Api.markAttendance({
-            subscriptionId: a.subscriptionId,
-            trainerId: session.trainerId,
-            lessonDate: session.startTime,
-            status: 'Attended',
-            notes: 'Toplu seans onayı'
-          });
-          count++;
-        }
-      } catch (itemErr) {
-        console.warn(`Sporcu #${a.memberId} onaylanırken hata:`, itemErr);
+    const promises = pending.map(async (a) => {
+      if (a.reservationId) {
+        return await Api.checkInReservation(a.reservationId);
+      } else if (a.subscriptionId) {
+        return await Api.markAttendance({
+          subscriptionId: a.subscriptionId,
+          trainerId: session.trainerId,
+          lessonDate: session.startTime,
+          status: 'Attended',
+          notes: 'Toplu seans onayı'
+        });
       }
-    }
+    });
 
+    const results = await Promise.allSettled(promises);
+    const count = results.filter(r => r.status === 'fulfilled').length;
     showToast(`✓ ${count} sporcunun yoklaması başarıyla tamamlandı!`, 'success');
     await loadAttendanceView();
   } catch (err) {

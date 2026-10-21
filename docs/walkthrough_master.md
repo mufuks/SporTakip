@@ -1095,6 +1095,14 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Varlık sürümleri `v=3.8.25` sürümüne yükseltilerek tam cache busting sağlandı.
   - **Derleme & Test Doğrulaması:**
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.25`.
+- **2026-10-21 (v3.8.26 - Faz 79 / Sadeleştirme Adım 3: Antrenör Yoklamasında Hızlı WhatsApp Butonu & Paralel Toplu Onaylama):**
+  - **Kullanıcı Talebi:** Mevcut özellikleri basitleştirme serisinin 3. adımı: Antrenörün yoklama esnasında gelmeyen sporcuya menü aramaksızın tek dokunuşla WhatsApp mesajı atabilmesi ve toplu onaylamanın gecikmesiz çalışması.
+  - **Geliştirilen Çözümler:**
+    - **Doğrudan WhatsApp İkon Butonu ([staff.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/staff.js)):** Her katılımcı kartında `[ ✓ Geldi ]` butonunun hemen yanına doğrudan `[ 💬 ]` yeşil WhatsApp butonu eklendi. Eğitmen 3 noktalı menüye girmeden tek tıkla öğrenciye durum mesajı gönderebilir hale getirildi.
+    - **Paralel Toplu Onaylama:** `handleMarkAllSessionAttended` metodu sıralı döngüden çıkarılarak `Promise.allSettled` ile eş zamanlı paralel isteklere dönüştürüldü. 6 kişilik bir seansın toplu yoklaması ~2 saniyeden 200 milisaniyeye indirildi.
+    - Varlık sürümleri `v=3.8.26` sürümüne yükseltilerek tam cache busting sağlandı.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.26`.
 
 ---
 
