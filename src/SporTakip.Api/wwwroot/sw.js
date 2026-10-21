@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sportakip-shell-v3.8.29';
+const CACHE_NAME = 'sportakip-shell-v3.8.30';
 
 const PRECACHE_ASSETS = [
   '/',

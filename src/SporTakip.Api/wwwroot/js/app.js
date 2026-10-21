@@ -18,8 +18,9 @@ import {
   loadMyEarningsView, switchDashboardSubTab,
   loadTrainers, renderTrainersTable, updateTrainerSelects,
   loadPackagesAdmin, renderPackagesTable,
-  loadCalendarView, renderCalendarGrid
-} from './modules/staff.js?v=3.8.29';
+  loadCalendarView, renderCalendarGrid,
+  openEditMemberNotesModal, handleSaveMemberNotes
+} from './modules/staff.js?v=3.8.30';
 import { 
   loadAthleteHome, renderSessionsList,
   loadAthleteSessionsView, renderAthleteProfile,
@@ -34,7 +35,7 @@ import {
   loadSuperAdminView, filterAndRenderSuperAdminUsers,
   updateSortIcons, updateRoleCounts
 } from './modules/admin.js';
-import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.8.29';
+import { ensureViewLoaded, preloadModals, viewRoutes } from './modules/loader.js?v=3.8.30';
 
 // Workspace / App Mode State
 let currentAppMode = localStorage.getItem('sportakip_app_mode') || 'athlete';
@@ -42,6 +43,8 @@ let currentTab = localStorage.getItem('sportakip_tab') || 'home';
 let currentAthleteTab = currentTab;
 window.currentTab = currentTab;
 window.currentAthleteTab = currentAthleteTab;
+window.openEditMemberNotesModal = openEditMemberNotesModal;
+window.handleSaveMemberNotes = handleSaveMemberNotes;
 
 // Universal Navigation & Role-Based Access Control (RBAC)
 window.navigateTo = async function(tabName) {

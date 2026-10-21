@@ -263,16 +263,18 @@
           <h3 style="display:flex; align-items:center; gap:8px;"><span>⚠️</span> Sporcu Sağlık & Sakatlık Notu</h3>
           <span class="text-volt" style="font-weight:700; font-size:13px;" id="edit-member-notes-name">Sporcu Adı</span>
         </div>
-        <button class="modal-close" onclick="closeModal('modal-edit-member-notes')">✕</button>
+        <button type="button" class="modal-close" onclick="closeModal('modal-edit-member-notes')">✕</button>
       </div>
-      <form id="edit-member-notes-form" onsubmit="handleSaveMemberNotes(event)">
+      <form id="edit-member-notes-form" onsubmit="event.preventDefault(); handleSaveMemberNotes(event);">
         <input type="hidden" id="edit-member-notes-id">
+        <!-- Backward compatibility fallback for cached scripts looking for edit-member-notes-textarea -->
+        <input type="hidden" id="edit-member-notes-textarea">
         <div class="form-group">
           <label style="color:#FF453A; font-weight:700; display:flex; align-items:center; gap:6px;">
             <span>⚠️</span> Kritik Sağlık / Sakatlık Uyarısı
             <small style="color:var(--text-muted); font-weight:400;">(Yoklama & seanslarda kırmızı ikaz)</small>
           </label>
-          <textarea id="edit-member-notes-medical" class="form-control" rows="3" placeholder="Örn: Bel fıtığı L4-L5, menisküs hassasiyeti, ağır squat ve deadlift kısıtı"></textarea>
+          <textarea id="edit-member-notes-medical" class="form-control" rows="3" placeholder="Örn: Bel fıtığı L4-L5, menisküs hassasiyeti, ağır squat ve deadlift kısıtı" oninput="const b = document.getElementById('edit-member-notes-textarea'); if(b) b.value = this.value;"></textarea>
           <small style="color:var(--text-muted); font-size:11.5px; margin-top:5px; display:block;">
             💡 Bu kısıt yoklama listesinde tüm eğitmenlere belirgin kırmızı rozet olarak görünür. Temizleyip kaydederseniz uyarı kalkar.
           </small>
@@ -286,7 +288,7 @@
         </div>
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
           <button type="button" class="btn-secondary" onclick="closeModal('modal-edit-member-notes')">Vazgeç</button>
-          <button type="submit" class="btn-primary">💾 Kaydet</button>
+          <button type="button" id="btn-save-member-notes" class="btn-primary" onclick="handleSaveMemberNotes(event)">💾 Kaydet</button>
         </div>
       </form>
     </div>

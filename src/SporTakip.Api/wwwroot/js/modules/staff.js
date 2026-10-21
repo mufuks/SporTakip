@@ -2907,18 +2907,31 @@ window.handleUpdateMember = async function(e) {
 };
 
 window.openEditMemberNotesModal = async function(memberId, memberName, medicalConditions, generalNotes) {
-  const idInput = document.getElementById('edit-member-notes-id');
+  const mId = parseInt(memberId || 0);
+  window.currentStudentProgressMemberId = mId;
+
+  const modal = document.getElementById('modal-edit-member-notes');
+  if (modal) modal.dataset.memberId = mId;
+
+  const form = document.getElementById('edit-member-notes-form');
+  if (form) form.dataset.memberId = mId;
+
+  const idInput = document.getElementById('edit-member-notes-id') || 
+                  document.querySelector('#modal-edit-member-notes input[type="hidden"]');
   const nameEl = document.getElementById('edit-member-notes-name');
-  const medicalInput = document.getElementById('edit-member-notes-medical') || document.getElementById('edit-member-notes-textarea');
+  const medicalInput = document.getElementById('edit-member-notes-medical') || 
+                       document.getElementById('edit-member-notes-textarea') || 
+                       document.querySelector('#modal-edit-member-notes textarea');
+  const compatInput = document.getElementById('edit-member-notes-textarea');
   const generalInput = document.getElementById('edit-member-notes-general');
 
   let medVal = medicalConditions;
   let genVal = generalNotes;
 
   if (medVal === undefined || genVal === undefined) {
-    let m = (typeof allMembers !== 'undefined' ? allMembers : []).find(x => x.id === memberId);
+    let m = (typeof allMembers !== 'undefined' && Array.isArray(allMembers) ? allMembers : []).find(x => x.id === mId);
     if (!m) {
-      m = await Api.getMember(memberId).catch(() => null);
+      m = await Api.getMember(mId).catch(() => null);
     }
     if (m) {
       medVal = m.medicalConditions ?? '';
@@ -2931,9 +2944,10 @@ window.openEditMemberNotesModal = async function(memberId, memberName, medicalCo
     medVal = medVal.replace(/^⚠️\s*/, '');
   }
 
-  if (idInput) idInput.value = memberId;
+  if (idInput) idInput.value = mId;
   if (nameEl) nameEl.innerText = memberName || 'Sporcu';
   if (medicalInput) medicalInput.value = medVal || '';
+  if (compatInput && compatInput !== medicalInput) compatInput.value = medVal || '';
   if (generalInput) generalInput.value = genVal || '';
 
   openModal('modal-edit-member-notes');
@@ -2941,18 +2955,58 @@ window.openEditMemberNotesModal = async function(memberId, memberName, medicalCo
 };
 
 window.handleSaveMemberNotes = async function(e) {
-  e.preventDefault();
-  const idInput = document.getElementById('edit-member-notes-id');
-  const memberId = parseInt(idInput?.value || 0);
-  if (!memberId) return;
+  if (e) {
+    if (typeof e.preventDefault === 'function') e.preventDefault();
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+  }
 
-  const medicalInput = document.getElementById('edit-member-notes-medical') || document.getElementById('edit-member-notes-textarea');
+  const idInput = document.getElementById('edit-member-notes-id') || 
+                  document.querySelector('#modal-edit-member-notes input[type="hidden"]');
+  let memberId = parseInt(idInput?.value || 0);
+
+  // Fallback 1: check window.currentStudentProgressMemberId
+  if (!memberId && window.currentStudentProgressMemberId) {
+    memberId = parseInt(window.currentStudentProgressMemberId);
+  }
+  // Fallback 2: check dataset on modal
+  if (!memberId) {
+    const modal = document.getElementById('modal-edit-member-notes');
+    if (modal?.dataset?.memberId) {
+      memberId = parseInt(modal.dataset.memberId);
+    }
+  }
+  // Fallback 3: check dataset on form
+  if (!memberId) {
+    const form = document.getElementById('edit-member-notes-form');
+    if (form?.dataset?.memberId) {
+      memberId = parseInt(form.dataset.memberId);
+    }
+  }
+
+  if (!memberId) {
+    console.error('[Staff] handleSaveMemberNotes: Sporcu kimliği (ID) bulunamadı.');
+    showToast('Hata: Sporcu kimliği bulunamadı.', 'error');
+    return;
+  }
+
+  const medicalInput = document.getElementById('edit-member-notes-medical') || 
+                       document.getElementById('edit-member-notes-textarea') || 
+                       document.querySelector('#modal-edit-member-notes textarea');
   const generalInput = document.getElementById('edit-member-notes-general');
 
   const medicalVal = medicalInput ? medicalInput.value.trim() : '';
   const generalVal = generalInput ? generalInput.value.trim() : null;
 
+  const saveBtn = document.getElementById('btn-save-member-notes') || 
+                  document.querySelector('#modal-edit-member-notes button[type="submit"]') ||
+                  document.querySelector('#modal-edit-member-notes .btn-primary');
+  const origBtnHtml = saveBtn ? saveBtn.innerHTML : '💾 Kaydet';
+
   try {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '⏳ Kaydediliyor...';
+    }
     showToast('⚡ Sağlık notu kaydediliyor...');
     // Send empty string "" if cleared, so backend sets NULL in database
     await Api.updateMemberNotes(memberId, generalVal !== null ? generalVal : null, medicalVal);
@@ -2961,7 +3015,7 @@ window.handleSaveMemberNotes = async function(e) {
     closeModal('modal-edit-member-notes');
 
     // Update in-memory allMembers
-    if (typeof allMembers !== 'undefined' && allMembers) {
+    if (typeof allMembers !== 'undefined' && Array.isArray(allMembers)) {
       const target = allMembers.find(x => x.id === memberId);
       if (target) {
         target.medicalConditions = medicalVal || null;
@@ -2969,20 +3023,38 @@ window.handleSaveMemberNotes = async function(e) {
       }
     }
 
-    if (currentTab === 'yoklama') {
-      await loadAttendanceView();
-    } else if (currentTab === 'uyeler') {
-      await loadMembersView();
+    try {
+      if (typeof currentTab !== 'undefined') {
+        if (currentTab === 'yoklama' && typeof loadAttendanceView === 'function') {
+          await loadAttendanceView();
+        } else if (currentTab === 'uyeler' && typeof loadMembersView === 'function') {
+          await loadMembersView();
+        }
+      }
+    } catch (viewErr) {
+      console.warn('[Staff] View refresh warning:', viewErr);
     }
 
-    // Live refresh progress drawer if open
+    // Live refresh student progress drawer if open
     const progressModal = document.getElementById('modal-student-progress');
     if (progressModal && progressModal.classList.contains('open')) {
       const name = document.getElementById('student-progress-name')?.textContent || '';
-      await openStudentProgressDrawer(memberId, name);
+      try {
+        if (typeof openStudentProgressDrawer === 'function') {
+          await openStudentProgressDrawer(memberId, name);
+        }
+      } catch (drawerErr) {
+        console.warn('[Staff] Progress drawer refresh warning:', drawerErr);
+      }
     }
   } catch (err) {
-    showToast(`Not kaydedilemedi: ${err.message}`, 'error');
+    console.error('[Staff] Not kaydetme hatası:', err);
+    showToast(`Not kaydedilemedi: ${err.message || err}`, 'error');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = origBtnHtml;
+    }
   }
 };
 
@@ -3578,6 +3650,8 @@ window.renderStudentMetricsHistory = renderStudentMetricsHistory;
 window.toggleStudentMetricsHistory = toggleStudentMetricsHistory;
 window.changeStudentMetricPage = changeStudentMetricPage;
 window.handleDeleteStudentMetric = handleDeleteStudentMetric;
+window.openEditMemberNotesModal = openEditMemberNotesModal;
+window.handleSaveMemberNotes = handleSaveMemberNotes;
 
 export {
   switchDashboardSubTab,
@@ -3594,6 +3668,7 @@ export {
   openStudentWhatsAppRenewal,
   openAddStudentMetricModal, handleSaveStudentMetricLog,
   renderStudentMetricsHistory, toggleStudentMetricsHistory,
-  changeStudentMetricPage, handleDeleteStudentMetric
+  changeStudentMetricPage, handleDeleteStudentMetric,
+  openEditMemberNotesModal, handleSaveMemberNotes
 };
 

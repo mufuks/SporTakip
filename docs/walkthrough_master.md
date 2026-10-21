@@ -1140,6 +1140,25 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
   - **Derleme & Test Doğrulaması:**
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.29`.
 
+- **2026-10-21 (Phase 83 - Sporcu Sağlık & Sakatlık Notu "Kaydet" Butonu Çalışmama ve Önbellek Düzeltmesi):**
+  - **Kullanıcı Bildirimi:** "KAydet" yaramıyor "Sporcu Sağlık & Sakatlık Notu" düzenlerken.
+  - **Kök Neden Tespiti:**
+    1. **Eski Script Önbelleği & DOM ID Uyuşmazlığı:** Eski `staff.js` sürümünde textarea ID'si `edit-member-notes-textarea` olarak aranırken, modalda ID `edit-member-notes-medical` olarak güncellendiğinde tarayıcı veya Service Worker önbelleğindeki eski script `TypeError: Cannot read properties of null (reading 'value')` fırlatıyor ve kaydetme akışını kesiyordu.
+    2. **Sessiz Dönüş (Silent Return):** `handleSaveMemberNotes` fonksiyonunda `if (!memberId) return;` kontrolü, kimlik inputu herhangi bir sebeple boş geldiğinde kullanıcıya hiçbir bildirim vermeden sessizce çıkıyordu.
+    3. **Form Submit vs Buton Tıklaması:** Buton `type="submit"` olup formun `onsubmit` olayına bağımlıydı. Mobil tarayıcılarda form submit olayının yakalanmaması veya engellenmesi durumunda işlem tetiklenmiyordu.
+    4. **Çekmece Yenileme Hatası Maskelemesi:** Veritabanına kaydetme başarılı olsa dahi, hemen ardından çağrılan `openStudentProgressDrawer` içinde oluşabilecek herhangi bir istisna ana `catch` bloğuna düşerek kullanıcıya "Not kaydedilemedi" hatası gösteriyordu.
+  - **Geliştirilen Çözümler:**
+    - **Tetikleyici Güçlendirme ([member-modals.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/modals/member-modals.html)):** Kaydet butonu `type="button" id="btn-save-member-notes" onclick="handleSaveMemberNotes(event)"` yapıldı; formda ise `onsubmit="event.preventDefault(); handleSaveMemberNotes(event);"` korunarak Enter tuşu desteği sağlandı.
+    - **Geriye Dönük Uyumluluk:** Modala gizli `edit-member-notes-textarea` inputu eklenip `oninput` ile senkronize edildi; böylece önbellekte eski script kalan kullanıcıların dahi hata alması engellendi.
+    - **4 Kademeli ID Fallback Mimarisi ([staff.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/staff.js)):** `memberId`, sırasıyla `idInput.value`, `window.currentStudentProgressMemberId`, `modal.dataset.memberId` ve `form.dataset.memberId` üzerinden okunarak kimlik kaybı riski tamamen ortadan kaldırıldı.
+    - **Kullanıcı Geri Bildirimi & Loading State:** Kaydet butonuna basıldığında buton anında `⏳ Kaydediliyor...` durumuna geçerek devre dışı bırakılır, işlem tamamlandığında eski haline döner.
+    - **İzole Çekmece Yenileme:** Kaydetme sonrası profil çekmecesi yenilemesi bağımsız `try/catch` içine alınarak olası UI yenileme uyarılarının veri kaydını maskelemesi engellendi.
+    - **Modül Export & Global Binding ([app.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/app.js)):** `openEditMemberNotesModal` ve `handleSaveMemberNotes` fonksiyonları `staff.js` export listesine eklendi ve `app.js` üzerinden `window` nesnesine güvenle bağlandı.
+    - Varlık sürümleri `v=3.8.30` sürümüne yükseltildi (sw.js, index.html, loader.js, app.js).
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.30`.
+    - E2E API ve mobil görünüm (393x851) testleri doğrulandı.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)
