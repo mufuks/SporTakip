@@ -1,16 +1,19 @@
 <section id="view-yoklama" class="v0-section animate-fade-in" style="display:none;">
   <!-- Day Scope Segmented Controller & Quick Create Session Button -->
   <div class="day-scope-selector" style="display:flex; justify-content:space-between; align-items:center; margin-top:2px; margin-bottom:14px; gap:8px;">
-    <div style="display:flex; gap:8px;">
+    <div class="day-scope-btn-group" style="display:flex; gap:6px; flex:1; max-width:260px;">
       <button type="button" id="btn-scope-yesterday" class="day-scope-btn" onclick="switchAttendanceDayScope('yesterday')">
-        <span>◀</span> Dün <span id="label-scope-yesterday" style="opacity:0.8; font-weight:600; font-size:11px; margin-left:3px;"></span>
+        <span class="day-scope-icon">◀</span>
+        <span>Dün</span>
+        <span id="label-scope-yesterday" class="day-scope-date"></span>
       </button>
       <button type="button" id="btn-scope-today" class="day-scope-btn active" onclick="switchAttendanceDayScope('today')">
-        <span class="live-dot" style="width:7px; height:7px; border-radius:50%; background:var(--volt-lime); box-shadow:0 0 8px var(--volt-lime); display:inline-block;"></span>
-        Bugün <span id="label-scope-today" style="opacity:0.8; font-weight:600; font-size:11px; margin-left:3px;">(Canlı)</span>
+        <span class="live-dot"></span>
+        <span>Bugün</span>
+        <span id="label-scope-today" class="day-scope-date"></span>
       </button>
     </div>
-    <button type="button" class="btn-primary" onclick="openCreateSessionModal()" style="height:36px; padding:0 12px; font-size:12px; font-weight:700; border-radius:10px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; box-shadow:0 2px 8px rgba(204,255,0,0.25);">
+    <button type="button" class="btn-primary" onclick="openCreateSessionModal()" style="height:38px; padding:0 12px; font-size:12px; font-weight:700; border-radius:10px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; box-shadow:0 2px 8px rgba(204,255,0,0.25); flex-shrink:0;">
       <span>✨</span> Yeni Seans
     </button>
   </div>

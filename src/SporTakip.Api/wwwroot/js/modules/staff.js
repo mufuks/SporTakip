@@ -44,7 +44,7 @@ function updateDayScopeLabels() {
     lblYest.innerText = `(${yest.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })})`;
   }
   if (lblToday) {
-    lblToday.innerText = `(Canlı · ${now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })})`;
+    lblToday.innerText = `(${now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })})`;
   }
 }
 

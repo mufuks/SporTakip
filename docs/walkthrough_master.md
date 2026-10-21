@@ -1194,6 +1194,18 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - **Konsol Hata Raporu:** 0 hata (Zero console errors/warnings).
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.32`.
 
+- **2026-10-21 (Phase 86 - Yoklama Günü Seçici Badge Tasarım Sadeleştirmesi & Border Taşma Düzeltmesi):**
+  - **Kullanıcı Bildirimi:** Yoklama alanındaki "Bugün" butonunun daha rahat olması, ikonların border ile üst üste binmemesi ve "Canlı" ifadesinin kaldırılması.
+  - **Kök Neden:** Dar mobil ekranlarda buton içinde `Bugün (Canlı · 21 Eki)` metni uzun kaldığı için 2 satıra katlanıyor, buton içi yatay padding eksikliği sebebiyle canlı durum noktası (`.live-dot`) sol border çizgisi üzerine taşıyordu.
+  - **Geliştirilen Çözümler:**
+    - **Metin Sadeleştirmesi ([staff.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/staff.js) & [yoklama.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/views/staff/yoklama.html)):** "Bugün (Canlı · 21 Eki)" yerine doğrudan net ve ferah `Bugün (21 Eki)` formatına geçildi; "(Canlı)" ifadesi kaldırıldı.
+    - **Ferah ve Güvenli Padding ([app.css](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/css/app.css)):** `.day-scope-btn` için `padding: 0 12px;`, `height: 38px;`, `white-space: nowrap;` uygulandı. İkonların (`◀` ve `•`) border ile çakışması kesin olarak engellendi (`dotOffsetFromLeft: 13px`).
+    - **Mizanpaj & Hizalama:** "Yeni Seans" butonu ile aynı yükseklikte (38px) dengeli, tek satırda rahatça nefes alan bir mobil segment mimarisi oluşturuldu.
+    - Sürüm `v=3.8.33` seviyesine yükseltildi (`index.html`, `app.js`, `loader.js`, `sw.js`).
+  - **Derleme & Doğrulama:**
+    - Edge CDP (Headless DevTools Protocol) ile 393x851 mobil ekran görüntüsü ve DOM rect değerleri teyit edildi (`dotOffsetFromLeft: 13px`, `containsCanli: false`, `dotIsWithinBorder: true`).
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.33`.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)

@@ -1323,35 +1323,7 @@ table.custom-table tr:hover td {
   width: 100%;
 }
 
-.day-scope-btn {
-  flex: 1;
-  min-height: 42px;
-  border-radius: 12px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  font-weight: 800;
-  font-size: 13px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  user-select: none;
-  touch-action: manipulation;
-}
-
-.day-scope-btn:active {
-  transform: scale(0.98);
-}
-
-.day-scope-btn.active {
-  background: rgba(204, 255, 0, 0.14) !important;
-  border-color: var(--volt-lime) !important;
-  color: var(--volt-lime) !important;
-  box-shadow: 0 0 14px rgba(204, 255, 0, 0.22);
-}
+/* .day-scope-btn styles are consolidated in the Staff View Section below */
 
 .sessions-feed-container {
   display: flex;
@@ -6012,25 +5984,34 @@ body:has(.is-guest-mode) {
 
 .day-scope-btn {
   flex: 1;
-  height: 46px;
-  border-radius: 12px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface-elevated);
   color: var(--text-secondary);
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  white-space: nowrap;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 .day-scope-btn:hover {
   border-color: var(--border-strong);
   color: var(--text-primary);
+}
+
+.day-scope-btn:active {
+  transform: scale(0.98);
 }
 
 .day-scope-btn.active {
@@ -6039,6 +6020,36 @@ body:has(.is-guest-mode) {
   color: var(--volt-lime) !important;
   font-weight: 800;
   box-shadow: 0 0 16px rgba(204, 255, 0, 0.18);
+}
+
+.day-scope-btn .live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--volt-lime);
+  box-shadow: 0 0 8px var(--volt-lime);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.day-scope-btn:not(.active) .live-dot {
+  background: var(--text-muted);
+  box-shadow: none;
+  opacity: 0.5;
+}
+
+.day-scope-btn .day-scope-icon {
+  font-size: 9px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.day-scope-date {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.8;
+  margin-left: 1px;
+  white-space: nowrap;
 }
 
 .sessions-feed-container {
