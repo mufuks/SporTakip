@@ -1249,6 +1249,18 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Edge CDP ile 393x851 mobil ekran görüntüsü ve çip rect değerleri teyit edildi (`chips[0..3].visibleInViewport: true`, `activeChipFilter: renewal`, kart filtreleme başarılı).
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.36`.
 
+- **2026-10-21 (Phase 90 - Kişisel Hakedişim Başlık Alanı Sadeleştirmesi & Ay Seçici Toolbar Birleştirmesi):**
+  - **Kullanıcı Bildirimi:** "bu kısmı da aynı şekilde" talebiyle Kişisel Hakedişim sekmesindeki devasa başlık ve didaktik açıklama metinlerinin kaldırılması; ay seçici ve yenile butonunun tek satırda hizalanması.
+  - **Kök Neden:** 5 satıra yayılan `KİŞİSEL HAKEDİŞİM` başlığı ve "Girdiğiniz seansların dökümü, %40 ikame primleriniz ve bu ayki kişisel net kazancınız." açıklaması ile alt satıra düşen `🔄 Yenile` butonu dikeyde ~160px boşluk yutuyor, mobil ekranda asıl kazanç (Hero Card) ve seans prim dökümü ekranın altına öteleniyordu.
+  - **Geliştirilen Çözümler:**
+    - **Gereksiz Başlık ve Açıklamaların Kaldırılması ([hakedisim.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/views/staff/hakedisim.html)):** H2 başlığı ve didaktik açıklama paragrafı kaldırıldı.
+    - **Kompakt Tek Satır Toolbar (`.hakedis-toolbar`):** Ay seçici dropdown (`Ekim 2026 (Bu Ay)`) ve `🔄 Yenile` butonu yan yana 38px yükseklikte konumlandırıldı (`sameRow: true`, select: 269px, buton: 84px, gap: 8px).
+    - **Doğrudan Kazanç ve Metriklere Odaklanma:** Sayfa açılır açılmaz "BU AYKİ TAHMİNİ HAKEDİŞİM" Hero Kartı (`₺0`), toplam seans ve ikame prim metrikleri mobil ekranın en tepesinde ilk bakışta görünür hale geldi.
+    - Sürüm `v=3.8.37` seviyesine yükseltildi (`index.html`, `loader.js`, `sw.js`).
+  - **Derleme & Doğrulama:**
+    - Edge CDP ile 393x851 mobil ekran görüntüsü ve DOM rect değerleri teyit edildi (`sameRow: true`, `hasOldTitle: false`, `hasOldSubtitle: false`, `heroTop: 156px`).
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.37`.
+
 ---
 
 ## Gelecek Özellik Yol Haritası & Vizyon Önerileri (Future Roadmap)

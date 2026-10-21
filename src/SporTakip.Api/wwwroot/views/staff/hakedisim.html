@@ -1,16 +1,15 @@
 <section id="view-hakedisim" class="v0-section animate-fade-in" style="display:none;">
-      <div class="page-header" style="margin-bottom:14px;">
-        <div>
-          <h2 class="page-title">KİŞİSEL <span class="text-volt">HAKEDİŞİM</span></h2>
-          <p class="page-subtitle">Girdiğiniz seansların dökümü, %40 ikame primleriniz ve bu ayki kişisel net kazancınız.</p>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-          <select id="hakedis-month-select" class="form-control" style="max-width:180px;" onchange="handleHakedisMonthChange(this.value)">
-            <!-- Populated dynamically -->
-          </select>
-          <button type="button" class="btn-secondary" onclick="loadMyEarningsView()">🔄 Yenile</button>
-        </div>
-      </div>
+  <!-- Streamlined Hakedis Month & Action Toolbar -->
+  <div class="hakedis-toolbar" style="display:flex; align-items:center; gap:8px; margin-top:2px; margin-bottom:14px; width:100%;">
+    <div style="flex:1; min-width:0; position:relative;">
+      <select id="hakedis-month-select" class="form-control" onchange="handleHakedisMonthChange(this.value)" style="height:38px; padding:0 12px; font-size:13px; font-weight:700; border-radius:10px; width:100%; box-sizing:border-box; background:var(--bg-surface); border:1px solid var(--border-subtle); color:var(--text-primary); cursor:pointer;">
+        <!-- Populated dynamically -->
+      </select>
+    </div>
+    <button type="button" class="btn-secondary" onclick="loadMyEarningsView()" style="height:38px; padding:0 14px; font-size:12px; font-weight:700; border-radius:10px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; flex-shrink:0;">
+      <span>🔄</span> Yenile
+    </button>
+  </div>
 
       <!-- Koç Hakediş Özet Metrikleri (Hero + 2 Alt Kart) -->
       <div class="hakedis-metrics-wrap">
