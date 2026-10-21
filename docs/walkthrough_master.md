@@ -1079,6 +1079,15 @@ Yoklama kartından tek tıkla 3 hazır atletik şablon tetiklenir:
     - Service Worker (`sw.js`), script ve stil varlıkları `v3.8.23` sürümüne yükseltilerek tam cache busting sağlandı.
   - **Derleme & Test Doğrulaması:**
     - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.23`.
+- **2026-10-21 (v3.8.24 - Faz 77 / Sadeleştirme Adım 1: Sporcu Ana Sayfası Salon Doluluğunun Kompaktlaştırılması & Seans İçi Canlı Yoğunluk Rozeti):**
+  - **Kullanıcı Talebi:** Mevcut özellikleri basitleştirme ve sadeleştirme serisinin 1. adımı: Ana sayfadaki büyük saatlik doluluk kartının dikeyde çok yer kaplamasını önlemek ve seans kartlarına doğrudan salon yoğunluk atmosferini bağlamak.
+  - **Geliştirilen Çözümler:**
+    - **Canlı Mikro-Bar ([home.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/views/athlete/home.html) & [index.html](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/index.html)):** `#athlete-occupancy-card` varsayılan olarak 40px yüksekliğinde şık ve tek satırlık bir canlı bara dönüştürüldü (`🏢 Salonda Şu An Sakin [🟢 0/6 Kişi] [Saatler ▾]`).
+    - **Katlanabilir Saatlik Çekmece:** Saatlik dağılım ve hoca detayları `toggleAthleteOccupancyStrip()` ile kullanıcı istediğinde akıcı şekilde açılıp kapanabilir hale getirildi; ana ekrandan **~140px dikey alan tasarrufu** sağlandı.
+    - **Seans Kartı İçi Salon Atmosferi ([athlete.js](file:///c:/MUFUKS/Code/SporTakip/src/SporTakip.Api/wwwroot/js/modules/athlete.js)):** Her seans kartının başlık satırına o saatin doluluk durumu hesaplanarak otomatik mikro rozet (`🟢 Salon Sakin`, `🟡 Salon Normal`, `🔴 Salon Yoğun`) yerleştirildi. Sporcu ana sayfayı aşağı kaydırmadan hem seansı hem de salon yoğunluğunu anında görmeye başladı.
+    - Varlık sürümleri `v=3.8.24` sürümüne yükseltilerek tam cache busting sağlandı.
+  - **Derleme & Test Doğrulaması:**
+    - `dotnet test`: 118/118 test (%100) başarılı. Sürüm: `v3.8.24`.
 
 ---
 

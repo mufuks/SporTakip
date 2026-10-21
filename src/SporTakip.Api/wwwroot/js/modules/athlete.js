@@ -240,6 +240,7 @@ async function renderAthleteGymOccupancy(dateStr) {
 
     const currentHour = new Date().getHours();
     const currentHourSlot = isToday ? slots.find(s => s.hour === currentHour) : null;
+    const liveTextEl = document.getElementById('athlete-occupancy-live-text');
 
     if (badge) {
       if (currentHourSlot) {
@@ -248,23 +249,27 @@ async function renderAthleteGymOccupancy(dateStr) {
           badge.style.background = 'rgba(239,68,68,0.15)';
           badge.style.color = '#EF4444';
           badge.style.borderColor = 'rgba(239,68,68,0.3)';
-          badge.innerText = `Şu An Yoğun (${count}/6)`;
+          badge.innerText = `🔴 ${count}/6 Kişi`;
+          if (liveTextEl) liveTextEl.innerText = 'Salonda Şu An Yoğun';
         } else if (count >= 3) {
           badge.style.background = 'rgba(245,158,11,0.15)';
           badge.style.color = '#F59E0B';
           badge.style.borderColor = 'rgba(245,158,11,0.3)';
-          badge.innerText = `Şu An Orta (${count}/6)`;
+          badge.innerText = `🟡 ${count}/6 Kişi`;
+          if (liveTextEl) liveTextEl.innerText = 'Salonda Normal Yoğunluk';
         } else {
           badge.style.background = 'rgba(16,185,129,0.15)';
           badge.style.color = '#10B981';
           badge.style.borderColor = 'rgba(16,185,129,0.3)';
-          badge.innerText = count > 0 ? `Şu An Rahat (${count}/6)` : 'Şu An Sakin (0/6)';
+          badge.innerText = count > 0 ? `🟢 ${count}/6 Kişi` : '🟢 0/6 Kişi';
+          if (liveTextEl) liveTextEl.innerText = count > 0 ? 'Salonda Şu An Rahat' : 'Salonda Şu An Sakin';
         }
       } else {
         badge.innerText = isToday ? 'Canlı' : 'Planlı';
         badge.style.background = 'rgba(204,255,0,0.14)';
         badge.style.color = 'var(--volt-lime)';
         badge.style.borderColor = 'rgba(204,255,0,0.3)';
+        if (liveTextEl) liveTextEl.innerText = isToday ? 'Canlı Salon Durumu' : 'Planlanan Doluluk';
       }
     }
 
@@ -325,6 +330,15 @@ async function renderAthleteGymOccupancy(dateStr) {
   }
 }
 window.renderAthleteGymOccupancy = renderAthleteGymOccupancy;
+
+window.toggleAthleteOccupancyStrip = function() {
+  const drawer = document.getElementById('athlete-occupancy-drawer');
+  const arrow = document.getElementById('athlete-occ-arrow');
+  if (!drawer) return;
+  const isHidden = drawer.style.display === 'none' || !drawer.style.display;
+  drawer.style.display = isHidden ? 'block' : 'none';
+  if (arrow) arrow.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+};
 
 window.selectAthleteSlotHour = function(hour) {
   const detailBox = document.getElementById('athlete-occupancy-detail-box');
@@ -843,12 +857,28 @@ async function renderSessionsList(containerId, dateStr) {
         `;
       }
 
+      // Contextual Salon Atmosphere Badge for this slot's hour
+      const slotHour = start.getHours();
+      const capSlot = (athleteCapacitySlotsData || []).find(s => s.hour === slotHour);
+      let occPillHtml = '';
+      if (capSlot) {
+        const memCount = capSlot.totalMembers || 0;
+        if (memCount >= 5) {
+          occPillHtml = `<span class="v0-slot-occ-pill" style="font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:999px; background:rgba(239,68,68,0.12); color:#EF4444; border:1px solid rgba(239,68,68,0.25);" title="Salonda ${memCount} kişi var">🔴 Salon Yoğun</span>`;
+        } else if (memCount >= 3) {
+          occPillHtml = `<span class="v0-slot-occ-pill" style="font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:999px; background:rgba(245,158,11,0.12); color:#F59E0B; border:1px solid rgba(245,158,11,0.25);" title="Salonda ${memCount} kişi var">🟡 Salon Normal</span>`;
+        } else {
+          occPillHtml = `<span class="v0-slot-occ-pill" style="font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:999px; background:rgba(16,185,129,0.12); color:#10B981; border:1px solid rgba(16,185,129,0.25);" title="Salonda ${memCount} kişi var">🟢 Salon Sakin</span>`;
+        }
+      }
+
       return `
         <article class="v0-session-card">
           <div class="v0-session-top">
             <div style="min-width:0; flex:1;">
               <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
                 <span class="v0-time-pill">${timeStr}</span>
+                ${occPillHtml}
                 ${editButtonHtml}
               </div>
               <h3 class="v0-session-card-title">${escapeHtml(slot.title || 'Grup Seansı')}</h3>

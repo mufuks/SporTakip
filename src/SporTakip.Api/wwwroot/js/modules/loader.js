@@ -6,7 +6,7 @@ export async function fetchPartial(url) {
     return partialCache.get(url);
   }
   const sep = url.includes('?') ? '&' : '?';
-  const cacheBustUrl = `${url}${sep}v=3.8.23&_t=${Date.now()}`;
+  const cacheBustUrl = `${url}${sep}v=3.8.24&_t=${Date.now()}`;
   const res = await fetch(cacheBustUrl);
   if (!res.ok) {
     throw new Error(`Kısmi HTML yüklenemedi: ${url} (${res.status})`);

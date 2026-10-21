@@ -2277,6 +2277,25 @@ table.custom-table tr:hover td {
 }
 
 /* Responsive Home Grid */
+/* Compact Live Gym Occupancy Micro-Bar */
+.v0-occupancy-card {
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  margin: 4px 12px 6px 12px;
+  transition: all 0.25s ease;
+}
+
+.v0-occ-summary-row:hover .v0-occ-toggle-btn {
+  color: var(--volt-lime-bright, #d4ff1a);
+}
+
+.v0-slot-occ-pill {
+  transition: transform 0.2s ease;
+  white-space: nowrap;
+}
+
 .v0-home-grid {
   display: flex;
   flex-direction: column;
