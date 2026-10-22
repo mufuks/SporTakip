@@ -33,3 +33,4 @@ Desktop.ini
 .neon
 .env.local
 node_modules/
+scratch/

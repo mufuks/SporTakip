@@ -532,11 +532,11 @@ async function loadAthleteHome() {
           user.memberId = member.id;
           Api.setUser(user);
         }
-        if (member && member.subscriptions && member.subscriptions.length > 0) {
-          const activeSub = member.subscriptions.find(s => s.status === 'Active' || s.status === 'Frozen') || member.subscriptions[0];
+        const activeSub = member.activeSubscription || (member.subscriptions && member.subscriptions.length > 0 ? (member.subscriptions.find(s => s.status === 'Active' || s.status === 'Frozen') || member.subscriptions[0]) : null);
+        if (activeSub) {
           renderAthleteActivePackage(activeSub);
           try {
-            if (activeSub) sessionStorage.setItem(subCacheKey, JSON.stringify(activeSub));
+            sessionStorage.setItem(subCacheKey, JSON.stringify(activeSub));
           } catch (_) {}
         } else {
           renderAthleteActivePackage(null);
