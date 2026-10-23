@@ -460,7 +460,18 @@ function renderAthleteActivePackage(activeSub) {
       pkgStatusEl.style.color = '';
       pkgStatusEl.style.border = '';
     }
-    if (pkgBar) pkgBar.innerHTML = '<div style="font-size:11.5px; color:var(--text-muted); padding:1px 0;">Tanımlı aktif paketiniz bulunmuyor.</div>';
+    if (pkgBar) {
+      pkgBar.innerHTML = `
+        <div style="font-size:12px; color:var(--text-secondary); line-height:1.4; padding:2px 0 6px 0;">
+          Henüz aktif bir seans paketiniz bulunmuyor. Salondan paket tanımlatabilir veya WhatsApp ile hemen bilgi alabilirsiniz.
+        </div>
+        <div style="display:flex; gap:8px; margin-top:4px;">
+          <a href="https://wa.me/905321112233?text=Merhaba,%20SporTakip%20uygulamas%C4%B1ndan%20yeni%20paket%20bilgisi%20almak%20istiyorum." target="_blank" class="btn-primary" style="display:inline-flex; align-items:center; justify-content:center; gap:6px; background:#25D366; color:#fff; font-size:12px; font-weight:800; padding:8px 14px; border-radius:10px; text-decoration:none;">
+            <span>💬</span> WhatsApp ile Salona Yaz
+          </a>
+        </div>
+      `;
+    }
     if (completedEl) completedEl.innerText = '0 / 0 Ders';
     if (remainingEl) remainingEl.innerText = '0 DERS KALDI';
     if (daysEl) daysEl.innerText = '📅 -- gün';
